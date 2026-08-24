@@ -26,6 +26,8 @@ import {
   setFeedback,
   setScan,
   recordScan,
+  setOpportunities,
+  setOpportunityFeedback,
   updateItem,
   updateProduct,
 } from "./store";
