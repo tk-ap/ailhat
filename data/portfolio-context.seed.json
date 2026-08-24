@@ -1,0 +1,28 @@
+{
+  "schema_version": "1.0",
+  "source": "conversation_seed",
+  "products": [
+    {"slug":"ailhat","name":"Ailhat","state":"ACTIVE","account_ref":"cto.new:primary","launch_stage":"PRIVATE_BETA_PRE_LAUNCH","readiness_score":65,"readiness_confidence":"MEDIUM","distance_to_first_paid_client":"~4–8 meaningful work sessions","attention_status":"NEEDS_ATTENTION","neglect_risk":"MEDIUM","top_next_action":"Restore production reliability/auth and validate the complete live scan loop"},
+    {"slug":"alvira","name":"ALVIRA","state":"PAUSED","account_ref":"cto.new:secondary","launch_stage":"NEEDS_ASSESSMENT","readiness_score":null,"readiness_confidence":null,"distance_to_first_paid_client":"Assessment required","attention_status":"NEEDS_ASSESSMENT","neglect_risk":"HIGH","top_next_action":"Validate current production state and reassess launch/customer target"},
+    {"slug":"alvira-bridge","name":"ALVIRA Bridge","state":"PAUSED","account_ref":"cto.new:builder","launch_stage":"NEEDS_ASSESSMENT","readiness_score":null,"readiness_confidence":null,"distance_to_first_paid_client":"Assessment required","attention_status":"NEEDS_ASSESSMENT","neglect_risk":"HIGH","top_next_action":"Validate current product state and ecosystem role"},
+    {"slug":"ledgato","name":"Ledgato","state":"ACTIVE","account_ref":"cto.new:builder","launch_stage":"NEEDS_ASSESSMENT","readiness_score":null,"readiness_confidence":null,"distance_to_first_paid_client":"Assessment required","attention_status":"NEEDS_ASSESSMENT","neglect_risk":"HIGH","top_next_action":"Run a live scan and create a current-state assessment"},
+    {"slug":"hoopdash","name":"Hoopdash","state":"ACTIVE","account_ref":"cto.new:builder","launch_stage":"NEEDS_ASSESSMENT","readiness_score":null,"readiness_confidence":null,"distance_to_first_paid_client":"Assessment required","attention_status":"NEEDS_ASSESSMENT","neglect_risk":"HIGH","top_next_action":"Run a live scan and create a current-state assessment"},
+    {"slug":"policyguard","name":"PolicyGuard","state":"PAUSED","account_ref":"cto.new:secondary","launch_stage":"NEEDS_ASSESSMENT","readiness_score":null,"readiness_confidence":null,"distance_to_first_paid_client":"Assessment required","attention_status":"NEEDS_ASSESSMENT","neglect_risk":"HIGH","top_next_action":"Scan current product, confirm positioning, decide revive vs archive"},
+    {"slug":"websitehero","name":"WEBSITEHERO","state":"PAUSED","account_ref":"cto.new:secondary","launch_stage":"NEEDS_ASSESSMENT","readiness_score":null,"readiness_confidence":null,"distance_to_first_paid_client":"Assessment required","attention_status":"NEEDS_ASSESSMENT","neglect_risk":"HIGH","top_next_action":"Scan current site and confirm business model before revive/archive decision"},
+    {"slug":"trendvault","name":"TrendVault","state":"PAUSED","account_ref":"cto.new:secondary","launch_stage":"NEEDS_ASSESSMENT","readiness_score":null,"readiness_confidence":null,"distance_to_first_paid_client":"Assessment required","attention_status":"NEEDS_ASSESSMENT","neglect_risk":"HIGH","top_next_action":"Scan current site and check current market fit"},
+    {"slug":"adscale-pro","name":"AdScale Pro","state":"PAUSED","account_ref":"cto.new:secondary","launch_stage":"NEEDS_ASSESSMENT","readiness_score":null,"readiness_confidence":null,"distance_to_first_paid_client":"Assessment required","attention_status":"NEEDS_ASSESSMENT","neglect_risk":"HIGH","top_next_action":"Scan current site and check offer/demand"}
+  ],
+  "ecosystem": {
+    "alvira": {
+      "thesis": "Operating system for the AI era",
+      "layers": ["Know You","Connect Everywhere","Work With You","Act For You"]
+    },
+    "roles": {
+      "ailhat": "Product intelligence: observe → understand → detect issues/opportunities → prioritize → recommend",
+      "agent_control": "Execution capacity intelligence: observe capacity → match work → reserve window → route execution → report completion",
+      "workflow_studio": "Orchestrates work",
+      "agents": "Execute work"
+    },
+    "handoff": "Ailhat finding → normalized work item → Agent Control capacity match → execution → result/evidence → Ailhat rescan"
+  }
+}
