@@ -15,6 +15,17 @@
   --font-sans: "Inter", "InterVariable", ui-sans-serif, system-ui, -apple-system,
     "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 
+  /* Ledgato-skin landing fonts — display (Space Grotesk) for headings/brand,
+     mono (JetBrains Mono) for body/terminal. Scoped utilities: font-display /
+     font-code. Tailwind v4 derives `font-display` + `font-code` from these. */
+  --font-display: "Space Grotesk", ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-code: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas,
+    monospace;
+
+  /* signature light-blue accent (#7fb0ff) — used by the landing skin only */
+  --color-accent: #7fb0ff;
+
   /* cool neutral ramp — deep canvas → bright text */
   --color-gray-50: #f6f6f8;
   --color-gray-100: #ebecf0;
@@ -245,6 +256,10 @@
     border: 2px solid rgba(16, 185, 129, 0.55);
     animation: ping 2.2s cubic-bezier(0, 0, 0.2, 1) infinite;
   }
+  /* Ledgato-skin: light-blue live dot for the landing status pill */
+  .ping-dot--blue::after {
+    border-color: rgba(127, 176, 255, 0.7);
+  }
   @keyframes ping {
     0% {
       transform: scale(0.6);
@@ -254,6 +269,32 @@
       transform: scale(1.8);
       opacity: 0;
     }
+  }
+
+  /* Ledgato-skin uppercase mono section eyebrow */
+  .l-eyebrow {
+    font-family: var(--font-code);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: #7fb0ff;
+  }
+  /* Ledgato-skin live status pill (pulsing dot + uppercase mono label) */
+  .l-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-radius: 9999px;
+    border: 1px solid rgba(127, 176, 255, 0.28);
+    background: rgba(127, 176, 255, 0.06);
+    padding: 0.35rem 0.85rem;
+    font-family: var(--font-code);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #7fb0ff;
   }
 }
 
