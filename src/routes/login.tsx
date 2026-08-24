@@ -51,7 +51,7 @@ function Login() {
           <div className="mt-6 flex flex-col gap-3">
             <Link
               to="/dashboard"
-              className="rounded-xl bg-cyan-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-cyan-500"
+              className="silhat-btn silhat-btn-primary rounded-xl px-4 py-2.5"
             >
               Open dashboard
             </Link>
@@ -131,7 +131,7 @@ function Login() {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full rounded-xl bg-cyan-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-cyan-500 disabled:opacity-60"
+              className="silhat-btn silhat-btn-primary w-full rounded-xl px-4 py-2.5 disabled:opacity-60"
             >
               {submitting ? "Please wait…" : isSignup ? "Create account" : "Log in"}
             </button>
@@ -140,7 +140,7 @@ function Login() {
           {signupOpen && !isSignup && (
             <p className="mt-4 text-center text-sm text-gray-500 dark:text-gray-400">
               No account yet?{" "}
-              <button onClick={() => setMode("signup")} className="font-semibold text-cyan-600 hover:underline dark:text-cyan-400">
+              <button onClick={() => setMode("signup")} className="font-semibold text-[#7fb0ff] hover:underline">
                 Create the owner account
               </button>
             </p>
@@ -148,7 +148,7 @@ function Login() {
           {!signupOpen && isSignup && (
             <p className="mt-4 text-center text-sm text-gray-500 dark:text-gray-400">
               An owner already exists.{" "}
-              <button onClick={() => setMode("login")} className="font-semibold text-cyan-600 hover:underline dark:text-cyan-400">
+              <button onClick={() => setMode("login")} className="font-semibold text-[#7fb0ff] hover:underline">
                 Log in instead
               </button>
             </p>
@@ -164,12 +164,12 @@ function Shell({ children }: { children: React.ReactNode }) {
     <div className="relative min-h-dvh overflow-hidden bg-gray-950 text-gray-100">
       <div
         aria-hidden
-        className="pointer-events-none absolute -top-40 left-1/2 h-[420px] w-[820px] -translate-x-1/2 rounded-full bg-[radial-gradient(50%_50%_at_50%_50%,rgba(34,211,238,0.14),transparent_70%)] blur-2xl"
+        className="pointer-events-none absolute -top-40 left-1/2 h-[420px] w-[820px] -translate-x-1/2 rounded-full bg-[radial-gradient(50%_50%_at_50%_50%,rgba(127,176,255,0.16),transparent_70%)] blur-2xl"
       />
       <header className="relative z-10 mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
         <Link to="/" className="flex items-center gap-2.5">
           <div className="silhat-brand">A</div>
-          <span className="font-bold tracking-tight">ailhat</span>
+          <span className="font-display font-bold tracking-tight text-gray-50">ailhat</span>
         </Link>
       </header>
       <main className="relative z-10 px-6 py-12">{children}</main>
