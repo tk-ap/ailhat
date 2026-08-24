@@ -16,6 +16,7 @@ import {
 import { typeLabel } from "~/lib/store";
 import OpportunitySection from "~/components/OpportunitySection";
 import MarketGapSection from "~/components/MarketGapSection";
+import AttentionSection from "~/components/AttentionSection";
 
 export const Route = createFileRoute("/brief")({
   component: () => (
@@ -360,6 +361,9 @@ function Brief() {
           </section>
 
           <HighestLeverage signal={summary.highest} />
+
+          {/* Phase 5 — Attention engine (top-ranked: what to do next) */}
+          <AttentionSection />
 
           <section>
             <h2 className="mb-4 flex items-center gap-2 text-lg font-bold tracking-tight text-gray-100">
