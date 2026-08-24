@@ -15,6 +15,7 @@ import {
 } from "~/lib/brief";
 import { typeLabel } from "~/lib/store";
 import OpportunitySection from "~/components/OpportunitySection";
+import MarketGapSection from "~/components/MarketGapSection";
 
 export const Route = createFileRoute("/brief")({
   component: () => (
@@ -401,6 +402,9 @@ function Brief() {
 
           {/* Phase 3 — Opportunity engine */}
           <OpportunitySection />
+
+          {/* Phase 4 — Market-gap engine */}
+          <MarketGapSection />
         </>
       )}
     </div>
