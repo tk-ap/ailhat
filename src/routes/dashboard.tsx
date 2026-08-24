@@ -416,9 +416,13 @@ function ScanPanel({
             return (
               <li
                 key={f.stableKey}
-                className="flex items-start justify-between gap-3 rounded-xl border border-rose-100 bg-white p-3 dark:border-rose-950 dark:bg-gray-900"
+                className="relative flex items-start justify-between gap-3 overflow-hidden rounded-xl border border-rose-900/50 bg-rose-950/15 p-3"
               >
-                <div className="min-w-0">
+                <span
+                  aria-hidden
+                  className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-rose-500 to-rose-800"
+                />
+                <div className="min-w-0 pl-2">
                   <div className="flex flex-wrap items-center gap-2">
                     <span
                       className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${SEV_TONE[f.severity]}`}
@@ -709,7 +713,7 @@ function ProductCard({
                 }}
                 className={`rounded-lg p-1.5 hover:bg-rose-50 ${
                   confirmDelete
-                    ? "bg-rose-100 text-rose-700"
+                    ? "bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300"
                     : "text-gray-400 hover:text-rose-600"
                 }`}
               >
@@ -754,7 +758,7 @@ function ProductCard({
                 className={`flex items-start gap-3 rounded-xl border p-3 ${
                   checked
                     ? "border-gray-100 bg-gray-50 dark:border-gray-800 dark:bg-gray-800/40"
-                    : "border-gray-100 bg-white dark:border-gray-800"
+                    : "border-gray-100 bg-white dark:border-gray-800 dark:bg-gray-900/70"
                 }`}
               >
                 <button
@@ -1086,7 +1090,7 @@ function Suggestions() {
         {items.map((s) => (
           <li
             key={s.id}
-            className="flex items-start gap-3 rounded-xl border border-gray-100 bg-white p-3 dark:border-gray-800"
+            className="flex items-start gap-3 rounded-xl border border-gray-100 bg-white p-3 dark:border-gray-800 dark:bg-gray-900/70"
           >
             <span
               className={`mt-0.5 rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase ${s.tone}`}
