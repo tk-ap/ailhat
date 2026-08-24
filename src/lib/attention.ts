@@ -231,6 +231,99 @@ export function computeCapacity(state: AppState): CapacitySignals {
 }
 
 // ---------------------------------------------------------------------------
+// Per-product allocation — "where should attention go right now?"
+// ---------------------------------------------------------------------------
+// The dedicated Capacity & Allocation surface (/allocation) shows, for each
+// product, how much of the portfolio's open attention load it currently owns
+// and therefore how much of the next window's effort it is recommended to
+// receive. This is derived PURELY from the engine's own outputs — the ranked,
+// capacity + feedback weighted attention items (each carries its product and
+// weighted score) plus the capacity signals — never a hand-maintained board.
+// A "business in motion" is a product with open checklist items and/or open
+// scan findings — exactly the observable signals that drive productsInMotion.
+export interface ProductAllocation {
+  productId: string;
+  productName: string;
+  inMotion: boolean; // open checklist items OR open findings (== productsInMotion)
+  openItems: number; // open attention items owned by this product
+  openFindings: number; // open (fail) scan findings
+  load: number; // sum of this product's weighted attention scores
+  loadShare: number; // 0..1 share of the portfolio's total attention load
+  recommendedPercent: number; // recommended % of the next window = loadShare*100
+  bestItemId: string | null; // its single highest-weighted item (evidence)
+  bestItemTitle: string | null;
+  bestScore: number;
+  bestClassName: AttentionClass | null;
+  nextWindowFor: boolean; // is this the product the next window should go to
+}
+
+export function computeProductAllocations(
+  state: AppState,
+  items: AttentionItem[],
+  capacity: CapacitySignals,
+): ProductAllocation[] {
+  const scans = state?.scans ?? {};
+  // Market gaps are portfolio-level (PORTFOLIO_ID) — not a per-product row.
+  const portfolioItems = items.filter((i) => i.productId !== PORTFOLIO_ID);
+  const byProduct = new Map<string, AttentionItem[]>();
+  for (const it of portfolioItems) {
+    const list = byProduct.get(it.productId) ?? [];
+    list.push(it);
+    byProduct.set(it.productId, list);
+  }
+  // The item the next window should be spent on → its owning product.
+  const nextItem = capacity.nextWindowId
+    ? items.find((i) => i.id === capacity.nextWindowId)
+    : undefined;
+
+  const raw = (state?.products ?? []).map((p) => {
+    const scan = scans[p.id];
+    const openFindings =
+      scan && scan.ok ? scan.findings.filter((f) => f.status === "fail").length : 0;
+    // Open checklist items — the same observable signal computeCapacity uses to
+    // count productsInMotion, so each row's In motion badge matches the header.
+    const openChecklist = (state?.items ?? []).filter(
+      (i) => i.productId === p.id && i.status !== "done",
+    ).length;
+    const ownItems = byProduct.get(p.id) ?? [];
+    const load = ownItems.reduce((s, i) => s + i.score, 0);
+    let best: AttentionItem | null = null;
+    for (const it of ownItems) {
+      if (!best || it.score > best.score) best = it;
+    }
+    return {
+      productId: p.id,
+      productName: p.name,
+      inMotion: openChecklist > 0 || openFindings > 0,
+      openItems: ownItems.length,
+      openFindings,
+      load,
+      best,
+    };
+  });
+
+  const totalLoad = raw.reduce((s, r) => s + r.load, 0);
+  return raw.map((r) => {
+    const loadShare = totalLoad > 0 ? r.load / totalLoad : 0;
+    return {
+      productId: r.productId,
+      productName: r.productName,
+      inMotion: r.inMotion,
+      openItems: r.openItems,
+      openFindings: r.openFindings,
+      load: r.load,
+      loadShare,
+      recommendedPercent: Math.round(loadShare * 100),
+      bestItemId: r.best?.id ?? null,
+      bestItemTitle: r.best?.title ?? null,
+      bestScore: r.best?.score ?? 0,
+      bestClassName: r.best?.attentionClass ?? null,
+      nextWindowFor: !!nextItem && nextItem.productId === r.productId,
+    };
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Ranking — capacity + feedback weighting
 // ---------------------------------------------------------------------------
 // Capacity shapes the feed:

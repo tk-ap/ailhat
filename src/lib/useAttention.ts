@@ -10,8 +10,10 @@ import { hasScanItem } from "./store";
 import {
   type AttentionItem,
   type CapacitySignals,
+  type ProductAllocation,
   buildAttention,
   computeAttention,
+  computeProductAllocations,
 } from "./attention";
 import { PORTFOLIO_ID } from "./marketGap";
 
@@ -20,6 +22,7 @@ export interface UseAttention {
   allCount: number; // total computed before feedback filtering/hiding
   hidden: number;
   capacity: CapacitySignals;
+  allocations: ProductAllocation[]; // per-product allocation (Capacity & Allocation surface)
   feedback: (item: AttentionItem, kind: FeedbackKind) => void;
   /** Create a checklist item for an attention item (deduped by scanKey). */
   createTask: (item: AttentionItem) => { added: number; skipped: number };
@@ -30,6 +33,10 @@ export function useAttention(): UseAttention {
 
   const { items, capacity } = useMemo(() => buildAttention(state), [state]);
   const allCount = useMemo(() => computeAttention(state).length, [state]);
+  const allocations = useMemo(
+    () => computeProductAllocations(state, items, capacity),
+    [state, items, capacity],
+  );
 
   const hidden = Math.max(0, allCount - items.length);
 
@@ -69,6 +76,7 @@ export function useAttention(): UseAttention {
     allCount,
     hidden,
     capacity,
+    allocations,
     feedback,
     createTask,
   };
