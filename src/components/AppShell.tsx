@@ -66,8 +66,8 @@ export default function AppShell({
         <Link to="/dashboard" className="flex items-center gap-2.5 px-4 pb-4 pt-5">
           <div className="silhat-brand">A</div>
           <div className="leading-none">
-            <div className="text-[15px] font-bold tracking-tight text-gray-50">ailhat</div>
-            <div className="mt-0.5 text-[10px] font-medium uppercase tracking-[0.14em] text-gray-500">
+            <div className="font-display text-[15px] font-bold tracking-tight text-gray-50">ailhat</div>
+            <div className="mt-1 font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-[#7fb0ff]">
               Command center
             </div>
           </div>
@@ -87,7 +87,7 @@ export default function AppShell({
                 {n.icon}
                 <span className="truncate">{n.label}</span>
                 {active === n.id && (
-                  <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-cyan-400" />
+                  <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-[#7fb0ff]" />
                 )}
               </Link>
             ))}
@@ -157,9 +157,9 @@ export default function AppShell({
               </div>
               <div className="text-[11px] text-gray-400">{openCount} open signal{openCount === 1 ? "" : "s"}</div>
             </div>
-            <div className="flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-              <span className="text-[10px] font-medium uppercase tracking-wide text-gray-500">Live</span>
+            <div className="silhat-live">
+              <span className="ping-dot ping-dot--blue h-1.5 w-1.5 rounded-full bg-[#7fb0ff]" />
+              Live
             </div>
           </div>
           <AuthNav compact />
