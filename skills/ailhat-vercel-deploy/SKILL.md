@@ -45,15 +45,22 @@ echo y | VERCEL_TOKEN="$VERCEL_TOKEN" bunx vercel@latest git disconnect
 > silently cancels. Always pipe `echo y` (or pass `--yes` if supported) to force
 > confirmation, otherwise it does nothing.
 
-Verify it is actually gone (not assumed):
+Verify it is actually gone (not assumed). NOTE: `bunx vercel git ls` is **not** a
+valid subcommand (the CLI only supports `connect`/`disconnect`), so it always
+errors and cannot be used for verification. Use the authoritative project API —
+a connected git project returns a `link`/`gitLink` object; when disconnected the
+key is entirely absent:
 
 ```bash
-VERCEL_TOKEN="$VERCEL_TOKEN" bunx vercel@latest git ls
+curl -s "https://api.vercel.com/v9/projects/prj_dqOUuTJPaegWYi3l4f9Kx8vxyWOe" \
+  -H "Authorization: Bearer $VERCEL_TOKEN" \
+  | grep -o '"link"[^,]*'
+# empty / no match  => disconnected (good)
+# {"type":"github"...}  => still connected (run the disconnect again)
 ```
 
-It should show **no connected GitHub project/integration**. If `git ls` still
-shows the repo, find and run the real removal mechanism (vercel CLI
-git/disconnect or the Vercel API) until it is confirmed gone.
+A second `echo y | bunx vercel@latest git disconnect` returning
+`Error: No Git repository connected.` is also a reliable confirmation.
 
 ### 2. Make the CLI deploy the standard path
 
