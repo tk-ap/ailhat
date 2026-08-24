@@ -31,7 +31,7 @@ export const Route = createFileRoute("/brief")({
 
 const LEVEL_META: Record<
   AttentionLevel,
-  { label: string; dot: string; badge: string; border: string; heading: string }
+  { label: string; dot: string; badge: string; border: string; heading: string; eyebrow: string }
 > = {
   ACT_NOW: {
     label: "Act now",
@@ -39,6 +39,7 @@ const LEVEL_META: Record<
     badge: "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300",
     border: "border-rose-200 dark:border-rose-900",
     heading: "Act now",
+    eyebrow: "text-rose-400",
   },
   REVIEW: {
     label: "Review",
@@ -46,6 +47,7 @@ const LEVEL_META: Record<
     badge: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
     border: "border-amber-200 dark:border-amber-900",
     heading: "Review",
+    eyebrow: "text-amber-400",
   },
   OPPORTUNITY: {
     label: "Opportunity",
@@ -53,6 +55,7 @@ const LEVEL_META: Record<
     badge: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
     border: "border-emerald-200 dark:border-emerald-900",
     heading: "Opportunity",
+    eyebrow: "text-emerald-400",
   },
   HEALTHY: {
     label: "Healthy",
@@ -60,6 +63,7 @@ const LEVEL_META: Record<
     badge: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300",
     border: "border-gray-200 dark:border-gray-800",
     heading: "Healthy",
+    eyebrow: "text-gray-500 dark:text-gray-400",
   },
 };
 
@@ -187,10 +191,6 @@ function SignalCard({ signal }: { signal: Signal }) {
 
         {/* Signal → Evidence → Reasoning → Recommendation → Action */}
         <dl className="mt-4 space-y-3 text-sm">
-          <div className="rounded-lg border border-gray-800 bg-gray-900 p-3">
-            <dt className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Signal</dt>
-            <dd className="mt-0.5 font-medium text-gray-100">{signal.summary}</dd>
-          </div>
           <div>
             <dt className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Evidence</dt>
             <dd className="mt-1 space-y-1">
@@ -325,7 +325,7 @@ function Brief() {
   const { signals, summary, productCount } = useBrief();
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {!ready ? (
         <p className="py-20 text-center text-gray-500">Loading…</p>
       ) : (
@@ -345,7 +345,7 @@ function Brief() {
                   <div key={lv} className={`silhat-panel p-4 ${m.border}`}>
                     <div className="flex items-center gap-1.5">
                       <span className={`h-1.5 w-1.5 rounded-full ${m.dot}`} />
-                      <span className="silhat-eyebrow">{m.heading}</span>
+                      <span className={`silhat-eyebrow ${m.eyebrow}`}>{m.heading}</span>
                     </div>
                     <p className="mt-1.5 text-2xl font-bold text-gray-50">{summary.counts[lv]}</p>
                   </div>
@@ -370,7 +370,7 @@ function Brief() {
             </h2>
 
             {signals.length === 0 ? (
-              <div className="silhat-panel border-dashed p-12 text-center">
+              <div className="silhat-panel border-dashed px-6 py-16 text-center">
                 <p className="text-lg font-semibold text-gray-200">Nothing to show</p>
                 <p className="mt-1 text-sm text-gray-400">
                   All signals are handled or hidden. Add products/items or reset demo data to regenerate.
@@ -386,7 +386,7 @@ function Brief() {
           </section>
 
           {state.products.length === 0 && (
-            <section className="silhat-panel border-dashed p-10 text-center">
+            <section className="silhat-panel border-dashed px-6 py-16 text-center">
               <p className="text-lg font-semibold text-gray-200">Add products to get a brief</p>
               <p className="mt-1 text-sm text-gray-400">
                 Your brief is built from the products and checklist items in your portfolio.

@@ -355,7 +355,7 @@ function ScanPanel({
     history && history.consecutiveFailures > 0 && !history.lastGood;
 
   return (
-    <div className="border-b border-gray-800 bg-gray-900/40 px-4 py-3.5">
+    <div className="border-b border-gray-800 bg-gray-900/40 px-4 py-3">
       <div className="mb-3 flex items-center justify-between gap-3">
         <h4 className="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
           Site observation
@@ -553,7 +553,7 @@ function ProductCard({
 
   return (
     <div className="silhat-panel overflow-hidden">
-      <div className="border-b border-gray-800 px-4 py-3.5">
+      <div className="border-b border-gray-800 px-4 py-3">
         {editing ? (
           <div className="space-y-2">
             <input
@@ -944,7 +944,7 @@ function AddProductForm() {
   return (
     <form
       onSubmit={submit}
-      className="silhat-panel border-cyan-900/50 p-5"
+      className="silhat-panel border-cyan-900/50 p-4"
     >
       <h3 className="mb-3 font-semibold">New product</h3>
       <div className="grid gap-3 sm:grid-cols-3">
@@ -1109,22 +1109,22 @@ function Suggestions() {
     );
 
   return (
-    <section className="mb-8">
-      <div className="mb-4 flex items-center gap-2">
-        <h2 className="text-xl font-bold tracking-tight">Smart suggestions</h2>
+    <section className="mb-6">
+      <div className="mb-3 flex items-center gap-2">
+        <h2 className="text-lg font-bold tracking-tight">Smart suggestions</h2>
         <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500 dark:bg-gray-800 dark:text-gray-400">
           rule-based
         </span>
       </div>
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-5 lg:grid-cols-2">
         <div>
-          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">
+          <h3 className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">
             Upcoming work
           </h3>
           {card(upcoming)}
         </div>
         <div>
-          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
+          <h3 className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
             Cross-marketing
           </h3>
           {card(cross)}
@@ -1200,7 +1200,7 @@ function Dashboard() {
   const { scanning, runScanForProduct } = useAutoscan();
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {!ready ? (
         <p className="py-20 text-center text-gray-500">Loading…</p>
       ) : (
@@ -1237,7 +1237,7 @@ function Dashboard() {
           </section>
 
           {state.products.length === 0 ? (
-            <div className="silhat-panel border-dashed p-14 text-center">
+            <div className="silhat-panel border-dashed px-6 py-16 text-center">
               <p className="text-lg font-semibold text-gray-200">No products yet</p>
               <p className="mt-1 text-sm text-gray-400">
                 Add your first product to start your checklist.
