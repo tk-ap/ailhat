@@ -63,7 +63,7 @@ export default function AppShell({
       {/* ---------- Sidebar ---------- */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 shrink-0 flex-col border-r border-gray-800 bg-gray-950/95 sm:flex">
         {/* Brand */}
-        <Link to="/dashboard" className="flex items-center gap-2.5 px-4 pb-4 pt-5">
+        <Link to="/dashboard" className="flex items-center gap-2.5 pl-[22px] pr-4 pb-4 pt-5">
           <div className="silhat-brand">A</div>
           <div className="leading-none">
             <div className="font-display text-[15px] font-bold tracking-tight text-gray-50">ailhat</div>
@@ -199,7 +199,7 @@ export default function AppShell({
         </header>
 
         <main className="min-w-0 flex-1">
-          <div className="mx-auto max-w-6xl px-6 py-8 sm:px-8">{children}</div>
+          <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-8">{children}</div>
         </main>
       </div>
     </div>

@@ -207,7 +207,7 @@ export default function MarketGapSection() {
   const { gaps, hidden, gapCount } = useMarketGaps();
 
   return (
-    <section className="mt-12">
+    <section className="mt-6">
       <div className="flex flex-wrap items-center gap-2">
         <p className="silhat-eyebrow">Intelligence · Market gaps</p>
         <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[11px] font-semibold text-orange-800 dark:bg-orange-950 dark:text-orange-300">
@@ -230,7 +230,7 @@ export default function MarketGapSection() {
       )}
 
       {gapCount === 0 ? (
-        <div className="silhat-panel mt-4 border-dashed p-10 text-center">
+        <div className="silhat-panel mt-4 border-dashed px-6 py-16 text-center">
           <p className="text-lg font-semibold text-gray-200 dark:text-gray-200">
             No market gaps to show
           </p>

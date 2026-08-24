@@ -176,7 +176,7 @@ export default function OpportunitySection() {
   const { opportunities, hidden, opportunityCount } = useOpportunities();
 
   return (
-    <section className="mt-12">
+    <section className="mt-6">
       <div className="flex flex-wrap items-center gap-2">
         <p className="silhat-eyebrow">Intelligence · Opportunities</p>
         <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
@@ -199,7 +199,7 @@ export default function OpportunitySection() {
       )}
 
       {opportunityCount === 0 ? (
-        <div className="silhat-panel mt-4 border-dashed p-10 text-center">
+        <div className="silhat-panel mt-4 border-dashed px-6 py-16 text-center">
           <p className="text-lg font-semibold text-gray-200">No opportunities yet</p>
           <p className="mt-1 text-sm text-gray-400">
             Opportunities are derived from real site scans. Add a product and
