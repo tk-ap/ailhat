@@ -8,7 +8,7 @@ import { useAuth } from "~/lib/useAuth";
 import AuthNav from "~/components/AuthNav";
 import { platformLabel } from "~/lib/store";
 
-export type ShellView = "today" | "intelligence";
+export type ShellView = "today" | "intelligence" | "allocation";
 
 const NAV: { id: ShellView; label: string; to: string; icon: ReactNode; hint: string }[] = [
   {
@@ -34,6 +34,19 @@ const NAV: { id: ShellView; label: string; to: string; icon: ReactNode; hint: st
       </svg>
     ),
   },
+  {
+    id: "allocation",
+    label: "Allocation",
+    to: "/allocation",
+    hint: "Capacity · where to spend next",
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="shrink-0">
+        <circle cx="12" cy="12" r="7.5" />
+        <circle cx="12" cy="12" r="2.5" />
+        <path d="M12 2v3M12 19v3M2 12h3M19 12h3" strokeLinecap="round" />
+      </svg>
+    ),
+  },
 ];
 
 const BOTTOM_NAV: { label: string; disabled: boolean }[] = [
@@ -55,7 +68,8 @@ export default function AppShell({
   const openCount = state.items.filter((i) => i.status !== "done").length;
   const navFor = (id: ShellView) => {
     if (id === "today") return pathname === "/dashboard" || pathname === "/";
-    return pathname === "/brief";
+    if (id === "intelligence") return pathname === "/brief";
+    return pathname === "/allocation";
   };
 
   return (
@@ -80,13 +94,13 @@ export default function AppShell({
             {NAV.map((n) => (
               <Link
                 key={n.id}
-                to={n.to as "/dashboard" | "/brief"}
-                className={`silhat-nav ${active === n.id ? "silhat-nav-active" : ""}`}
+                to={n.to as "/dashboard" | "/brief" | "/allocation"}
+                className={`silhat-nav ${navFor(n.id) ? "silhat-nav-active" : ""}`}
                 title={n.hint}
               >
                 {n.icon}
                 <span className="truncate">{n.label}</span>
-                {active === n.id && (
+                {navFor(n.id) && (
                   <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-[#7fb0ff]" />
                 )}
               </Link>
@@ -185,7 +199,9 @@ export default function AppShell({
             <span className="truncate text-gray-500">
               {active === "today"
                 ? `Overview · ${state.products.length} products`
-                : `Attention · prioritised signals`}
+                : active === "allocation"
+                  ? "Capacity · where to spend attention"
+                  : `Attention · prioritised signals`}
             </span>
           </div>
           <div className="flex items-center gap-3">
