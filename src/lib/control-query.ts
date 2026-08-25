@@ -20,11 +20,17 @@ import type { AvailabilityObservation, LiveOverlay } from "./observations";
 import { seedPortfolio } from "./portfolio-seed.server";
 import { modelWorkspaces, modelWorkspace } from "./control-scoring";
 import type { ModeledWorkspace } from "./control-scoring";
+import { modelDemoPortfolio } from "./demo-portfolio";
 import { findUserByToken, parseCookies, SESSION_COOKIE } from "./auth";
 
 export interface ControlPayload {
   /** False when the request did not carry a valid owner session. */
   authenticated: boolean;
+  /**
+   * True when `portfolio` holds the clearly-labeled SAMPLE (demo) portfolio for
+   * an anonymous visitor — NEVER the owner's real projects.
+   */
+  demo?: boolean;
   observations: AvailabilityObservation[];
   bucket: LiveOverlay | null;
   portfolio: ModeledWorkspace[];
@@ -45,11 +51,15 @@ export const getAgentControl = createServerFn({ method: "GET" }).handler(
       user = null;
     }
     if (!user) {
+      // Anonymous visitor: return the CLEARLY-LABELED sample (demo) portfolio so
+      // the product's value is graspable before signup. This is invented data —
+      // the owner's real portfolio is never served here.
       return {
         authenticated: false,
+        demo: true,
         observations: [],
         bucket: null,
-        portfolio: [],
+        portfolio: modelDemoPortfolio(now),
         modeledAt: now,
       };
     }

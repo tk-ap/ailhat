@@ -519,9 +519,11 @@ function Control() {
 
   // Account-scoped gate: the portfolio (readiness, blockers, actions, agent
   // capacity) is the owner's private data. Never render it to an unauthenticated
-  // client — the loader returns `authenticated: false` with an empty portfolio,
-  // and we show a clear "log in to see your portfolio" state instead.
-  if (!data?.authenticated) {
+  // client — the loader returns `authenticated: false` and serves the CLEARLY-
+  // LABELED sample (demo) portfolio when `demo` is true; otherwise (loader gap)
+  // fall back to a "log in to see your portfolio" prompt.
+  const demo = !data?.authenticated && !!data?.demo;
+  if (!demo && !data?.authenticated) {
     return <ControlLoginRequired />;
   }
 
@@ -537,6 +539,26 @@ function Control() {
 
   return (
     <div className="space-y-6">
+      {/* Anonymous demo banner — the sample portfolio is clearly labeled so no one
+          mistakes it for their own projects. */}
+      {demo && (
+        <section className="rounded-xl border border-amber-400/40 bg-amber-400/10 px-5 py-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="rounded-full bg-amber-400 px-3 py-1 text-xs font-bold uppercase tracking-wider text-amber-950">
+              Demo · sample data
+            </span>
+            <p className="text-sm text-amber-100">
+              This is a <strong>fictional demo portfolio</strong> showing how Ailhat ranks
+              launch readiness and next actions. It is not your projects.{" "}
+              <Link to="/login" className="font-semibold underline underline-offset-2">
+                Log in or sign up
+              </Link>{" "}
+              to see your real portfolio.
+            </p>
+          </div>
+        </section>
+      )}
+
       {/* Header */}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
@@ -587,7 +609,9 @@ function Control() {
         ))}
       </div>
 
-      {/* Provenance summary strip */}
+      {/* Provenance summary strip (owner-only: live-sync instructions + a real
+          product curl example — NOT shown on the anonymous demo) */}
+      {!demo && (
       <section className="silhat-panel p-5">
         <div className="flex flex-wrap items-center gap-2">
           <h2 className="text-sm font-semibold text-gray-100">Sources — live availability</h2>
@@ -620,7 +644,7 @@ function Control() {
           <div className="silhat-eyebrow">Direct ingestion (no extension)</div>
           <pre className="silhat-terminal mt-2 overflow-x-auto">{`curl -s -X POST ${origin}/api/availability \\
   -H 'Content-Type: application/json' \\
-  -d '{"provider":"cto.new","cap":72,"url":"https://ledgato.vercel.app/","observedAt":'"$(date +%s000)"',"method":"curl","confidence":"medium"}'`}</pre>
+  -d '{"provider":"cto.new","cap":72,"url":"https://product.example.com/","observedAt":'"$(date +%s000)"',"method":"curl","confidence":"medium"}'`}</pre>
           <p className="mt-2 font-mono text-[10px] uppercase tracking-wider text-gray-500">
             Endpoints: <span className="text-gray-300">POST/GET /api/availability</span> (canonical) and{" "}
             <span className="text-gray-300">POST/GET /api/sync</span> (extension path). Both accept the
@@ -629,10 +653,12 @@ function Control() {
           </p>
         </div>
       </section>
+      )}
 
       <p className="pb-4 text-center font-mono text-[10px] uppercase tracking-[0.18em] text-gray-600">
-        real portfolio baseline · readiness from evidence · unassessed = needs assessment
-        · {state.products.length} products in ailhat store
+        {demo
+          ? "demo portfolio · sample data · not your real projects · readiness from evidence"
+          : `real portfolio baseline · readiness from evidence · unassessed = needs assessment · ${state.products.length} products in ailhat store`}
       </p>
     </div>
   );
