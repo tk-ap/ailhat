@@ -1,0 +1,21 @@
+version: 0.1.0
+product: ailhat
+inbound:
+  - from: agentic-harness-layer
+    contract: contracts/outcome-event.schema.json
+    purpose: measure-initiative-outcome
+  - from: ledgato
+    contract: authority-status
+    purpose: explain-execution-readiness
+outbound:
+  - to: agent-os
+    contract: contracts/work-item.schema.json
+    trigger: finding-approved-for-action
+cross_market:
+  - trigger: p1-initiative-approved
+    destination: agent-os
+    message: Assemble a workforce and execution plan.
+  - trigger: initiative-requires-human-or-organizational-context
+    destination: alvira-bridge
+    message: Attach approved context to improve execution quality.
+

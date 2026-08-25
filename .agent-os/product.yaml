@@ -1,0 +1,11 @@
+version: 0.1.0
+product: ailhat
+category: portfolio-intelligence
+ecosystem_source: tk-ap/agent-os
+ecosystem_contract: ecosystem/ECOSYSTEM.md
+product_directive: products/ailhat.md
+owns: [portfolio-observation, signal-classification, prioritization, initiative-creation, outcome-measurement]
+produces: [portfolio-signal, work-item, objective, outcome-assessment]
+consumes: [product-evidence, workforce-status, authority-status, outcome-event]
+must_not_own: [canonical-agent-identity, skill-resolution, runtime-authorization, harness-specific-execution]
+
