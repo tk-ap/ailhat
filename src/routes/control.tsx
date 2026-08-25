@@ -6,6 +6,7 @@ import {
 } from "~/lib/useStore";
 import { AuthProvider } from "~/lib/useAuth";
 import AppShell from "~/components/AppShell";
+import ControlLegend from "~/components/ControlLegend";
 import { getAgentControl } from "~/lib/control-query";
 import { leaderReason } from "~/lib/control-scoring";
 import type { ModeledWorkspace } from "~/lib/control-scoring";
@@ -543,6 +544,9 @@ function Control() {
           )}
         </section>
       )}
+
+      {/* Legend & how to read — education layer for new users */}
+      <ControlLegend />
 
       <SharedBucketCallout bucket={data?.bucket ?? null} />
       <CapacityMatrix portfolio={portfolio} />
