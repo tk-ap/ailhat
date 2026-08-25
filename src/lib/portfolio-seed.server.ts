@@ -286,50 +286,6 @@ export const seedPortfolio: Workspace[] = [
 
   // ==================== portfolio inventory — NEEDS ASSESSMENT ==============
   {
-    id: "hoopdash",
-    name: "Hoopdash",
-    tagline: "Live project in hosting portfolio",
-    summary:
-      "Live project detected in the cto.new hosting portfolio. Needs confirmation + assessment before any readiness score is shown — never fabricated.",
-    url: null,
-    stage: "Needs assessment",
-    readinessPct: null,
-    confidence: null,
-    firstPaidClient: "assessment required",
-    portfolioState: "NEEDS ASSESSMENT",
-    attention: null,
-    recommendedAgent: "researcher · cto.new",
-    recommendedWindow: "next free assessment window",
-    estimatedEffort: "1 session (assessment)",
-    launchImpact: "MEDIUM",
-    customerImpact: "MEDIUM",
-    urgency: "MEDIUM",
-    interfaces: {
-      CLI: { state: "none" },
-      "Web UI": { state: "available", work: "hd-b1" },
-      API: { state: "none" },
-      Sandbox: { state: "none" },
-    },
-    daysSinceAttention: 60,
-    lastScan: "no live scan yet · detected in hosting portfolio",
-    scanAgeHours: 200,
-    blockers: [
-      { id: "hd-b1", title: "Confirm product identity + run first live assessment", severity: "medium" },
-    ],
-    actions: [
-      {
-        id: "hd-a1",
-        title: "Confirm current state and run the first live assessment",
-        role: "researcher",
-        effort: "1 session",
-        window: "next free assessment window",
-        launchImpact: "MEDIUM",
-        customerImpact: "MEDIUM",
-      },
-    ],
-  },
-
-  {
     id: "policyguard",
     name: "PolicyGuard",
     tagline: "AI policy, governance & control product",

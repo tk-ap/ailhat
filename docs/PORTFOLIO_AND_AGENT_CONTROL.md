@@ -28,7 +28,6 @@ Ailhat should not become Agent Control, and Agent Control should not recreate Ai
 | Ledgato | Live | Needs assessment | TBD |
 | ALVIRA | Live / strategic ecosystem | Needs assessment | TBD |
 | ALVIRA Bridge | Live / strategic ecosystem component | Needs assessment | TBD |
-| Hoopdash | Live project detected in hosting portfolio | Needs confirmation + assessment | TBD |
 | PolicyGuard | Paused / v1 shown in cto.new portfolio | Needs assessment | TBD |
 | WEBSITEHERO | Paused / purchased-business portfolio | Needs assessment | TBD |
 | TrendVault | Paused / purchased-business portfolio | Needs assessment | TBD |
@@ -161,7 +160,6 @@ Ailhat · 65% · P0
 Ledgato · Needs assessment
 ALVIRA · Needs assessment
 ALVIRA Bridge · Needs assessment
-Hoopdash · Needs assessment
 PolicyGuard · Needs assessment
 WEBSITEHERO · Needs assessment
 TrendVault · Needs assessment
