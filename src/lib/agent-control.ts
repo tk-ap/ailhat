@@ -14,7 +14,6 @@
 //
 // Rules honoured:
 //   - readinessPct null  => NEEDS ASSESSMENT (never an invented %).
-//   - Hoopdash stays NEEDS ASSESSMENT (unassessed) — nothing fabricated.
 //   - Shared cto.new Builder bucket serves Ledgato + ALVIRA Bridge.
 //   - Prioritization = launch × customer × urgency × availability
 //     + neglected-time penalty (7-day threshold) + assessment bump.

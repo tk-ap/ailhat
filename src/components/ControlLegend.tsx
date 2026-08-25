@@ -75,36 +75,46 @@ function LegendSection({
 /* ---------- the panel ---------- */
 
 export default function ControlLegend() {
+  // Demoted from a full primary section: a compact, collapsed-by-default
+  // secondary disclosure ("How to read this view"). One clear click reveals
+  // the education vocabulary without competing for attention on the page.
   return (
-    <section className="silhat-panel overflow-hidden">
-      {/* Toggle header — always visible, clearly discoverable */}
-      <details className="group" open>
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 border-b border-gray-800 bg-gray-950/40 px-5 py-4 select-none [&::-webkit-details-marker]:hidden">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="silhat-eyebrow">Legend &amp; how to read</span>
-            <span className="rounded border border-[#7fb0ff]/30 bg-[#7fb0ff]/[0.06] px-1.5 py-px font-mono text-[9px] font-semibold uppercase tracking-wider text-[#7fb0ff]">
-              new user? start here
-            </span>
-          </div>
-          <span className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-wider text-gray-500">
-            <span className="group-open:hidden">Show</span>
-            <span className="hidden group-open:inline">Hide</span>
-            <svg
-              className="size-4 transition-transform group-open:rotate-180"
-              viewBox="0 0 20 20"
-              fill="none"
-              aria-hidden="true"
-            >
-              <path
-                d="M5 8l5 5 5-5"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </span>
-        </summary>
+    <details className="group mt-6">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-lg border border-gray-800/70 bg-gray-950/40 px-4 py-2.5 select-none [&::-webkit-details-marker]:hidden">
+        <span className="flex items-center gap-2 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-500">
+          <svg
+            className="size-3.5 text-gray-600"
+            viewBox="0 0 20 20"
+            fill="none"
+            aria-hidden="true"
+          >
+            <circle cx="10" cy="10" r="8" stroke="currentColor" strokeWidth="1.5" />
+            <path d="M10 9v5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            <circle cx="10" cy="6.2" r="0.6" fill="currentColor" />
+          </svg>
+          How to read this view
+        </span>
+        <span className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-wider text-gray-600">
+          <span className="group-open:hidden">Expand</span>
+          <span className="hidden group-open:inline">Collapse</span>
+          <svg
+            className="size-4 transition-transform group-open:rotate-180"
+            viewBox="0 0 20 20"
+            fill="none"
+            aria-hidden="true"
+          >
+            <path
+              d="M5 8l5 5 5-5"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </span>
+      </summary>
+
+      <div className="mt-2 overflow-hidden rounded-lg border border-gray-800/70 bg-gray-950/30">
 
         {/* 1. Chart / metric legend */}
         <LegendSection
@@ -225,7 +235,7 @@ export default function ControlLegend() {
             and update readiness. Every session should move through more of this loop.
           </Def>
         </LegendSection>
-      </details>
-    </section>
+      </div>
+    </details>
   );
 }

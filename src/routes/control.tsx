@@ -596,9 +596,6 @@ function Control() {
         </section>
       )}
 
-      {/* Legend & how to read — education layer for new users */}
-      <ControlLegend />
-
       <SharedBucketCallout bucket={data?.bucket ?? null} />
       <CapacityMatrix portfolio={portfolio} />
 
@@ -654,6 +651,10 @@ function Control() {
         </div>
       </section>
       )}
+
+      {/* How to read this view — de-emphasized, collapsed-by-default secondary
+          education affordance (content preserved, one click to expand) */}
+      <ControlLegend />
 
       <p className="pb-4 text-center font-mono text-[10px] uppercase tracking-[0.18em] text-gray-600">
         {demo
