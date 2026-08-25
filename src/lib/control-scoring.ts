@@ -10,7 +10,6 @@
 
 import {
   HARNESSES,
-  seedPortfolio,
   type Harness,
   type Impact,
   type Workspace,
@@ -135,14 +134,22 @@ export function modelWorkspace(ws: Workspace, nowMs: number): ModeledWorkspace {
 }
 
 /**
- * Model + rank the whole portfolio.
+ * Model + rank a portfolio.
+ *
+ * Takes the portfolio explicitly (NOT a global import) so the seed data — the
+ * owner's private project inventory — can live in a server-only module and never
+ * reach the client bundle. The client only needs `leaderReason` (and types); the
+ * modeling/ranking runs server-side inside control-query.ts.
  *
  * Primary order: composite priority (launch × customer × urgency × availability
  * + neglect penalty + assessment bump). Ties break toward the higher assessed
  * readiness (best-evidenced product leads), then alphabetical.
  */
-export function modelPortfolio(nowMs: number): ModeledWorkspace[] {
-  return seedPortfolio
+export function modelWorkspaces(
+  portfolio: Workspace[],
+  nowMs: number,
+): ModeledWorkspace[] {
+  return portfolio
     .map((ws) => modelWorkspace(ws, nowMs))
     .sort((a, b) => {
       if (b.priority !== a.priority) return b.priority - a.priority;

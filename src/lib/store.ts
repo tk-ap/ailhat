@@ -90,7 +90,6 @@ export interface FeedbackEntry {
 export const SNOOZE_MS = 24 * 60 * 60 * 1000; // 1 day
 
 const KEY = "sortie.v1";
-const SEED_FLAG = "sortie.seeded.v1";
 // Pre-rebrand storage key (from the interim "MultiDeck" name). If present on
 // first load under the new key, migrate the existing data over so no demo data
 // is lost. Kept for backwards-compatibility — not user-visible.
@@ -158,76 +157,23 @@ export function uid(): string {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 }
 
-// ---- Seed data (only written on first run) ----
-const DAY_MS = 24 * 60 * 60 * 1000;
-function seedState(): AppState {
-  const p1: Product = {
-    id: uid(),
-    name: "ShipFast Toolkit",
-    platform: "vercel",
-    url: "https://shipfast-toolkit.example.com",
-    createdAt: Date.now(),
+// ---- Initial state (account-scoped: NO demo seed) ----
+// The portfolio belongs to the authenticated owner account. Previously this
+// file invented demo products (ShipFast Toolkit, CopyCraft AI, PixelDeck) and
+// wrote them into localStorage on first load, so anonymous visitors saw fake
+// products without logging in. That seed was removed: a fresh visitor starts
+// empty, and products/items only ever come from the owner's own account
+// (server-side portfolio_state once logged in) or from products they add.
+function emptyState(): AppState {
+  return {
+    products: [],
+    items: [],
+    scans: {},
+    scanHistory: {},
+    feedback: {},
+    opportunities: [],
+    opportunityFeedback: {},
   };
-  const p2: Product = {
-    id: uid(),
-    name: "CopyCraft AI",
-    platform: "cto.new",
-    url: "https://copycraft.example.com",
-    createdAt: Date.now(),
-  };
-  const p3: Product = {
-    id: uid(),
-    name: "PixelDeck",
-    platform: "madethis",
-    url: "https://pixeldeck.example.com",
-    createdAt: Date.now(),
-  };
-  const make = (
-    productId: string,
-    type: ItemType,
-    title: string,
-    description: string,
-    status: ItemStatus,
-    ageDays = 0,
-  ): Item => ({
-    id: uid(),
-    productId,
-    type,
-    title,
-    description,
-    status,
-    createdAt: Date.now() - Math.round(ageDays * DAY_MS),
-  });
-  const items: Item[] = [
-    make(
-      p1.id,
-      "feature",
-      "Add Stripe checkout",
-      "Unblock paid tiers — big revenue driver.",
-      "in_progress",
-    ),
-    // Backdated >7 days so the Daily Brief has a concrete ACT NOW signal from
-    // the seed alone (an open bug that has gone stale).
-    make(
-      p1.id,
-      "bug",
-      "Mobile nav overlaps CTA",
-      "Header covers the primary button on small screens.",
-      "open",
-      12,
-    ),
-    make(p2.id, "feature", "Publish to madethis too",
-      "Same product family — cross-post to reach the madethis audience.",
-      "open",
-    ),
-    make(p2.id, "bug", "Dark mode contrast on pricing",
-      "Text is hard to read on the pricing table in dark mode.", "in_progress"),
-    make(p3.id, "issue", "First beta feedback round",
-      "Collect feedback from the early access list.", "open"),
-    make(p3.id, "feature", "Landing page refresh",
-      "Modernize hero and add social proof.", "open"),
-  ];
-  return { products: [p1, p2, p3], items, scans: {}, scanHistory: {}, feedback: {}, opportunities: [], opportunityFeedback: {} };
 }
 
 export function loadState(): AppState {
@@ -247,10 +193,9 @@ export function loadState(): AppState {
       }
     }
     if (!raw) {
-      const seeded = seedState();
-      localStorage.setItem(KEY, JSON.stringify(seeded));
-      localStorage.setItem(SEED_FLAG, "1");
-      return seeded;
+      const empty = emptyState();
+      localStorage.setItem(KEY, JSON.stringify(empty));
+      return empty;
     }
     const parsed = JSON.parse(raw) as Partial<AppState>;
     return {
@@ -281,13 +226,13 @@ export function loadState(): AppState {
           : {},
     };
   } catch {
-    const seeded = seedState();
+    const empty = emptyState();
     try {
-      localStorage.setItem(KEY, JSON.stringify(seeded));
+      localStorage.setItem(KEY, JSON.stringify(empty));
     } catch {
       /* storage unavailable */
     }
-    return seeded;
+    return empty;
   }
 }
 
@@ -412,9 +357,9 @@ export function setOpportunityFeedback(
 }
 
 export function resetData(): AppState {
-  const seeded = seedState();
-  saveState(seeded);
-  return seeded;
+  const empty = emptyState();
+  saveState(empty);
+  return empty;
 }
 
 // ---- Derived helpers ----

@@ -158,8 +158,8 @@ export default function ControlLegend() {
             . The flag <Swatch className="bg-[#7fb0ff]" label="work needed here" /> marks a free
             interface that has an actionable blocker sitting on it — a place work can start now.
           </Def>
-          <Def term="Shared cto.new Builder bucket" hint="Ledgato + ALVIRA Bridge">
-            Ledgato and ALVIRA Bridge draw execution capacity from one shared{" "}
+          <Def term="Shared cto.new Builder bucket" hint="shared capacity across products">
+            Products that draw on one shared{" "}
             <strong className="text-gray-200">cto.new Builder</strong> pool. Working on either one
             depletes the capacity available to the other — so their windows must never overlap.
             Reserve a window for one at a time.
