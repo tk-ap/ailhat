@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   StoreProvider,
   useStore,
@@ -13,6 +13,8 @@ import type { ModeledWorkspace } from "~/lib/control-scoring";
 import { HARNESSES, SLOT_LABEL } from "~/lib/agent-control";
 import type { SlotState } from "~/lib/agent-control";
 import { ageLabelObs, type LiveOverlay } from "~/lib/observations";
+import { buildWorkItem, compileDirectives } from "~/lib/directives";
+import type { CompiledDirectives, WorkItem } from "~/lib/directives";
 
 export const Route = createFileRoute("/control")({
   loader: async () => getAgentControl(),
@@ -527,6 +529,184 @@ function ProductCard({ m, now }: { m: ModeledWorkspace; now: number }) {
   );
 }
 
+/* ---------- directive output (Agent Direct seam) ---------- */
+
+type DirectTab = "markdown" | "json" | "tools" | "toon";
+
+const DIRECT_TABS: { id: DirectTab; label: string; mime: string; ext: string }[] = [
+  { id: "markdown", label: "Markdown brief", mime: "text/markdown", ext: "md" },
+  { id: "json", label: "JSON payload", mime: "application/json", ext: "json" },
+  { id: "tools", label: "Tool schema", mime: "application/json", ext: "tool.json" },
+  { id: "toon", label: "TOON directive", mime: "text/plain", ext: "toon.txt" },
+];
+
+async function copyText(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    // Clipboard API unavailable (http/older browser) — hidden-textarea fallback.
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    let ok = false;
+    try {
+      ok = document.execCommand("copy");
+    } catch {
+      ok = false;
+    }
+    document.body.removeChild(ta);
+    return ok;
+  }
+}
+
+function downloadDirective(item: WorkItem, tab: DirectTab, text: string) {
+  const meta = DIRECT_TABS.find((t) => t.id === tab);
+  if (!meta) return;
+  const blob = new Blob([text], { type: meta.mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `agent-directive-${item.workspace.id}-${
+    (item.id.split(":").pop() ?? "action").replace(/[^a-z0-9._-]/gi, "_")
+  }.${meta.ext}`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/** Copy/export UI for the compiled directive — tabs per format + copy/download. */
+function DirectivePanel({
+  item,
+  compiled,
+}: {
+  item: WorkItem;
+  compiled: CompiledDirectives;
+}) {
+  const [tab, setTab] = useState<DirectTab>("markdown");
+  const [copied, setCopied] = useState(false);
+  const text = compiled[tab];
+  const basisLabel =
+    item.evidenceBasis === "computed-live"
+      ? "computed · live"
+      : item.evidenceBasis === "anchored-seed"
+        ? "anchored · seed baseline"
+        : "unassessed";
+
+  const onCopy = async () => {
+    const ok = await copyText(text);
+    if (ok) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
+    }
+  };
+
+  return (
+    <section className="rounded-xl border border-[#7fb0ff]/20 bg-gray-950/70 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="min-w-0">
+          <div className="silhat-eyebrow">Directive · injectable artifact</div>
+          <h3 className="mt-0.5 text-sm font-semibold text-gray-100">{item.title}</h3>
+        </div>
+        <Chip
+          className={
+            item.evidenceBasis === "computed-live"
+              ? "bg-emerald-500/10 text-emerald-300 ring-emerald-500/30"
+              : "bg-amber-500/10 text-amber-300 ring-amber-500/30"
+          }
+        >
+          evidence · {basisLabel}
+        </Chip>
+      </div>
+
+      {/* Honest capacity framing — always visible, never buried in a payload. */}
+      <div className="mt-3 rounded-lg border border-amber-400/20 bg-amber-400/[0.04] px-3 py-2 text-xs text-amber-100/90">
+        <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-amber-300">
+          capacity context — disclosed, not a promise
+        </span>
+        <p className="mt-1">{item.capacity.framing}</p>
+        <p className="mt-1 text-amber-200/70">{item.capacity.allocationNote}</p>
+      </div>
+
+      {/* Tabs */}
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        {DIRECT_TABS.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => setTab(t.id)}
+            className={`rounded-md px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider transition-colors ${
+              tab === t.id
+                ? "bg-[#7fb0ff]/15 text-[#7fb0ff] ring-1 ring-inset ring-[#7fb0ff]/30"
+                : "bg-gray-800/70 text-gray-400 hover:text-gray-200"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Payload */}
+      <pre className="silhat-terminal mt-2 max-h-72 overflow-auto whitespace-pre-wrap p-3 text-xs leading-relaxed">
+        {text}
+      </pre>
+
+      {/* Optional skills */}
+      {item.recommendedSkills && item.recommendedSkills.length > 0 && (
+        <div className="mt-2 rounded-lg border border-gray-800 bg-gray-900/60 p-2.5 text-xs">
+          <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-[#7fb0ff]">
+            optional skills to install
+          </span>
+          <ul className="mt-1 space-y-1 text-gray-400">
+            {item.recommendedSkills.map((s) => (
+              <li key={s.id}>
+                <a
+                  href={s.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-medium text-[#7fb0ff] hover:underline"
+                >
+                  {s.name}
+                </a>{" "}
+                — {s.why}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-1 text-[10px] text-gray-600">
+            Example recommendations from the public antigravityskills.directory index —
+            verify the linked SKILL.md before installing. Never required to execute.
+          </p>
+        </div>
+      )}
+
+      {/* Actions */}
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => void onCopy()}
+          className="silhat-btn silhat-btn-primary inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-semibold"
+        >
+          {copied ? "Copied ✓" : "Copy"}
+        </button>
+        <button
+          type="button"
+          onClick={() => downloadDirective(item, tab, text)}
+          className="inline-flex items-center rounded-lg border border-gray-700 bg-gray-800/70 px-3 py-1.5 text-xs font-semibold text-gray-200 hover:bg-gray-800"
+        >
+          Download .{DIRECT_TABS.find((t) => t.id === tab)?.ext}
+        </button>
+        <span className="ml-auto font-mono text-[10px] uppercase tracking-wider text-gray-600">
+          copy / export — load into your target harness
+        </span>
+      </div>
+    </section>
+  );
+}
+
 /* ---------- page ---------- */
 
 function ControlLoginRequired() {
@@ -571,6 +751,20 @@ function Control() {
     top && top.ws.sharedBucket
       ? `Note: ${top.ws.name} draws from the shared ${top.ws.sharedBucket} bucket — its window must not overlap the other consumer.`
       : undefined;
+
+  // Directive output for the top action — compiled deterministically from the
+  // modeled workspace (evidence + provenance + honest capacity framing). Pure
+  // and cheap; only rendered when the panel is opened.
+  const modeledAt = data?.modeledAt ?? now;
+  const directItem = useMemo(
+    () => (top ? buildWorkItem(top, modeledAt, { bucket: data?.bucket ?? null }) : null),
+    [top, modeledAt, data?.bucket],
+  );
+  const compiled = useMemo(
+    () => (directItem ? compileDirectives(directItem) : null),
+    [directItem],
+  );
+  const [directOpen, setDirectOpen] = useState(false);
 
   const origin =
     typeof window !== "undefined" ? window.location.origin : "";
@@ -630,6 +824,26 @@ function Control() {
           </p>
           {sharedNote && (
             <p className="mt-1.5 text-xs font-medium text-[#7fb0ff]">{sharedNote}</p>
+          )}
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setDirectOpen((v) => !v)}
+              className="silhat-btn silhat-btn-primary inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold"
+            >
+              <span className="text-sm leading-none">⇣</span>
+              {directOpen ? "Close directive" : "Direct — compile injectable artifact"}
+            </button>
+            {directItem && (
+              <span className="font-mono text-[10px] uppercase tracking-wider text-gray-500">
+                markdown · json · tool schema · toon
+              </span>
+            )}
+          </div>
+          {directOpen && directItem && compiled && (
+            <div className="mt-3">
+              <DirectivePanel item={directItem} compiled={compiled} />
+            </div>
           )}
         </section>
       )}
