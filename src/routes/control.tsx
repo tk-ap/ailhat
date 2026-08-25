@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo } from "react";
 import {
   StoreProvider,
@@ -106,9 +106,9 @@ function SharedBucketCallout({ bucket }: { bucket: LiveOverlay | null }) {
         One shared cto.new Builder execution bucket
       </h2>
       <p className="mt-1 max-w-3xl text-sm text-gray-400">
-        Ledgato and ALVIRA Bridge draw from the same <strong className="text-gray-200">cto.new Builder</strong> bucket:
-        work on either consumer depletes the capacity available to the other. They cannot both be
-        worked at once — reserve a window for one at a time.
+        The shared <strong className="text-gray-200">cto.new Builder</strong> bucket serves the
+        products that draw from it: work on one consumer depletes the capacity available to the
+        other. They cannot both be worked at once — reserve a window for one at a time.
       </p>
       {bucket ? (
         <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-gray-800 bg-gray-950/70 px-4 py-3 text-sm">
@@ -491,10 +491,39 @@ function ProductCard({ m, now }: { m: ModeledWorkspace; now: number }) {
 
 /* ---------- page ---------- */
 
+function ControlLoginRequired() {
+  return (
+    <div className="mx-auto max-w-md silhat-panel border-dashed px-6 py-16 text-center">
+      <div className="silhat-eyebrow">Agent Control</div>
+      <h1 className="mt-2 text-xl font-bold tracking-tight text-gray-50">
+        Log in to see your portfolio
+      </h1>
+      <p className="mt-2 text-sm text-gray-400">
+        Your Agent Control workspace — readiness, blockers, and next actions
+        across your projects — is private to your account. Sign in to view it.
+      </p>
+      <Link
+        to="/login"
+        className="silhat-btn silhat-btn-primary mt-6 inline-flex items-center rounded-xl px-5 py-2.5"
+      >
+        Log in
+      </Link>
+    </div>
+  );
+}
+
 function Control() {
   const { state } = useStore();
   const data = Route.useLoaderData();
   const now = data?.modeledAt ?? Date.now();
+
+  // Account-scoped gate: the portfolio (readiness, blockers, actions, agent
+  // capacity) is the owner's private data. Never render it to an unauthenticated
+  // client — the loader returns `authenticated: false` with an empty portfolio,
+  // and we show a clear "log in to see your portfolio" state instead.
+  if (!data?.authenticated) {
+    return <ControlLoginRequired />;
+  }
 
   const portfolio = useMemo(() => data?.portfolio ?? [], [data]);
   const top = portfolio[0];
@@ -602,7 +631,7 @@ function Control() {
       </section>
 
       <p className="pb-4 text-center font-mono text-[10px] uppercase tracking-[0.18em] text-gray-600">
-        real portfolio baseline · readiness from evidence · unassessed = needs assessment · hoopdash unassessed
+        real portfolio baseline · readiness from evidence · unassessed = needs assessment
         · {state.products.length} products in ailhat store
       </p>
     </div>

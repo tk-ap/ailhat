@@ -1,10 +1,10 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   StoreProvider,
   useStore,
 } from "~/lib/useStore";
-import { AuthProvider } from "~/lib/useAuth";
+import { AuthProvider, useAuth } from "~/lib/useAuth";
 import AppShell from "~/components/AppShell";
 import {
   type AppState,
@@ -1194,10 +1194,43 @@ function useAutoscan() {
   return { scanning, runScanForProduct };
 }
 
+function DashboardLoginRequired() {
+  return (
+    <div className="mx-auto max-w-md silhat-panel border-dashed px-6 py-16 text-center">
+      <p className="silhat-eyebrow">Today · Signals</p>
+      <h1 className="mt-2 text-xl font-bold tracking-tight text-gray-50">
+        Log in to see your portfolio
+      </h1>
+      <p className="mt-2 text-sm text-gray-400">
+        Your products, checklists, and scan signals are private to your account.
+        Sign in to view and manage them.
+      </p>
+      <Link
+        to="/login"
+        className="silhat-btn silhat-btn-primary mt-6 inline-flex items-center rounded-xl px-5 py-2.5"
+      >
+        Log in
+      </Link>
+    </div>
+  );
+}
+
 function Dashboard() {
+  const { user, loading } = useAuth();
   const { state, ready, actions } = useStore();
   const [showReset, setShowReset] = useState(false);
   const { scanning, runScanForProduct } = useAutoscan();
+
+  // Account-scoped gate: the portfolio is the owner's private data. While auth
+  // is resolving we show a neutral loading state; an unauthenticated client gets
+  // a clear "log in to see your portfolio" prompt — never products (real or
+  // demo).
+  if (loading) {
+    return <p className="py-20 text-center text-gray-500">Loading…</p>;
+  }
+  if (!user) {
+    return <DashboardLoginRequired />;
+  }
 
   return (
     <div className="space-y-6">
