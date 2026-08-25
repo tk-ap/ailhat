@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { StoreProvider, useStore } from "~/lib/useStore";
-import { AuthProvider } from "~/lib/useAuth";
+import { AuthProvider, useAuth } from "~/lib/useAuth";
 import AppShell from "~/components/AppShell";
+import { modelDemoPortfolio } from "~/lib/demo-portfolio";
 import { useBrief } from "~/lib/useBrief";
 import {
   type AttentionLevel,
@@ -319,11 +320,127 @@ function SignalCard({ signal }: { signal: Signal }) {
   );
 }
 
+/* ---------- Demo brief (anonymous visitors) ---------- */
+
+// Clearly-labeled SAMPLE brief for anonymous visitors — built from the invented
+// demo workspaces (see demo-portfolio.ts), never the owner's real projects.
+function BriefDemo() {
+  const demo = modelDemoPortfolio(Date.now());
+  return (
+    <div className="space-y-6">
+      <section className="rounded-xl border border-amber-400/40 bg-amber-400/10 px-5 py-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="rounded-full bg-amber-400 px-3 py-1 text-xs font-bold uppercase tracking-wider text-amber-950">
+            Demo · sample data
+          </span>
+          <p className="text-sm text-amber-100">
+            This is a <strong>fictional demo brief</strong> built from sample products,
+            showing how Ailhat surfaces what needs attention. It is not your projects.{" "}
+            <Link to="/login" className="font-semibold underline underline-offset-2">
+              Log in or sign up
+            </Link>{" "}
+            to see your real brief.
+          </p>
+        </div>
+      </section>
+
+      <section>
+        <p className="silhat-eyebrow">Intelligence · Daily brief</p>
+        <h1 className="mt-1 text-2xl font-bold tracking-tight text-gray-50">Daily brief</h1>
+        <p className="mt-1 text-sm text-gray-400">
+          What a sample brief looks like across {demo.length} fictional demo product
+          {demo.length === 1 ? "" : "s"} — your brief is built from your own portfolio.
+        </p>
+
+        {/* Sample portfolio summary */}
+        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {LEVELS.map((lv) => {
+            const m = LEVEL_META[lv];
+            const count = demo.filter((d) => d.ws.attention === lv.replace("_", " ")).length;
+            return (
+              <div key={lv} className={`silhat-panel p-4 ${m.border}`}>
+                <div className="flex items-center gap-1.5">
+                  <span className={`h-1.5 w-1.5 rounded-full ${m.dot}`} />
+                  <span className={`silhat-eyebrow ${m.eyebrow}`}>{m.heading}</span>
+                </div>
+                <p className="mt-1.5 text-2xl font-bold text-gray-50">{count}</p>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Sample "ranked attention" cards */}
+      <section>
+        <h2 className="mb-4 flex items-center gap-2 text-lg font-bold tracking-tight text-gray-100">
+          Ranked attention
+          <span className="rounded-full bg-gray-800 px-2 py-0.5 text-xs font-medium text-gray-400">
+            {demo.length} sample
+          </span>
+        </h2>
+        <div className="grid gap-5 xl:grid-cols-2">
+          {demo.map((m) => (
+            <article key={m.ws.id} className="silhat-panel p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="truncate text-lg font-semibold text-gray-50">{m.ws.name}</h3>
+                  <p className="mt-0.5 text-xs text-gray-500">{m.ws.tagline}</p>
+                </div>
+                {m.readiness != null ? (
+                  <span className="shrink-0 rounded-full bg-cyan-100 px-2 py-0.5 text-xs font-semibold text-cyan-700 dark:bg-cyan-950 dark:text-cyan-300">
+                    {m.readiness}% ready
+                  </span>
+                ) : (
+                  <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-500 dark:bg-gray-800 dark:text-gray-300">
+                    Needs assessment
+                  </span>
+                )}
+              </div>
+              <p className="mt-2 text-sm text-gray-400">{m.ws.summary}</p>
+              {m.nextActions[0] && (
+                <p className="mt-3 text-sm">
+                  <span className="font-semibold text-gray-200">Sample next action: </span>
+                  <span className="text-gray-400">{m.nextActions[0].title}</span>
+                </p>
+              )}
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <div className="silhat-panel border-dashed px-6 py-8 text-center">
+        <p className="text-lg font-semibold text-gray-100">See your own brief</p>
+        <p className="mx-auto mt-1 max-w-md text-sm text-gray-400">
+          Your real projects' intelligence brief — signals, opportunities, and what needs
+          attention — is private to your account.
+        </p>
+        <Link
+          to="/login"
+          className="silhat-btn silhat-btn-primary mt-5 inline-flex items-center rounded-xl px-5 py-2.5"
+        >
+          Log in / Sign up
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 /* ---------- Brief page ---------- */
 
 function Brief() {
+  // Account-scoped gate (same model as /control + /dashboard): the brief is built
+  // from the owner's private portfolio. Anonymous visitors get the CLEARLY-LABELED
+  // demo brief instead — never store-derived (real) product data.
+  const { user, loading: authLoading } = useAuth();
   const { state, ready } = useStore();
   const { signals, summary, productCount } = useBrief();
+
+  if (authLoading) {
+    return <p className="py-20 text-center text-gray-500">Loading…</p>;
+  }
+  if (!user) {
+    return <BriefDemo />;
+  }
 
   return (
     <div className="space-y-6">
