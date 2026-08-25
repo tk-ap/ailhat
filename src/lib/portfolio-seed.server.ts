@@ -1,4 +1,4 @@
-// Ailhat — Agent Control portfolio SEED (OWNER'S REAL PORTFOLIO BASELINE).
+// Ailhat — Agent Direct portfolio SEED (OWNER'S REAL PORTFOLIO BASELINE).
 //
 // SERVER-ONLY. This is the owner's personal project inventory (ailhat, ALVIRA,
 // ALVIRA Bridge, Ledgato, PolicyGuard, WEBSITEHERO, TrendVault, AdScale Pro). It

@@ -36,9 +36,9 @@ const NAV: { id: ShellView; label: string; to: string; icon: ReactNode; hint: st
   },
   {
     id: "control",
-    label: "Control",
+    label: "Direct",
     to: "/control",
-    hint: "Agent Control · what to do next",
+    hint: "Agent Direct · what to do next",
     icon: (
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="shrink-0">
         <rect x="3" y="3" width="7" height="7" rx="1.5" />
@@ -201,7 +201,7 @@ export default function AppShell({
               {active === "today"
                 ? `Overview · ${state.products.length} products`
                 : active === "control"
-                  ? `Agent control · execution capacity & allocation`
+                  ? `Agent Direct · execution capacity & allocation`
                   : `Attention · prioritised signals`}
             </span>
           </div>

@@ -1,16 +1,16 @@
-// Ailhat — Agent Control portfolio model + prioritization.
+// Ailhat — Agent Direct portfolio model + prioritization.
 //
-// This is the Agent Control (execution-capacity) LAYER. It does NOT rebuild
+// This is the Agent Direct (execution-capacity) LAYER. It does NOT rebuild
 // ailhat's product-intelligence/scanning engine — product state (readiness,
 // confidence, distance, blockers) is bridged from ailhat's portfolio seed
 // context (data/portfolio-context.seed.json, the owner's real portfolio), and
-// Agent Control adds the execution-capacity view on top: recommended agent/
+// Agent Direct adds the execution-capacity view on top: recommended agent/
 // provider, capacity window, effort, launch/customer/urgency impact, and
 // per-interface (harness) agent availability.
 //
 // Boundary (PORTFOLIO_AND_AGENT_CONTROL.md):
 //   Ailhat:        Observe → Understand → Detect → Prioritize → Recommend
-//   Agent Control: Observe capacity → Match work → Reserve window → Execute
+//   Agent Direct:  Observe capacity → Match work → Reserve window → Execute
 //
 // Rules honoured:
 //   - readinessPct null  => NEEDS ASSESSMENT (never an invented %).

@@ -494,12 +494,12 @@ function ProductCard({ m, now }: { m: ModeledWorkspace; now: number }) {
 function ControlLoginRequired() {
   return (
     <div className="mx-auto max-w-md silhat-panel border-dashed px-6 py-16 text-center">
-      <div className="silhat-eyebrow">Agent Control</div>
+      <div className="silhat-eyebrow">Agent Direct</div>
       <h1 className="mt-2 text-xl font-bold tracking-tight text-gray-50">
         Log in to see your portfolio
       </h1>
       <p className="mt-2 text-sm text-gray-400">
-        Your Agent Control workspace — readiness, blockers, and next actions
+        Your Agent Direct workspace — readiness, blockers, and next actions
         across your projects — is private to your account. Sign in to view it.
       </p>
       <Link
@@ -562,7 +562,7 @@ function Control() {
       {/* Header */}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <div className="silhat-eyebrow">Agent Control</div>
+          <div className="silhat-eyebrow">Agent Direct</div>
           <h1 className="mt-1 text-2xl font-bold tracking-tight text-gray-50">
             What should I do next, and why does it matter for launch?
           </h1>
@@ -636,7 +636,7 @@ function Control() {
             and click <strong className="text-gray-200">Sync visible availability</strong> in the popup.
           </li>
           <li>
-            The row is stored and Control reflects it as{" "}
+            The row is stored and Agent Direct reflects it as{" "}
             <em className="text-gray-300">live observation</em> with staleness-driven confidence.
           </li>
         </ol>

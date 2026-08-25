@@ -1,4 +1,4 @@
-// Server function the Agent Control route uses to load the ranked portfolio
+// Server function the Agent Direct route uses to load the ranked portfolio
 // merged with live availability observations. Runs server-side under
 // `bun run publish` (SSR) — fetch/storage only happens server-side.
 //
