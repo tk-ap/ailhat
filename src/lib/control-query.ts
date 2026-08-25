@@ -15,10 +15,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { readObservations } from "./observations.server";
-import { buildOverlays } from "./observations";
+import { buildOverlays, buildScanEvidence } from "./observations";
 import type { AvailabilityObservation, LiveOverlay } from "./observations";
 import { seedPortfolio } from "./portfolio-seed.server";
-import { modelWorkspaces, modelWorkspace } from "./control-scoring";
+import { modelWorkspaces } from "./control-scoring";
 import type { ModeledWorkspace } from "./control-scoring";
 import { modelDemoPortfolio } from "./demo-portfolio";
 import { findUserByToken, parseCookies, SESSION_COOKIE } from "./auth";
@@ -66,16 +66,13 @@ export const getAgentControl = createServerFn({ method: "GET" }).handler(
 
     const observations = await readObservations();
     const { byWorkspace, bucket } = buildOverlays(observations, now);
-    const portfolio = modelWorkspaces(seedPortfolio, now).map((m) => {
-      // Keep the model's "rescan now" behaviour simple: model the current
-      // evidence age, only merging the live observation overlay on top.
-      return {
-        ...modelWorkspace(
-          seedPortfolio.find((w) => w.id === m.ws.id) ?? m.ws,
-          now,
-        ),
-        live: byWorkspace.get(m.ws.id) ?? null,
-      } as ModeledWorkspace;
+    const scanByWorkspace = buildScanEvidence(observations, now);
+    // Note: evidence is attached inside modelWorkspaces, so the readiness /
+    // confidence recomputation (computed-live vs anchored-seed vs unassessed)
+    // happens in one deterministic pass.
+    const portfolio = modelWorkspaces(seedPortfolio, now, {
+      scanByWorkspace,
+      liveByWorkspace: byWorkspace,
     });
     return { authenticated: true, observations, bucket, portfolio, modeledAt: now };
   },

@@ -304,12 +304,38 @@ function ReadinessPanel({ m }: { m: ModeledWorkspace }) {
       </div>
       <div className="mt-2 flex items-center justify-between gap-2 text-[11px] text-gray-500">
         <span className="min-w-0 break-words">{m.distanceLabel}</span>
-        {m.confidence && !live && (
-          <Chip className="bg-amber-500/10 text-amber-300 ring-amber-500/30">
+        {m.confidence && !live && m.readiness != null && (
+          <Chip
+            className={
+              m.evidenceBasis === "computed-live"
+                ? m.confidence === "High"
+                  ? "bg-emerald-500/10 text-emerald-300 ring-emerald-500/30"
+                  : m.confidence === "Medium"
+                    ? "bg-amber-500/10 text-amber-300 ring-amber-500/30"
+                    : "bg-rose-500/10 text-rose-300 ring-rose-500/30"
+                : "bg-amber-500/10 text-amber-300 ring-amber-500/30"
+            }
+          >
             {m.confidence} confidence
           </Chip>
         )}
       </div>
+      {m.readiness != null && (
+        <div className="mt-2 flex items-center gap-1.5 border-t border-gray-800 pt-2">
+          <Chip
+            className={
+              m.evidenceBasis === "computed-live"
+                ? "bg-emerald-500/10 text-emerald-300 ring-emerald-500/30"
+                : "bg-gray-700/40 text-gray-400 ring-gray-600/40"
+            }
+          >
+            {m.evidenceBasis === "computed-live"
+              ? "computed · live"
+              : "anchored · seed baseline"}
+          </Chip>
+          <span className="text-[10px] text-gray-600">how this % was derived</span>
+        </div>
+      )}
     </div>
   );
 }
@@ -353,7 +379,7 @@ function ProductCard({ m, now }: { m: ModeledWorkspace; now: number }) {
       <div className="flex items-center justify-between gap-3 border-b border-gray-800 px-4 py-2.5">
         <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-gray-500">
           <span className="h-1.5 w-1.5 rounded-full bg-[#7fb0ff]" />
-          {m.live ? "live sync" : "reference"}
+          {m.live ? "live sync" : m.scan ? "live scan" : "reference"}
           <span className="text-gray-600">·</span>
           <span className="text-gray-500">priority #{m.priority} pts</span>
         </div>
@@ -464,7 +490,19 @@ function ProductCard({ m, now }: { m: ModeledWorkspace; now: number }) {
             <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-gray-500">
               Evidence · last scan
             </div>
-            {m.live ? (
+            {m.scan ? (
+              <>
+                <div className="mt-1 text-sm font-medium text-[#7fb0ff]">
+                  live scan · {ageLabelObs(now, m.scan.scannedAt)}
+                </div>
+                <div className="font-mono text-[10px] text-gray-500">
+                  {m.scan.url?.replace(/^https?:\/\//, "")} ·{" "}
+                  {m.scan.ok
+                    ? `${m.scan.totalFailures} open finding${m.scan.totalFailures === 1 ? "" : "s"} (${m.scan.findings.CRITICAL}C / ${m.scan.findings.HIGH}H / ${m.scan.findings.MEDIUM}M)`
+                    : "site unreachable"} · {m.scan.staleness}
+                </div>
+              </>
+            ) : m.live ? (
               <>
                 <div className="mt-1 text-sm font-medium text-[#7fb0ff]">
                   live observation · {ageLabelObs(now, m.live.observedAt)}
@@ -478,7 +516,7 @@ function ProductCard({ m, now }: { m: ModeledWorkspace; now: number }) {
               <>
                 <div className="mt-1 text-sm font-medium text-gray-200">{m.evidenceLabel}</div>
                 <div className="font-mono text-[10px] text-gray-500">
-                  {m.ws.lastScan} · no live observation — reference baseline
+                  {m.ws.lastScan} · no live evidence — reference baseline
                 </div>
               </>
             )}

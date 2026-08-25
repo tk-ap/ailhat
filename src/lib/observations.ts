@@ -13,6 +13,8 @@
 // Ported into ailhat's REST-router architecture (src/lib/restRoutes.ts) per
 // PORTFOLIO_AND_AGENT_CONTROL.md — this is the Agent Direct capacity feed.
 
+import type { ScanResult, Severity } from "./scanSite";
+
 export interface AvailabilityObservation {
   provider?: string | null;
   cap?: number | null;
@@ -27,6 +29,36 @@ export interface AvailabilityObservation {
   iface?: string | null;
   id?: string | null;
   use?: string | null;
+}
+
+// Scan completions are written into the SAME observation feed so they survive
+// serverless cold starts with no new storage or schema. A scan row is
+// identifiable by provider === SCAN_PROVIDER and is never treated as an
+// availability observation (buildOverlays filters it out).
+export const SCAN_PROVIDER = "site-scan";
+
+/** Compact live-scan findings summary, encoded in the observation's `use` field. */
+export interface ScanSummary {
+  ok: boolean;
+  counts: Record<Severity, number>;
+}
+
+/**
+ * Per-workspace live scan evidence, derived from the newest SCAN_PROVIDER
+ * observation for that workspace. `findings` only counts FAILING checks — a
+ * scan finding is only evidence of a problem when it actually fails.
+ */
+export interface ScanEvidence {
+  hasScan: boolean;
+  url: string | null;
+  scannedAt: number;
+  ok: boolean;
+  findings: Record<Severity, number>;
+  /** Sum of CRITICAL/HIGH/MEDIUM/LOW failing checks in the latest scan. */
+  totalFailures: number;
+  ageHours: number;
+  tier: ConfidenceTier;
+  staleness: string;
 }
 
 /** Host → workspace id for the known live portfolio. */
@@ -158,6 +190,7 @@ export function buildOverlays(
     }
   };
   for (const obs of observations) {
+    if (obs.provider === SCAN_PROVIDER) continue; // scan evidence is not availability
     const id = mapUrlToWorkspaceId(obs.url);
     if (id) sortPick(id, obs);
   }
@@ -171,6 +204,97 @@ export function buildOverlays(
     byWorkspace,
     bucket: buildOverlay(perId.get(CTO_BUCKET_ID) ?? null, nowMs),
   };
+}
+
+// ---- Scan evidence (readiness feed) ----------------------------------------
+
+/**
+ * Convert a completed site scan into an observation row (provider = SCAN_PROVIDER)
+ * so "a scan completed" survives cold starts in the same durable feed as the
+ * availability rows — no new storage or schema. The findings summary is encoded
+ * in the `use` field as JSON. Never fabricates: only FAILING checks are counted.
+ */
+export function scanEvidenceObservation(result: ScanResult): AvailabilityObservation {
+  const counts: Record<Severity, number> = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 };
+  for (const f of result.findings) if (f.status === "fail") counts[f.severity]++;
+  const summary: ScanSummary = { ok: result.ok ?? false, counts };
+  return {
+    provider: SCAN_PROVIDER,
+    url: result.url || result.requestedUrl || null,
+    observedAt: result.scannedAt ?? Date.now(),
+    method: "scan",
+    title: result.ok ? "site scan" : "site scan (unreachable)",
+    use: JSON.stringify(summary),
+  };
+}
+
+/** Read back the encoded ScanSummary, or null when absent/unparseable. */
+export function scanSummaryFromObservation(
+  obs: AvailabilityObservation,
+): ScanSummary | null {
+  if (typeof obs.use !== "string") return null;
+  try {
+    const p = JSON.parse(obs.use) as Partial<ScanSummary>;
+    const ok = typeof p.ok === "boolean" ? p.ok : true;
+    const counts: Record<Severity, number> = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 };
+    const raw = (p.counts ?? {}) as Partial<Record<Severity, number>>;
+    (Object.keys(counts) as Severity[]).forEach((s) => {
+      const n = Number(raw[s]);
+      counts[s] = Number.isFinite(n) && n > 0 ? Math.round(n) : 0;
+    });
+    return { ok, counts };
+  } catch {
+    return null;
+  }
+}
+
+/** Build ScanEvidence from the newest SCAN_PROVIDER observation for a workspace. */
+export function buildScanEvidenceForObs(
+  obs: AvailabilityObservation | null,
+  nowMs: number,
+): ScanEvidence | null {
+  if (!obs || typeof obs.observedAt !== "number") return null;
+  const summary = scanSummaryFromObservation(obs);
+  const ageHours = Math.max(0, (nowMs - obs.observedAt) / 3_600_000);
+  const findings = summary?.counts ?? { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 };
+  const zero: Record<Severity, number> = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 };
+  return {
+    hasScan: true,
+    url: obs.url ?? null,
+    scannedAt: obs.observedAt,
+    ok: summary?.ok ?? true,
+    findings: { ...zero, ...findings },
+    totalFailures:
+      findings.CRITICAL + findings.HIGH + findings.MEDIUM + findings.LOW,
+    ageHours,
+    tier: stalenessConfidence(ageHours),
+    staleness: stalenessLabel(ageHours),
+  };
+}
+
+/**
+ * Reduce stored observations into per-workspace scan evidence (the newest scan
+ * per workspace; unknown hosts are dropped). Returns a Map<workspaceId, ScanEvidence>.
+ */
+export function buildScanEvidence(
+  observations: AvailabilityObservation[],
+  nowMs: number,
+): Map<string, ScanEvidence> {
+  const perId = new Map<string, AvailabilityObservation>();
+  for (const obs of observations) {
+    if (obs.provider !== SCAN_PROVIDER) continue;
+    if (typeof obs.observedAt !== "number") continue;
+    const id = mapUrlToWorkspaceId(obs.url);
+    if (!id) continue;
+    const cur = perId.get(id);
+    if (!cur || obs.observedAt > (cur.observedAt ?? 0)) perId.set(id, obs);
+  }
+  const byWorkspace = new Map<string, ScanEvidence>();
+  for (const [id, obs] of perId) {
+    const se = buildScanEvidenceForObs(obs, nowMs);
+    if (se) byWorkspace.set(id, se);
+  }
+  return byWorkspace;
 }
 
 /**
