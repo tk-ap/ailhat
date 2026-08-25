@@ -1,14 +1,14 @@
 // Ailhat app shell — the premium dark command-center sidebar that wraps the
 // authenticated app views (dashboard "Today", brief "Intelligence"). Desktop-first.
 // Must be rendered inside AuthProvider + StoreProvider (routes provide these).
-import { Link, useLocation } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { useStore } from "~/lib/useStore";
 import { useAuth } from "~/lib/useAuth";
 import AuthNav from "~/components/AuthNav";
 import { platformLabel } from "~/lib/store";
 
-export type ShellView = "today" | "intelligence" | "control";
+export type ShellView = "today" | "intelligence" | "control" | "learn";
 
 const NAV: { id: ShellView; label: string; to: string; icon: ReactNode; hint: string }[] = [
   {
@@ -48,6 +48,18 @@ const NAV: { id: ShellView; label: string; to: string; icon: ReactNode; hint: st
       </svg>
     ),
   },
+  {
+    id: "learn",
+    label: "Learn",
+    to: "/learn",
+    hint: "Playbook · lessons · worked examples · skills",
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="shrink-0">
+        <path d="M4 5h6a2 2 0 0 1 2 2v12a2 2 0 0 0-2-2H4V5z" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M20 5h-6a2 2 0 0 0-2 2v12a2 2 0 0 1 2-2h6V5z" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+  },
 ];
 
 const BOTTOM_NAV: { label: string; disabled: boolean }[] = [
@@ -64,14 +76,8 @@ export default function AppShell({
 }) {
   const { state } = useStore();
   const { user } = useAuth();
-  const { pathname } = useLocation();
 
   const openCount = state.items.filter((i) => i.status !== "done").length;
-  const navFor = (id: ShellView) => {
-    if (id === "today") return pathname === "/dashboard" || pathname === "/";
-    if (id === "intelligence") return pathname === "/brief";
-    return pathname === "/control";
-  };
 
   return (
     <div className="flex min-h-dvh bg-gray-950 text-gray-100">
@@ -95,7 +101,7 @@ export default function AppShell({
             {NAV.map((n) => (
               <Link
                 key={n.id}
-                to={n.to as "/dashboard" | "/brief" | "/control"}
+                to={n.to as "/dashboard" | "/brief" | "/control" | "/learn"}
                 className={`silhat-nav ${active === n.id ? "silhat-nav-active" : ""}`}
                 title={n.hint}
               >
@@ -202,7 +208,9 @@ export default function AppShell({
                 ? `Overview · ${state.products.length} products`
                 : active === "control"
                   ? `Agent Direct · execution capacity & allocation`
-                  : `Attention · prioritised signals`}
+                  : active === "learn"
+                    ? `Playbook · lessons & worked examples`
+                    : `Attention · prioritised signals`}
             </span>
           </div>
           <div className="flex items-center gap-3">

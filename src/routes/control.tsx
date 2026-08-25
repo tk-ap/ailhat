@@ -15,6 +15,7 @@ import type { SlotState } from "~/lib/agent-control";
 import { ageLabelObs, type LiveOverlay } from "~/lib/observations";
 import { buildWorkItem, compileDirectives } from "~/lib/directives";
 import type { CompiledDirectives, WorkItem } from "~/lib/directives";
+import GuidedOnboarding from "~/components/GuidedOnboarding";
 
 export const Route = createFileRoute("/control")({
   loader: async () => getAgentControl(),
@@ -809,6 +810,10 @@ function Control() {
         </div>
       </div>
 
+      {/* Guided onboarding — first complete operating pass for a first-time owner
+          (authenticated only; never on the anonymous demo). */}
+      {!demo && <GuidedOnboarding top={top} />}
+
       {/* Do-this-next callout */}
       {top && (
         <section className="relative overflow-hidden rounded-xl border border-[#7fb0ff]/25 bg-gradient-to-br from-[#7fb0ff]/[0.08] to-transparent p-5">
@@ -825,6 +830,13 @@ function Control() {
           {sharedNote && (
             <p className="mt-1.5 text-xs font-medium text-[#7fb0ff]">{sharedNote}</p>
           )}
+          <p className="mt-1.5 text-xs text-gray-500">
+            New to Agent Direct?{" "}
+            <Link to="/learn" className="font-semibold text-[#7fb0ff] hover:underline">
+              Open the Playbook
+            </Link>{" "}
+            to see worked directive examples and skill-selection guidance.
+          </p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <button
               type="button"
