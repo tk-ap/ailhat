@@ -13,8 +13,10 @@ import {
   type Harness,
   type Impact,
   type Workspace,
+  freshnessFromAge,
 } from "./agent-control";
-import type { LiveOverlay } from "./observations";
+import type { LiveOverlay, ScanEvidence } from "./observations";
+import { stalenessConfidence } from "./observations";
 
 export interface ModeledWorkspace {
   ws: Workspace;
@@ -32,6 +34,14 @@ export interface ModeledWorkspace {
   urgencyImpact: Impact;
   evidenceLabel: string;
   evidenceIso: string;
+  /**
+   * How this product's readiness/confidence figures were derived.
+   * - "computed-live": recomputed from live scan/observation evidence (anchored on
+   *   the seeded baseline, adjusted by evidence age, findings, HIGH blockers).
+   * - "anchored-seed": directional baseline from seed — no live evidence yet.
+   * - "unassessed": no % exists (NEEDS ASSESSMENT) — never invented.
+   */
+  evidenceBasis: "computed-live" | "anchored-seed" | "unassessed";
   availableNow: Harness[];
   actionableNow: Harness[];
   /** Composite priority used to rank the portfolio. */
@@ -46,6 +56,7 @@ export interface ModeledWorkspace {
   };
   neglectBumped: boolean;
   live?: LiveOverlay;
+  scan?: ScanEvidence;
 }
 
 function impactVal(v: Impact): number {
@@ -69,6 +80,64 @@ const NEGLECT_DAYS = 7;
 const NEGLECT_WEIGHT = 8; // max priority points from neglect
 const ASSESSMENT_BUMP = 7; // unassessed products need a scan → small nudge up
 
+// ---- Readiness recomputation weights (R1: evidence-driven, honest) ----
+// A completed live scan/observation turns the seeded directional baseline into a
+// "computed-live" figure. The recompute is CONSERVATIVE — evidence age, live
+// findings, and unresolved HIGH blockers can only keep or LOWER a product's
+// readiness, never raise it above what the seed baseline already supports. A
+// null seeded readiness always stays null (NEEDS ASSESSMENT): a scan's finding
+// count alone can never justify inventing a percentage.
+const FINDING_WEIGHTS: Record<"CRITICAL" | "HIGH" | "MEDIUM", number> = {
+  CRITICAL: 3,
+  HIGH: 2,
+  MEDIUM: 1,
+};
+const MAX_FINDING_PENALTY = 15; // cap on the finding penalty per scan
+const UNREACHABLE_PENALTY = 10; // site down is a strong negative signal
+const HIGH_BLOCKER_CEILING_STEP = 12; // each unresolved high blocker caps readiness
+const BLOCKER_CEILING_FLOOR = 40;
+const STALENESS_DECAY_MIN = 0.85; // multipliers for the evidence-age decay (1.0 → min)
+
+/**
+ * Recompute launch readiness from live evidence, anchored on the seeded
+ * directional baseline. Pure + deterministic: same inputs, same output.
+ *
+ *   readiness = clamp(seedBaseline − findingPenalty, …, blockerCeiling)
+ *               × evidenceAgeDecay
+ *
+ * - findingPenalty: failing checks from the latest scan (CRITICAL/HIGH/MEDIUM).
+ * - blockerCeiling: unresolved HIGH blockers cap how ready we claim it is.
+ * - evidenceAgeDecay: gentle (0.85..1.0) — staleness is mostly surfaced via the
+ *   confidence tier, not by crashing the readiness number.
+ */
+export function recomputeReadiness(
+  ws: Workspace,
+  scan: ScanEvidence | null,
+  evidenceAgeHours: number,
+): number {
+  const base = ws.readinessPct ?? 65; // only called when a seeded % exists
+  let penalty = 0;
+  if (scan) {
+    if (!scan.ok) penalty += UNREACHABLE_PENALTY;
+    penalty +=
+      scan.findings.CRITICAL * FINDING_WEIGHTS.CRITICAL +
+      scan.findings.HIGH * FINDING_WEIGHTS.HIGH +
+      scan.findings.MEDIUM * FINDING_WEIGHTS.MEDIUM;
+    penalty = Math.min(penalty, MAX_FINDING_PENALTY + (scan.ok ? 0 : UNREACHABLE_PENALTY));
+  }
+  const highBlockers = ws.blockers.filter((b) => b.severity === "high").length;
+  const blockerCeiling = Math.max(
+    BLOCKER_CEILING_FLOOR,
+    100 - highBlockers * HIGH_BLOCKER_CEILING_STEP,
+  );
+  const freshness = Math.max(0, freshnessFromAge(evidenceAgeHours) / 100); // 1..0.3
+  const raw = Math.max(5, base - penalty);
+  return Math.max(
+    5,
+    Math.round(Math.min(raw, blockerCeiling) * (STALENESS_DECAY_MIN + (1 - STALENESS_DECAY_MIN) * freshness)),
+  );
+}
+
 function ageLabel(minutes: number): string {
   if (minutes < 60) return "just now";
   const hours = Math.round(minutes / 60);
@@ -77,7 +146,11 @@ function ageLabel(minutes: number): string {
   return `${days}d ago`;
 }
 
-export function modelWorkspace(ws: Workspace, nowMs: number): ModeledWorkspace {
+export function modelWorkspace(
+  ws: Workspace,
+  nowMs: number,
+  ev?: { scan?: ScanEvidence | null; live?: LiveOverlay | null },
+): ModeledWorkspace {
   const availableNow = HARNESSES.filter(
     (h) => ws.interfaces[h].state === "available",
   );
@@ -102,14 +175,44 @@ export function modelWorkspace(ws: Workspace, nowMs: number): ModeledWorkspace {
 
   const distanceLabel = ws.firstPaidClient;
 
-  const minutes = Math.max(1, Math.round(ws.scanAgeHours * 60));
+  // ---- R1: evidence-driven readiness + confidence -------------------------
+  // Readiness/confidence become a function of live evidence (age → staleness
+  // tiers, live scan findings, unresolved HIGH blockers) rather than the sole
+  // seeded constants. Honesty preserved: no live evidence → the seeded
+  // directional baseline stands (anchored-seed); a null seeded readiness is
+  // NEVER converted into an invented %. Provenance is surfaced via `evidenceBasis`.
+  const scan = ev?.scan ?? null;
+  const live = ev?.live ?? null;
+  const hasLiveEvidence = !!(scan || live);
+  const evidenceAgeHours = scan
+    ? scan.ageHours
+    : live
+      ? live.ageHours
+      : ws.scanAgeHours;
+
+  let readiness = ws.readinessPct;
+  let confidence = ws.confidence;
+  let evidenceBasis: ModeledWorkspace["evidenceBasis"] =
+    ws.readinessPct === null ? "unassessed" : "anchored-seed";
+
+  if (hasLiveEvidence) {
+    // Confidence now follows the staleness tier (fresh <1h High, <24h Med, >24h Low).
+    confidence = stalenessConfidence(evidenceAgeHours);
+    if (ws.readinessPct !== null) {
+      readiness = recomputeReadiness(ws, scan, evidenceAgeHours);
+      evidenceBasis = "computed-live";
+    }
+    // else: readiness stays null → NEEDS ASSESSMENT (never invented).
+  }
+
+  const minutes = Math.max(1, Math.round(evidenceAgeHours * 60));
   const evidenceLabel = ageLabel(minutes);
   const evidenceIso = new Date(nowMs - minutes * 60_000).toISOString();
 
   return {
     ws,
-    readiness: ws.readinessPct,
-    confidence: ws.confidence,
+    readiness,
+    confidence,
     distanceLabel,
     blockers: ws.blockers.map((b) => ({
       id: b.id,
@@ -125,11 +228,14 @@ export function modelWorkspace(ws: Workspace, nowMs: number): ModeledWorkspace {
     urgencyImpact: ws.urgency,
     evidenceLabel,
     evidenceIso,
+    evidenceBasis,
     availableNow,
     actionableNow,
     priority,
     priorityFactors: { launch, customer, urgency, availability, neglect, assessmentBump },
     neglectBumped: neglect >= 0.5 || assessmentBump > 0,
+    live: live ?? undefined,
+    scan: scan ?? undefined,
   };
 }
 
@@ -148,9 +254,18 @@ export function modelWorkspace(ws: Workspace, nowMs: number): ModeledWorkspace {
 export function modelWorkspaces(
   portfolio: Workspace[],
   nowMs: number,
+  evidence?: {
+    scanByWorkspace?: Map<string, ScanEvidence>;
+    liveByWorkspace?: Map<string, LiveOverlay>;
+  },
 ): ModeledWorkspace[] {
   return portfolio
-    .map((ws) => modelWorkspace(ws, nowMs))
+    .map((ws) =>
+      modelWorkspace(ws, nowMs, {
+        scan: evidence?.scanByWorkspace?.get(ws.id) ?? null,
+        live: evidence?.liveByWorkspace?.get(ws.id) ?? null,
+      }),
+    )
     .sort((a, b) => {
       if (b.priority !== a.priority) return b.priority - a.priority;
       const ra = a.readiness ?? -1;

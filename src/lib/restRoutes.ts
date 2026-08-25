@@ -38,7 +38,11 @@ import {
   readObservations,
   upsertObservation,
 } from "./observations.server.ts";
-import { sanitizeObservation } from "./observations.ts";
+import {
+  sanitizeObservation,
+  mapUrlToWorkspaceId,
+  scanEvidenceObservation,
+} from "./observations.ts";
 import type { AvailabilityObservation } from "./observations.ts";
 
 function jsonResponse(
@@ -105,6 +109,22 @@ export async function handleRestRoute(
     const url = searchParams.get("url") ?? "";
     try {
       const result = await runScan(url);
+      // R1: when a completed scan has live evidence for a known workspace, persist
+      // it (as a site-scan observation) so the next Control read recomputes that
+      // workspace's readiness/confidence/lastScan from it. Persistence is gated
+      // on the OWNER session (anonymous scans never pollute the feed) AND on the
+      // URL mapping to a known portfolio workspace (arbitrary URLs are dropped).
+      try {
+        const token =
+          parseCookies(req.headers.get("cookie"))[SESSION_COOKIE] ?? "";
+        const owner = token ? await findUserByToken(token) : null;
+        if (owner && mapUrlToWorkspaceId(result.url)) {
+          await upsertObservation(scanEvidenceObservation(result));
+        }
+      } catch (err) {
+        // Persistence is best-effort — a storage failure must never fail the scan.
+        console.error("[scan-site] failed to persist scan evidence:", err);
+      }
       return new Response(JSON.stringify(result), {
         status: 200,
         headers: { "content-type": "application/json; charset=utf-8" },
