@@ -54,7 +54,7 @@ export const getAgentControl = createServerFn({ method: "GET" }).handler(
       };
     }
 
-    const observations = readObservations();
+    const observations = await readObservations();
     const { byWorkspace, bucket } = buildOverlays(observations, now);
     const portfolio = modelWorkspaces(seedPortfolio, now).map((m) => {
       // Keep the model's "rescan now" behaviour simple: model the current
