@@ -1194,23 +1194,112 @@ function useAutoscan() {
   return { scanning, runScanForProduct };
 }
 
-function DashboardLoginRequired() {
+// Clearly-labeled SAMPLE overview for anonymous visitors. Shows the shape of the
+// portfolio view on invented (fictional) data so the value is graspable before
+// signup — never the owner's real products.
+function DashboardDemo() {
   return (
-    <div className="mx-auto max-w-md silhat-panel border-dashed px-6 py-16 text-center">
-      <p className="silhat-eyebrow">Today · Signals</p>
-      <h1 className="mt-2 text-xl font-bold tracking-tight text-gray-50">
-        Log in to see your portfolio
-      </h1>
-      <p className="mt-2 text-sm text-gray-400">
-        Your products, checklists, and scan signals are private to your account.
-        Sign in to view and manage them.
-      </p>
-      <Link
-        to="/login"
-        className="silhat-btn silhat-btn-primary mt-6 inline-flex items-center rounded-xl px-5 py-2.5"
-      >
-        Log in
-      </Link>
+    <div className="space-y-6">
+      <section className="rounded-xl border border-amber-400/40 bg-amber-400/10 px-5 py-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="rounded-full bg-amber-400 px-3 py-1 text-xs font-bold uppercase tracking-wider text-amber-950">
+            Demo · sample data
+          </span>
+          <p className="text-sm text-amber-100">
+            This is a <strong>fictional demo</strong> of the portfolio overview —
+            sample products and checklists, not your projects. Sign in to see your own.
+          </p>
+        </div>
+      </section>
+
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="silhat-eyebrow">Today · Signals</p>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight text-gray-50">
+            Portfolio overview
+          </h1>
+          <p className="mt-1 text-sm text-gray-400">
+            Every product, checklist, and detected signal — in one place.
+          </p>
+        </div>
+      </div>
+
+      <div className="silhat-panel overflow-hidden opacity-90">
+        <div className="border-b border-gray-800 px-4 py-3">
+          <div className="flex items-center gap-2">
+            <h3 className="truncate text-lg font-semibold">Acme Launchpad (Sample)</h3>
+            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+              Sample SaaS
+            </span>
+          </div>
+          <a
+            className="mt-1 block truncate text-sm text-cyan-600 hover:underline dark:text-cyan-400"
+          >
+            https://acme-launchpad.example.com
+          </a>
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+            <span className="inline-flex items-center gap-1.5 text-xs">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden />
+              <span className="text-gray-400">Live (sample)</span>
+            </span>
+            <span className="text-gray-500">Updated just now (sample)</span>
+          </div>
+        </div>
+        <div className="p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <h4 className="silhat-eyebrow">Checklist</h4>
+            <span className="text-xs text-gray-400">3/5 done (sample)</span>
+          </div>
+          <ul className="space-y-2">
+            {[
+              { t: "Wire up checkout + billing flow", d: true },
+              { t: "Harden onboarding", d: true },
+              { t: "Set up analytics", d: true },
+              { t: "Add Stripe test mode", d: false },
+              { t: "Draft launch page", d: false },
+            ].map((i) => (
+              <li
+                key={i.t}
+                className={`flex items-start gap-3 rounded-xl border p-3 ${
+                  i.d
+                    ? "border-gray-100 bg-gray-50 dark:border-gray-800 dark:bg-gray-800/40"
+                    : "border-gray-100 bg-white dark:border-gray-800 dark:bg-gray-900/70"
+                }`}
+              >
+                <span
+                  className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-md border-2 ${
+                    i.d
+                      ? "border-emerald-500 bg-emerald-500 text-white"
+                      : "border-gray-300 dark:border-gray-600"
+                  }`}
+                >
+                  {i.d && (
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                      <path d="M20 6 9 17l-5-5" />
+                    </svg>
+                  )}
+                </span>
+                <p className={`text-sm ${i.d ? "text-gray-400 line-through" : "font-medium"}`}>
+                  {i.t}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      <div className="silhat-panel border-dashed px-6 py-8 text-center">
+        <p className="text-lg font-semibold text-gray-100">See your own portfolio</p>
+        <p className="mx-auto mt-1 max-w-md text-sm text-gray-400">
+          Your real products, checklists, and live scan signals — private to your account.
+        </p>
+        <Link
+          to="/login"
+          className="silhat-btn silhat-btn-primary mt-5 inline-flex items-center rounded-xl px-5 py-2.5"
+        >
+          Log in / Sign up
+        </Link>
+      </div>
     </div>
   );
 }
@@ -1223,13 +1312,12 @@ function Dashboard() {
 
   // Account-scoped gate: the portfolio is the owner's private data. While auth
   // is resolving we show a neutral loading state; an unauthenticated client gets
-  // a clear "log in to see your portfolio" prompt — never products (real or
-  // demo).
+  // a CLEARLY-LABELED demo (sample) overview — never the owner's products.
   if (loading) {
     return <p className="py-20 text-center text-gray-500">Loading…</p>;
   }
   if (!user) {
-    return <DashboardLoginRequired />;
+    return <DashboardDemo />;
   }
 
   return (
