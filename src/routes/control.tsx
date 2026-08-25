@@ -620,7 +620,7 @@ function Control() {
           <div className="silhat-eyebrow">Direct ingestion (no extension)</div>
           <pre className="silhat-terminal mt-2 overflow-x-auto">{`curl -s -X POST ${origin}/api/availability \\
   -H 'Content-Type: application/json' \\
-  -d '{"provider":"cto.new","cap":72,"url":"https://ledgato.vercel.app/","observedAt":'"$(date +%s000)"',"method":"curl","confidence":"medium"}'`}</pre>
+  -d '{"provider":"cto.new","cap":72,"url":"https://product.example.com/","observedAt":'"$(date +%s000)"',"method":"curl","confidence":"medium"}'`}</pre>
           <p className="mt-2 font-mono text-[10px] uppercase tracking-wider text-gray-500">
             Endpoints: <span className="text-gray-300">POST/GET /api/availability</span> (canonical) and{" "}
             <span className="text-gray-300">POST/GET /api/sync</span> (extension path). Both accept the
