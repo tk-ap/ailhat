@@ -8,7 +8,7 @@ import { useAuth } from "~/lib/useAuth";
 import AuthNav from "~/components/AuthNav";
 import { platformLabel } from "~/lib/store";
 
-export type ShellView = "today" | "intelligence";
+export type ShellView = "today" | "intelligence" | "control";
 
 const NAV: { id: ShellView; label: string; to: string; icon: ReactNode; hint: string }[] = [
   {
@@ -34,6 +34,20 @@ const NAV: { id: ShellView; label: string; to: string; icon: ReactNode; hint: st
       </svg>
     ),
   },
+  {
+    id: "control",
+    label: "Control",
+    to: "/control",
+    hint: "Agent Control · what to do next",
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="shrink-0">
+        <rect x="3" y="3" width="7" height="7" rx="1.5" />
+        <rect x="14" y="3" width="7" height="7" rx="1.5" />
+        <rect x="3" y="14" width="7" height="7" rx="1.5" />
+        <rect x="14" y="14" width="7" height="7" rx="1.5" />
+      </svg>
+    ),
+  },
 ];
 
 const BOTTOM_NAV: { label: string; disabled: boolean }[] = [
@@ -55,7 +69,8 @@ export default function AppShell({
   const openCount = state.items.filter((i) => i.status !== "done").length;
   const navFor = (id: ShellView) => {
     if (id === "today") return pathname === "/dashboard" || pathname === "/";
-    return pathname === "/brief";
+    if (id === "intelligence") return pathname === "/brief";
+    return pathname === "/control";
   };
 
   return (
@@ -80,7 +95,7 @@ export default function AppShell({
             {NAV.map((n) => (
               <Link
                 key={n.id}
-                to={n.to as "/dashboard" | "/brief"}
+                to={n.to as "/dashboard" | "/brief" | "/control"}
                 className={`silhat-nav ${active === n.id ? "silhat-nav-active" : ""}`}
                 title={n.hint}
               >
@@ -185,7 +200,9 @@ export default function AppShell({
             <span className="truncate text-gray-500">
               {active === "today"
                 ? `Overview · ${state.products.length} products`
-                : `Attention · prioritised signals`}
+                : active === "control"
+                  ? `Agent control · execution capacity & allocation`
+                  : `Attention · prioritised signals`}
             </span>
           </div>
           <div className="flex items-center gap-3">

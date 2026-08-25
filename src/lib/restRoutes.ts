@@ -34,6 +34,12 @@ import {
 } from "./db-intent.ts";
 import { checkAvailability } from "./availability.ts";
 import { runScan } from "./scanSite.ts";
+import {
+  readObservations,
+  upsertObservation,
+} from "./observations.server.ts";
+import { sanitizeObservation } from "./observations.ts";
+import type { AvailabilityObservation } from "./observations.ts";
 
 function jsonResponse(
   body: unknown,
@@ -118,6 +124,74 @@ export async function handleRestRoute(
         },
       );
     }
+  }
+
+  // ---- Agent Control live-sync ingest (availability observations) ----
+  // POST /api/availability and POST /api/sync (extension path) store the
+  // extension's payload; GET (with optional ?since=<ms>) reads it back.
+  // Defensive: bad rows are dropped, malformed bodies never crash, writes never
+  // throw to the caller.
+  const isAvailPath = pathname === "/api/availability";
+  const isSyncPath = pathname === "/api/sync";
+  if (isAvailPath || isSyncPath) {
+    if (req.method === "OPTIONS") {
+      return new Response(null, {
+        status: 204,
+        headers: {
+          "access-control-allow-origin": "*",
+          "access-control-allow-methods": "GET, POST, OPTIONS",
+          "access-control-allow-headers": "content-type",
+        },
+      });
+    }
+    if (req.method === "POST") {
+      let parsed: unknown = null;
+      try {
+        parsed = req.body ? JSON.parse(await req.text()) : null;
+      } catch {
+        return jsonResponse({ ok: false, error: "invalid JSON body" }, 400);
+      }
+      const rows = Array.isArray(parsed) ? parsed : [parsed];
+      let stored = 0;
+      let last: AvailabilityObservation | null = null;
+      for (const row of rows) {
+        const clean = sanitizeObservation(row);
+        if (!clean) continue; // drop bad rows, never crash
+        upsertObservation(clean);
+        stored += 1;
+        last = clean;
+      }
+      if (stored === 0) {
+        return jsonResponse(
+          {
+            ok: false,
+            error:
+              "no usable observation (need provider, url, observedAt as strings/numbers)",
+          },
+          400,
+        );
+      }
+      return jsonResponse({ ok: true, stored, last, receivedAt: Date.now() });
+    }
+    if (req.method === "GET") {
+      const sinceRaw = searchParams.get("since");
+      let since = 0;
+      if (sinceRaw) {
+        const n = Number(sinceRaw);
+        if (Number.isFinite(n)) since = n;
+      }
+      const rows =
+        since > 0
+          ? readObservations().filter(
+              (o) => typeof o.observedAt === "number" && o.observedAt >= since,
+            )
+          : readObservations();
+      return jsonResponse(rows);
+    }
+    return jsonResponse(
+      { ok: false, error: `method ${req.method} not supported` },
+      405,
+    );
   }
 
   // POST /api/intent — waitlist / builder intent capture (Neon-backed).
