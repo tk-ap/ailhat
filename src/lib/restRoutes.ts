@@ -126,7 +126,7 @@ export async function handleRestRoute(
     }
   }
 
-  // ---- Agent Control live-sync ingest (availability observations) ----
+  // ---- Agent Direct live-sync ingest (availability observations) ----
   // POST /api/availability and POST /api/sync (extension path) store the
   // extension's payload; GET (with optional ?since=<ms>) reads it back.
   // Defensive: bad rows are dropped, malformed bodies never crash, writes never

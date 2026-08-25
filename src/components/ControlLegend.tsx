@@ -1,4 +1,4 @@
-// Ailhat — Agent Control "Legend & how to read" education layer.
+// Ailhat — Agent Direct "Legend & how to read" education layer.
 //
 // UI/education only. This component explains the jargon and visuals on the
 // /control view so a new user can interpret readiness metrics, the capacity

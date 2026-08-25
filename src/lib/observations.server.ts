@@ -1,4 +1,4 @@
-// Server-only persistence for live availability observations (Agent Control feed).
+// Server-only persistence for live availability observations (Agent Direct feed).
 //
 // PRIMARY store is Postgres (Neon). A plain JSON file under data/ was the old
 // store — but Vercel's serverless filesystem is ephemeral, so observations

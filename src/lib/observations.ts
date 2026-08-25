@@ -11,7 +11,7 @@
 // body defensively here (all fields optional except provider/url/observedAt).
 //
 // Ported into ailhat's REST-router architecture (src/lib/restRoutes.ts) per
-// PORTFOLIO_AND_AGENT_CONTROL.md — this is the Agent Control capacity feed.
+// PORTFOLIO_AND_AGENT_CONTROL.md — this is the Agent Direct capacity feed.
 
 export interface AvailabilityObservation {
   provider?: string | null;

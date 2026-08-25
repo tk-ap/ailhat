@@ -1,7 +1,7 @@
-// Ailhat — Agent Control DEMO portfolio (ANONYMOUS VISITOR SAMPLE DATA).
+// Ailhat — Agent Direct DEMO portfolio (ANONYMOUS VISITOR SAMPLE DATA).
 //
 // This is a CLEARLY-INVENTED sample payload shown to unauthenticated visitors so
-// they can grasp what the Product / Agent Control view does BEFORE they sign up.
+// they can grasp what the Product / Agent Direct view does BEFORE they sign up.
 // Every product here is fictional and explicitly labeled "Sample"/"demo" — it is
 // NOT the owner's real portfolio. The owner's real projects (ailhat, ALVIRA,
 // Ledgato, etc.) live in portfolio-seed.server.ts and are NEVER served to, or

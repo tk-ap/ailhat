@@ -1,4 +1,4 @@
-// Deterministic scoring + ranking model for the Ailhat — Agent Control surface.
+// Deterministic scoring + ranking model for the Ailhat — Agent Direct surface.
 // Every metric is computed purely from a Workspace's inputs — the same inputs
 // always produce the same result.
 //
