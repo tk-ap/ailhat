@@ -157,7 +157,7 @@ export async function handleRestRoute(
       for (const row of rows) {
         const clean = sanitizeObservation(row);
         if (!clean) continue; // drop bad rows, never crash
-        upsertObservation(clean);
+        await upsertObservation(clean);
         stored += 1;
         last = clean;
       }
@@ -180,12 +180,7 @@ export async function handleRestRoute(
         const n = Number(sinceRaw);
         if (Number.isFinite(n)) since = n;
       }
-      const rows =
-        since > 0
-          ? readObservations().filter(
-              (o) => typeof o.observedAt === "number" && o.observedAt >= since,
-            )
-          : readObservations();
+      const rows = await readObservations(since > 0 ? { sinceMs: since } : {});
       return jsonResponse(rows);
     }
     return jsonResponse(
