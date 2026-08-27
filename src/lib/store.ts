@@ -48,9 +48,48 @@ export interface Item {
   scanKey?: string;
 }
 
+// ---- Per-product decision history (owner-entered) --------------------------
+// A recommendation surfaced from the Direct/seed model. The owner sets a
+// disposition; the default is ALWAYS "not-decisioned" — the app never auto-claims
+// deployed / paused / deferred. `reason` and `updatedAt` are the owner's honest
+// entered state, timestamped on each change. Persisted via the debounced
+// PUT /api/portfolio like the rest of AppState (no new tables/routes).
+export type DecisionDisposition =
+  | "not-decisioned"
+  | "deployed"
+  | "paused-for-timing"
+  | "deferred";
+
+export interface ProductDecision {
+  id: string;
+  title: string;
+  disposition: DecisionDisposition;
+  reason?: string;
+  updatedAt?: number;
+}
+
+export const DECISION_DISPOSITIONS: DecisionDisposition[] = [
+  "not-decisioned",
+  "deployed",
+  "paused-for-timing",
+  "deferred",
+];
+
+/** Guard: only the enum values are allowed — never an invented disposition. */
+export function isDecisionDisposition(v: unknown): v is DecisionDisposition {
+  return (
+    typeof v === "string" && (DECISION_DISPOSITIONS as string[]).includes(v)
+  );
+}
+
 export interface AppState {
   products: Product[];
   items: Item[];
+  // Owner-entered decision history per product, keyed by STORE product id. Each
+  // product's list is seeded from its Direct/seed model recommendations, all
+  // defaulting to "not-decisioned" (never auto-claimed). Backward compatible:
+  // defaults to {} on states persisted before this field existed.
+  decisions: Record<string, ProductDecision[]>;
   // Latest site-scan result per product id (Step A). Persisted so the Daily
   // Brief can ground its "fresh site-scan bug" signals in objective findings.
   scans: Record<string, ScanResult>;
@@ -168,6 +207,7 @@ function emptyState(): AppState {
   return {
     products: [],
     items: [],
+    decisions: {},
     scans: {},
     scanHistory: {},
     feedback: {},
@@ -201,6 +241,12 @@ export function loadState(): AppState {
     return {
       products: Array.isArray(parsed.products) ? parsed.products : [],
       items: Array.isArray(parsed.items) ? parsed.items : [],
+      decisions:
+        parsed.decisions &&
+        typeof parsed.decisions === "object" &&
+        !Array.isArray(parsed.decisions)
+          ? (parsed.decisions as Record<string, ProductDecision[]>)
+          : {},
       scans:
         parsed.scans && typeof parsed.scans === "object" && !Array.isArray(parsed.scans)
           ? (parsed.scans as Record<string, ScanResult>)
@@ -406,10 +452,63 @@ export function setOpportunityFeedback(
   };
 }
 
-export function resetData(): AppState {
+/**
+ * Wipe the portfolio back to empty. GATED: reset may only run for a clearly
+ * anonymous/demo session (`allow` true). Passing `allow = false` (the
+ * authenticated owner's real portfolio) is a strict no-op that returns `state`
+ * unchanged — the owner's real data is NEVER silently destroyed. Pure, so it is
+ * unit-testable and impossible for a caller to bypass accidentally.
+ */
+export function resetData(state: AppState, allow: boolean): AppState {
+  if (!allow) return state;
   const empty = emptyState();
   saveState(empty);
   return empty;
+}
+
+// ---- Decision actions ----
+
+/**
+ * Replace a product's full decision list (used when seeding a product's
+ * recommendations). Honesty: this only ever writes what the UI/seed provides —
+ * it never invents a disposition on its own.
+ */
+export function setDecisions(
+  state: AppState,
+  productId: string,
+  decisions: ProductDecision[],
+): AppState {
+  return {
+    ...state,
+    decisions: { ...(state.decisions ?? {}), [productId]: decisions },
+  };
+}
+
+/**
+ * Update a single decision's disposition (and optional reason), stamping the
+ * change time. Pure + deterministic. The disposition must be one of the enum
+ * values — anything else is ignored (never invents state).
+ */
+export function setDecisionDisposition(
+  state: AppState,
+  productId: string,
+  decisionId: string,
+  disposition: DecisionDisposition,
+  reason?: string,
+): AppState {
+  if (!isDecisionDisposition(disposition)) return state;
+  const list = (state.decisions ?? {})[productId] ?? [];
+  const next = list.map((d) =>
+    d.id === decisionId
+      ? {
+          ...d,
+          disposition,
+          ...(reason !== undefined ? { reason } : {}),
+          updatedAt: Date.now(),
+        }
+      : d,
+  );
+  return { ...state, decisions: { ...(state.decisions ?? {}), [productId]: next } };
 }
 
 // ---- Derived helpers ----

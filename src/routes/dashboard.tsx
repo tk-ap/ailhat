@@ -1243,8 +1243,7 @@ function DashboardDemo() {
 
 function Dashboard() {
   const { user, loading } = useAuth();
-  const { state, ready, actions } = useStore();
-  const [showReset, setShowReset] = useState(false);
+  const { state, ready } = useStore();
   const { scanning, runScanForProduct } = useAutoscan();
 
   // Account-scoped gate: the portfolio is the owner's private data. While auth
@@ -1274,22 +1273,6 @@ function Dashboard() {
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <button
-                onClick={() => {
-                  if (showReset) {
-                    actions.resetData();
-                    setShowReset(false);
-                  } else {
-                    setShowReset(true);
-                    setTimeout(() => setShowReset(false), 2500);
-                  }
-                }}
-                className={`silhat-btn ${
-                  showReset ? "bg-rose-600 text-white" : "silhat-btn-ghost"
-                }`}
-              >
-                {showReset ? "Confirm reset?" : "Reset demo data"}
-              </button>
               <AddProductForm />
             </div>
           </section>
