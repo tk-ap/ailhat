@@ -37,10 +37,22 @@ export interface AvailabilityObservation {
 // availability observation (buildOverlays filters it out).
 export const SCAN_PROVIDER = "site-scan";
 
-/** Compact live-scan findings summary, encoded in the observation's `use` field. */
+/** Per-finding status encoded in the scan summary (fail/ok only; a "unchecked"
+ * check is not positive evidence and is never counted or persisted here). */
+export interface ScanFindingStatus {
+  stableKey: string;
+  status: "fail" | "ok";
+}
+
+/** Compact live-scan findings summary, encoded in the observation's `use` field.
+ * `counts` is the CRITICAL/HIGH/MEDIUM/LOW roll-up of FAILING checks (kept for
+ * backward compatibility and cheap display); `checks` carries the per-finding
+ * fail/ok status so Direct can count open findings the same way Intelligence
+ * does from a shared evidence source. */
 export interface ScanSummary {
   ok: boolean;
   counts: Record<Severity, number>;
+  checks: ScanFindingStatus[];
 }
 
 /**
@@ -216,8 +228,16 @@ export function buildOverlays(
  */
 export function scanEvidenceObservation(result: ScanResult): AvailabilityObservation {
   const counts: Record<Severity, number> = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 };
-  for (const f of result.findings) if (f.status === "fail") counts[f.severity]++;
-  const summary: ScanSummary = { ok: result.ok ?? false, counts };
+  const checks: ScanFindingStatus[] = [];
+  for (const f of result.findings) {
+    if (f.status === "fail") counts[f.severity]++;
+    // Store only positive fail/ok evidence — a "unchecked" check is not evidence
+    // of a pass OR a fail, so it is never persisted (and never auto-closes).
+    if (f.status === "fail" || f.status === "ok") {
+      checks.push({ stableKey: f.stableKey, status: f.status });
+    }
+  }
+  const summary: ScanSummary = { ok: result.ok ?? false, counts, checks };
   return {
     provider: SCAN_PROVIDER,
     url: result.url || result.requestedUrl || null,
@@ -242,7 +262,19 @@ export function scanSummaryFromObservation(
       const n = Number(raw[s]);
       counts[s] = Number.isFinite(n) && n > 0 ? Math.round(n) : 0;
     });
-    return { ok, counts };
+    const rawChecks = Array.isArray(p.checks) ? p.checks : [];
+    const checks: ScanFindingStatus[] = [];
+    for (const c of rawChecks) {
+      if (!c || typeof c !== "object") continue;
+      const rc = c as { stableKey?: unknown; status?: unknown };
+      if (
+        typeof rc.stableKey === "string" &&
+        (rc.status === "fail" || rc.status === "ok")
+      ) {
+        checks.push({ stableKey: rc.stableKey, status: rc.status });
+      }
+    }
+    return { ok, counts, checks };
   } catch {
     return null;
   }
@@ -258,14 +290,21 @@ export function buildScanEvidenceForObs(
   const ageHours = Math.max(0, (nowMs - obs.observedAt) / 3_600_000);
   const findings = summary?.counts ?? { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 };
   const zero: Record<Severity, number> = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 };
+  // Open-findings count comes from the per-finding status when available (the
+  // source of truth that keeps Direct consistent with Intelligence); falls back
+  // to the severity-count roll-up for observations written before the enrichment.
+  const checks = summary?.checks ?? [];
+  const totalFailures =
+    checks.length > 0
+      ? checks.filter((c) => c.status === "fail").length
+      : findings.CRITICAL + findings.HIGH + findings.MEDIUM + findings.LOW;
   return {
     hasScan: true,
     url: obs.url ?? null,
     scannedAt: obs.observedAt,
     ok: summary?.ok ?? true,
     findings: { ...zero, ...findings },
-    totalFailures:
-      findings.CRITICAL + findings.HIGH + findings.MEDIUM + findings.LOW,
+    totalFailures,
     ageHours,
     tier: stalenessConfidence(ageHours),
     staleness: stalenessLabel(ageHours),

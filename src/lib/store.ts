@@ -2,7 +2,7 @@
 // All data lives in browser localStorage — no backend, no accounts.
 
 // Type-only imports (no runtime side effects, SSR-safe).
-import type { ScanResult } from "./scanSite";
+import type { ScanResult, CheckStatus } from "./scanSite";
 import type { ProductScanHistory } from "./observation";
 import type { Opportunity } from "./opportunity";
 import { mergeScan } from "./observation";
@@ -300,10 +300,59 @@ export function setScan(
   return { ...state, scans: { ...state.scans, [productId]: result } };
 }
 
+/**
+ * Pure, deterministic checklist reconciliation on a fresh scan (Part 1 of the
+ * rescan loop). For each open/in_progress item of `productId` that carries a
+ * `scanKey`, look the stableKey up in the new `ScanResult.findings` and auto-close
+ * ONLY on positive evidence the check now passes:
+ *  - finding present with status "ok"          → status "done";
+ *  - otherwise the overall scan is ok AND the stableKey is absent from findings
+ *    → status "done" (the check is no longer reported, mirroring mergeScan's
+ *      RESOLVED logic for a previously-failing check that vanished);
+ *  - otherwise unchanged.
+ * Honesty discipline: never closes on "unchecked", never on a stale/absent scan
+ * (result.ok === false ⇒ no signal), never fabricates a closure, never regresses
+ * an already-"done" item, never touches items without a scanKey, never touches
+ * other products' items. No Date.now()/nondeterminism inside.
+ */
+export function reconcileItemsOnScan(
+  items: Item[],
+  productId: string,
+  result: ScanResult,
+): Item[] {
+  // A failed/unreachable scan carries NO signal about the findings — preserve
+  // every item exactly as-is (no fabricated closures).
+  if (!result.ok) return items;
+  const byKey = new Map<string, CheckStatus>();
+  for (const f of result.findings) byKey.set(f.stableKey, f.status);
+  let changed = false;
+  const next = items.map((i) => {
+    // Never regress a closed item; never auto-close an item we can't tie to a
+    // specific finding (no scanKey) — those need a human.
+    if (i.status === "done" || !i.scanKey || i.productId !== productId) return i;
+    const st = byKey.get(i.scanKey);
+    if (st === "ok") {
+      changed = true;
+      return { ...i, status: "done" as const };
+    }
+    // Absent stableKey while the overall scan succeeded → the check is no longer
+    // reported → treat as resolved (positive evidence only).
+    if (st === undefined) {
+      changed = true;
+      return { ...i, status: "done" as const };
+    }
+    // Still failing, or "unchecked" (no positive signal) → unchanged.
+    return i;
+  });
+  return changed ? next : items;
+}
+
 // Phase 1 — record a fresh observation for a product. Updates the latest result
 // (kept in sync for the brief) AND merges it into the bounded scan history
 // (occurrence counts, differentials, last-known-good). Preserves last-known-good
-// on a failed scan.
+// on a failed scan. Also reconciles the checklist so items whose checks now pass
+// auto-complete (positive evidence only), keeping the open count consistent with
+// a fresh scan.
 export function recordScan(
   state: AppState,
   productId: string,
@@ -313,6 +362,7 @@ export function recordScan(
   const { history } = mergeScan(prevHistory, result);
   return {
     ...state,
+    items: reconcileItemsOnScan(state.items, productId, result),
     scans: { ...(state.scans ?? {}), [productId]: result },
     scanHistory: { ...(state.scanHistory ?? {}), [productId]: history },
   };
