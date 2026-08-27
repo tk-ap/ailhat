@@ -1,23 +1,20 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { AuthProvider, useAuth } from "~/lib/useAuth";
 import { StoreProvider } from "~/lib/useStore";
 import AppShell from "~/components/AppShell";
 import {
   PLAYBOOK_LESSONS,
   ONBOARDING_LOOP,
-  SKILL_DEMO_TASKS,
   SKILL_DEMO_NOTE,
   DIRECTORY_NOTE,
   type Lesson,
 } from "~/lib/playbook";
 import { recommendSkillsFor } from "~/lib/directiveSkills";
 import type { SkillRef } from "~/lib/directiveSkills";
-import { buildWorkedExamples } from "~/lib/educationExamples";
 import { getAgentControl } from "~/lib/control-query";
 import { buildWorkItem, compileDirectives } from "~/lib/directives";
 import type { CompiledDirectives, WorkItem } from "~/lib/directives";
-import { useMemo } from "react";
 
 export const Route = createFileRoute("/learn")({
   loader: async () => getAgentControl(),
@@ -104,6 +101,7 @@ function WorkedExampleCard({
   compiled,
   skills,
   variant = "sample",
+  rankLabel,
 }: {
   exampleId: string;
   title: string;
@@ -112,6 +110,8 @@ function WorkedExampleCard({
   compiled: CompiledDirectives;
   skills: SkillRef[];
   variant?: "sample" | "account";
+  /** Optional rank label for non-top account items (e.g. "#2"). */
+  rankLabel?: string;
 }) {
   const isAccount = variant === "account";
   const [tab, setTab] = useState<TabId>("markdown");
@@ -143,7 +143,13 @@ function WorkedExampleCard({
     >
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
-          <Eyebrow>{isAccount ? "Your portfolio · do this next" : "Worked example"}</Eyebrow>
+          <Eyebrow>
+            {isAccount
+              ? rankLabel
+                ? `Your portfolio · ${rankLabel}`
+                : "Your portfolio · do this next"
+              : "Worked example"}
+          </Eyebrow>
           <h3 className="mt-0.5 text-sm font-semibold text-gray-100">{title}</h3>
           <p className="mt-1 max-w-2xl text-xs text-gray-500">{scenario}</p>
         </div>
@@ -303,27 +309,36 @@ function LessonCard({ lesson }: { lesson: Lesson }) {
 
 /* ---------- skill demo picker ---------- */
 
-function SkillDemo() {
-  const [selected, setSelected] = useState(SKILL_DEMO_TASKS[0]);
+interface SkillDemoTask {
+  id: string;
+  task: string;
+  scenario: string;
+}
+
+function SkillDemo({ tasks }: { tasks: SkillDemoTask[] }) {
+  const [selected, setSelected] = useState<SkillDemoTask>(tasks[0]);
   const skills = recommendSkillsFor(selected.task);
 
   return (
     <section className="silhat-panel p-5">
       <Eyebrow>Skill selection · live demo</Eyebrow>
       <h2 className="mt-1 text-sm font-semibold text-gray-100">
-        Pick a task — see which agent skill we'd recommend
+        Pick a task from your portfolio — see which agent skill we'd recommend
       </h2>
       <p className="mt-1 max-w-3xl text-sm text-gray-400">
-        Drag through a sample task to see the deterministic keyword heuristic (the same one the
-        directive compiler uses) suggest a curated example skill from{" "}
+        Each option is one of your real top actions (the same work the directive
+        compiler above turns into an injectable artifact). Run the deterministic
+        keyword heuristic (the same one the compiler uses) to surface a curated
+        example skill from{" "}
         <a href="https://antigravityskills.directory" target="_blank" rel="noreferrer" className="text-[#7fb0ff] hover:underline">
           antigravityskills.directory
         </a>
-        . Recommendations are optional, never required, and always link to the public SKILL.md.
+        . Recommendations are optional, never required, and always link to the
+        public SKILL.md.
       </p>
 
       <div className="mt-3 flex flex-wrap gap-1.5">
-        {SKILL_DEMO_TASKS.map((t) => (
+        {tasks.map((t) => (
           <button
             key={t.id}
             type="button"
@@ -341,7 +356,7 @@ function SkillDemo() {
 
       <div className="mt-3 rounded-lg border border-gray-800 bg-gray-950/60 p-3">
         <div className="font-mono text-[10px] font-semibold uppercase tracking-wider text-gray-500">
-          sample task
+          your real top action
         </div>
         <p className="mt-1 text-sm text-gray-200">{selected.task}</p>
 
@@ -429,30 +444,46 @@ function LoopStrip() {
 function Learn() {
   const { user, loading } = useAuth();
   const control = Route.useLoaderData();
-  const examples = useMemo(() => buildWorkedExamples(), []);
-  // ACCOUNT-LEVEL panel: render the owner's REAL top-ranked workspace as a
-  // directive artifact. Only when the loader confirms an authenticated session
-  // — anonymous NEVER receives account data (the loader returns the clearly
-  // labeled demo portfolio, which we ignore here) and the `user` auth gate
-  // below additionally guards this from ever rendering to a visitor.
+  // ACCOUNT-SCOPED: compile a directive artifact for EVERY real workspace in the
+  // owner's portfolio. The loader returns real data only to an authenticated
+  // session; anonymous NEVER receives account data (it returns the clearly
+  // labeled demo portfolio, which we ignore) and the `user` auth gate below
+  // additionally guards this from ever rendering to a visitor.
   const authenticated = !!user && !!control?.authenticated;
   const accountPortfolio = authenticated ? control.portfolio : [];
-  const top = accountPortfolio[0];
   const modeledAt = control?.modeledAt ?? 0;
-  const accountItem = useMemo(
-    () => (top ? buildWorkItem(top, modeledAt, { bucket: control?.bucket ?? null }) : null),
-    [top, modeledAt, control?.bucket],
-  );
-  const accountCompiled = useMemo(
-    () => (accountItem ? compileDirectives(accountItem) : null),
-    [accountItem],
-  );
-  const accountSkills = useMemo(
+
+  // Full real-portfolio worked directives — the deterministic compiler with
+  // honest capacity framing, provenance/evidence chips, and optional real skill
+  // recommendations, run over the owner's actual workspaces (never samples).
+  const workedItems = useMemo(
     () =>
-      accountItem && top
-        ? recommendSkillsFor(`${accountItem.title} ${top.blockers.map((b) => b.title).join(" ")}`)
-        : [],
-    [accountItem, top],
+      accountPortfolio.map((m) => {
+        const item = buildWorkItem(m, modeledAt, { bucket: control?.bucket ?? null });
+        return {
+          m,
+          item,
+          compiled: compileDirectives(item),
+          skills: recommendSkillsFor(`${item.title} ${m.blockers.map((b) => b.title).join(" ")}`),
+        };
+      }),
+    [accountPortfolio, modeledAt, control?.bucket],
+  );
+  const top = workedItems[0];
+
+  // Skill-selection demo re-pointed at the owner's REAL top actions — so no fake
+  // sample products ever appear on the logged-in page.
+  const skillTasks = useMemo(
+    () =>
+      accountPortfolio.map((m) => ({
+        id: `skill-task-${m.ws.id}`,
+        scenario: `${m.ws.name}`,
+        task:
+          m.nextActions[0]?.title ??
+          m.blockers[0]?.title ??
+          `${m.ws.name}: assess current state before scheduling work`,
+      })),
+    [accountPortfolio],
   );
   if (loading) {
     return (
@@ -475,13 +506,13 @@ function Learn() {
             The skills of running an agent workforce
           </h1>
           <p className="mt-1 text-sm text-gray-500">
-            Scenario-driven lessons, worked directive examples, and skill-selection guidance —
-            tuned to your live portfolio, retained in-app.
+            Scenario-driven lessons, worked directives from your own portfolio, and
+            skill-selection guidance — tuned to your live portfolio, retained in-app.
           </p>
         </div>
         <div className="text-right font-mono text-[11px] uppercase tracking-wider text-gray-500">
           <div>{PLAYBOOK_LESSONS.length} lessons</div>
-          <div>{examples.length} worked examples</div>
+          <div>{workedItems.length} worked directives</div>
         </div>
       </div>
 
@@ -508,15 +539,15 @@ function Learn() {
               from your live portfolio · account-scoped
             </span>
           </div>
-          {top && accountItem && accountCompiled ? (
+          {top ? (
             <WorkedExampleCard
               variant="account"
-              exampleId={top.ws.id}
-              title={accountItem.title}
-              scenario={`${top.ws.name} · ${top.ws.stage}. Ranked first on launch impact — this is the highest-value launch blocker in your portfolio right now.`}
-              item={accountItem}
-              compiled={accountCompiled}
-              skills={accountSkills}
+              exampleId={top.m.ws.id}
+              title={top.item.title}
+              scenario={`${top.m.ws.name} · ${top.m.ws.stage}. Ranked first on launch impact — this is the highest-value launch blocker in your portfolio right now.`}
+              item={top.item}
+              compiled={top.compiled}
+              skills={top.skills}
             />
           ) : (
             <div className="rounded-xl border border-dashed border-gray-800 bg-gray-950/60 px-5 py-8 text-center">
@@ -532,39 +563,46 @@ function Learn() {
         </section>
       )}
 
-      {/* Worked directive examples */}
-      <section>
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <Eyebrow>Worked directive examples</Eyebrow>
-          <span className="font-mono text-[10px] uppercase tracking-wider text-gray-600">
-            markdown · json · tool schema · toon
-          </span>
-        </div>
-        <p className="mb-3 max-w-3xl text-sm text-gray-400">
-          Agent Direct's core output is an <strong className="text-gray-200">injectable artifact</strong>.
-          These three examples show a well-formed directive for real workspace scenarios, generated by
-          the live compiler — copy or download them as templates.
-        </p>
-        <div className="space-y-4">
-          {examples.map((ex) => (
-            <WorkedExampleCard
-              key={ex.id}
-              exampleId={ex.id}
-              title={ex.title}
-              scenario={ex.scenario}
-              item={ex.item}
-              compiled={ex.compiled}
-              skills={ex.skills}
-            />
-          ))}
-        </div>
-        <p className="mt-3 rounded-lg border border-gray-800 bg-gray-950/60 px-4 py-2 text-xs text-gray-500">
-          {examples.length > 0 ? "Examples compile deterministically — the same sample workspace always produces identical bytes." : ""}
-        </p>
-      </section>
+      {/* Your portfolio — worked directives (owner's REAL workspaces; never a
+          demo/sample portfolio for an authenticated owner). */}
+      {authenticated && workedItems.length > 0 && (
+        <section>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <Eyebrow>Your portfolio — worked directives</Eyebrow>
+            <span className="font-mono text-[10px] uppercase tracking-wider text-gray-600">
+              from your live portfolio · account-scoped
+            </span>
+          </div>
+          <p className="mb-3 max-w-3xl text-sm text-gray-400">
+            Every real workspace in your portfolio, compiled by the live Agent Direct compiler into
+            an injectable artifact — copy or download any of them and load it into the target
+            harness. Same structure, provenance stamps, and honest capacity framing as your top
+            item; this is your own data, never a template.
+          </p>
+          <div className="space-y-4">
+            {workedItems.map((w, i) => (
+              <WorkedExampleCard
+                key={w.m.ws.id}
+                variant="account"
+                rankLabel={i === 0 ? undefined : `#${i + 1}`}
+                exampleId={w.m.ws.id}
+                title={w.item.title}
+                scenario={`${w.m.ws.name} · ${w.m.ws.stage}${w.m.ws.url ? ` · ${w.m.ws.url}` : ""}. ${w.m.distanceLabel}.`}
+                item={w.item}
+                compiled={w.compiled}
+                skills={w.skills}
+              />
+            ))}
+          </div>
+          <p className="mt-3 rounded-lg border border-gray-800 bg-gray-950/60 px-4 py-2 text-xs text-gray-500">
+            Directives compile deterministically — the same workspace always produces identical
+            bytes — and availability is always disclosed context, never a promised slot.
+          </p>
+        </section>
+      )}
 
-      {/* Skill selection, live */}
-      <SkillDemo />
+      {/* Skill selection, live — demonstrated on your real top actions only. */}
+      {authenticated && skillTasks.length > 0 && <SkillDemo tasks={skillTasks} />}
 
       {/* Playbook lessons */}
       <section>
