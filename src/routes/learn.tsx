@@ -14,10 +14,13 @@ import {
 import { recommendSkillsFor } from "~/lib/directiveSkills";
 import type { SkillRef } from "~/lib/directiveSkills";
 import { buildWorkedExamples } from "~/lib/educationExamples";
+import { getAgentControl } from "~/lib/control-query";
+import { buildWorkItem, compileDirectives } from "~/lib/directives";
 import type { CompiledDirectives, WorkItem } from "~/lib/directives";
 import { useMemo } from "react";
 
 export const Route = createFileRoute("/learn")({
+  loader: async () => getAgentControl(),
   component: () => (
     <AuthProvider>
       <StoreProvider>
@@ -61,14 +64,14 @@ async function copyText(text: string): Promise<boolean> {
   }
 }
 
-function downloadExample(exampleId: string, tab: TabId, text: string) {
+function downloadExample(baseName: string, tab: TabId, text: string) {
   const meta = TABS.find((t) => t.id === tab);
   if (!meta) return;
   const blob = new Blob([text], { type: meta.mime });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `worked-example-${exampleId}.${meta.ext}`;
+  a.download = `${baseName}.${meta.ext}`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -100,6 +103,7 @@ function WorkedExampleCard({
   item,
   compiled,
   skills,
+  variant = "sample",
 }: {
   exampleId: string;
   title: string;
@@ -107,7 +111,9 @@ function WorkedExampleCard({
   item: WorkItem;
   compiled: CompiledDirectives;
   skills: SkillRef[];
+  variant?: "sample" | "account";
 }) {
+  const isAccount = variant === "account";
   const [tab, setTab] = useState<TabId>("markdown");
   const [copied, setCopied] = useState(false);
   const text = compiled[tab];
@@ -128,15 +134,31 @@ function WorkedExampleCard({
         : "unassessed";
 
   return (
-    <section className="rounded-xl border border-[#7fb0ff]/20 bg-gray-950/70 p-4">
+    <section
+      className={
+        isAccount
+          ? "rounded-xl border border-emerald-400/30 bg-gray-950/70 p-4"
+          : "rounded-xl border border-[#7fb0ff]/20 bg-gray-950/70 p-4"
+      }
+    >
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
-          <Eyebrow>Worked example</Eyebrow>
+          <Eyebrow>{isAccount ? "Your portfolio · do this next" : "Worked example"}</Eyebrow>
           <h3 className="mt-0.5 text-sm font-semibold text-gray-100">{title}</h3>
           <p className="mt-1 max-w-2xl text-xs text-gray-500">{scenario}</p>
         </div>
         <Chip className="bg-[#7fb0ff]/10 text-[#7fb0ff] ring-[#7fb0ff]/30">{item.workspace.name}</Chip>
       </div>
+      {isAccount && (
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <Chip className="bg-emerald-500/10 text-emerald-300 ring-emerald-500/30">
+            from your live portfolio · account-scoped
+          </Chip>
+          <span className="text-[11px] text-gray-500">
+            Compiled from your top-ranked workspace — your real data, not a template.
+          </span>
+        </div>
+      )}
 
       {/* Honest capacity framing — always visible, never buried. */}
       <div className="mt-3 rounded-lg border border-amber-400/20 bg-amber-400/[0.04] px-3 py-2 text-xs text-amber-100/90">
@@ -204,7 +226,7 @@ function WorkedExampleCard({
         </button>
         <button
           type="button"
-          onClick={() => downloadExample(exampleId, tab, text)}
+          onClick={() => downloadExample(isAccount ? `directive-${item.id}` : `worked-example-${exampleId}`, tab, text)}
           className="inline-flex items-center rounded-lg border border-gray-700 bg-gray-800/70 px-3 py-1.5 text-xs font-semibold text-gray-200 hover:bg-gray-800"
         >
           Download .{TABS.find((t) => t.id === tab)?.ext}
@@ -406,8 +428,32 @@ function LoopStrip() {
 
 function Learn() {
   const { user, loading } = useAuth();
+  const control = Route.useLoaderData();
   const examples = useMemo(() => buildWorkedExamples(), []);
-
+  // ACCOUNT-LEVEL panel: render the owner's REAL top-ranked workspace as a
+  // directive artifact. Only when the loader confirms an authenticated session
+  // — anonymous NEVER receives account data (the loader returns the clearly
+  // labeled demo portfolio, which we ignore here) and the `user` auth gate
+  // below additionally guards this from ever rendering to a visitor.
+  const authenticated = !!user && !!control?.authenticated;
+  const accountPortfolio = authenticated ? control.portfolio : [];
+  const top = accountPortfolio[0];
+  const modeledAt = control?.modeledAt ?? 0;
+  const accountItem = useMemo(
+    () => (top ? buildWorkItem(top, modeledAt, { bucket: control?.bucket ?? null }) : null),
+    [top, modeledAt, control?.bucket],
+  );
+  const accountCompiled = useMemo(
+    () => (accountItem ? compileDirectives(accountItem) : null),
+    [accountItem],
+  );
+  const accountSkills = useMemo(
+    () =>
+      accountItem && top
+        ? recommendSkillsFor(`${accountItem.title} ${top.blockers.map((b) => b.title).join(" ")}`)
+        : [],
+    [accountItem, top],
+  );
   if (loading) {
     return (
       <div className="py-20 text-center text-sm text-gray-400">Loading…</div>
@@ -441,6 +487,50 @@ function Learn() {
 
       {/* Guided loop overview */}
       <LoopStrip />
+
+      {/* ACCOUNT-LEVEL panel — the owner's real top work, directable now. Renders
+          ONLY for an authenticated owner; never for anonymous visitors. */}
+      {authenticated && (
+        <section className="space-y-3">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <Eyebrow>Your portfolio — direct it now</Eyebrow>
+              <h2 className="mt-1 text-lg font-bold tracking-tight text-gray-50">
+                Do this next, on your real work
+              </h2>
+              <p className="mt-1 max-w-3xl text-sm text-gray-400">
+                Your highest-ranked workspace, compiled by the real Agent Direct directive compiler
+                into an injectable artifact — copyable in all four formats. This is your own
+                account-scoped data, never a template.
+              </p>
+            </div>
+            <span className="font-mono text-[10px] uppercase tracking-wider text-gray-600">
+              from your live portfolio · account-scoped
+            </span>
+          </div>
+          {top && accountItem && accountCompiled ? (
+            <WorkedExampleCard
+              variant="account"
+              exampleId={top.ws.id}
+              title={accountItem.title}
+              scenario={`${top.ws.name} · ${top.ws.stage}. Ranked first on launch impact — this is the highest-value launch blocker in your portfolio right now.`}
+              item={accountItem}
+              compiled={accountCompiled}
+              skills={accountSkills}
+            />
+          ) : (
+            <div className="rounded-xl border border-dashed border-gray-800 bg-gray-950/60 px-5 py-8 text-center">
+              <div className="silhat-eyebrow">Your portfolio · direct it now</div>
+              <h3 className="mt-1 text-sm font-semibold text-gray-200">Nothing to direct yet</h3>
+              <p className="mx-auto mt-1 max-w-xl text-xs text-gray-500">
+                Your portfolio is empty — no modeled work item is available to compile. Run a scan on
+                the <Link to="/control" className="text-[#7fb0ff] hover:underline">Direct</Link> view
+                to seed evidence, then a directive will appear here.
+              </p>
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Worked directive examples */}
       <section>
