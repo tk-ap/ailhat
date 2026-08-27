@@ -16,7 +16,6 @@ import {
   ITEM_STATUSES,
   ITEM_TYPES,
   PLATFORMS,
-  buildSuggestions,
   detectDuplicates,
   doneItems,
   hasScanItem,
@@ -1072,68 +1071,6 @@ function StatusChip({ status }: { status: "available" | "taken" | "error" }) {
   );
 }
 
-/* ---------- Smart suggestions ---------- */
-
-function Suggestions() {
-  const { state } = useStore();
-  const suggestions = buildSuggestions(state);
-  const upcoming = suggestions.filter((s) => s.kind === "upcoming");
-  const cross = suggestions.filter((s) => s.kind === "cross");
-
-  const card = (items: typeof suggestions) =>
-    items.length === 0 ? (
-      <p className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-6 text-center text-sm text-gray-400 dark:border-gray-800 dark:bg-gray-800/40">
-        Nothing to flag right now. Add items to see suggestions.
-      </p>
-    ) : (
-      <ul className="space-y-2">
-        {items.map((s) => (
-          <li
-            key={s.id}
-            className="flex items-start gap-3 rounded-xl border border-gray-100 bg-white p-3 dark:border-gray-800 dark:bg-gray-900/70"
-          >
-            <span
-              className={`mt-0.5 rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase ${s.tone}`}
-            >
-              {s.kind === "cross" ? "Cross-market" : "Flag"}
-            </span>
-            <div>
-              <p className="text-sm font-medium">{s.title}</p>
-              <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                {s.detail}
-              </p>
-            </div>
-          </li>
-        ))}
-      </ul>
-    );
-
-  return (
-    <section className="mb-6">
-      <div className="mb-3 flex items-center gap-2">
-        <h2 className="text-lg font-bold tracking-tight">Smart suggestions</h2>
-        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500 dark:bg-gray-800 dark:text-gray-400">
-          rule-based
-        </span>
-      </div>
-      <div className="grid gap-5 lg:grid-cols-2">
-        <div>
-          <h3 className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">
-            Upcoming work
-          </h3>
-          {card(upcoming)}
-        </div>
-        <div>
-          <h3 className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
-            Cross-marketing
-          </h3>
-          {card(cross)}
-        </div>
-      </div>
-    </section>
-  );
-}
-
 /* ---------- Dashboard root ---------- */
 
 // Phase 1 — automatic observation. Scans each product that has a URL in the
@@ -1366,7 +1303,6 @@ function Dashboard() {
             </div>
           ) : (
             <>
-              <Suggestions />
               <div className="grid gap-5 xl:grid-cols-2">
                 {state.products.map((p) => (
                   <ProductCard

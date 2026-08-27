@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import {
   StoreProvider,
@@ -10,9 +10,7 @@ import ControlLegend from "~/components/ControlLegend";
 import { getAgentControl } from "~/lib/control-query";
 import { leaderReason } from "~/lib/control-scoring";
 import type { ModeledWorkspace } from "~/lib/control-scoring";
-import { HARNESSES, SLOT_LABEL } from "~/lib/agent-control";
-import type { SlotState } from "~/lib/agent-control";
-import { ageLabelObs, type LiveOverlay } from "~/lib/observations";
+import { ageLabelObs, isKnownScanHost, type LiveOverlay } from "~/lib/observations";
 import { buildWorkItem, compileDirectives } from "~/lib/directives";
 import type { CompiledDirectives, WorkItem } from "~/lib/directives";
 import GuidedOnboarding from "~/components/GuidedOnboarding";
@@ -55,14 +53,6 @@ const severityTone: Record<string, string> = {
   medium: "bg-amber-500/10 text-amber-300 ring-amber-500/30",
   low: "bg-gray-700/40 text-gray-300 ring-gray-600/40",
 };
-
-const slotDot: Record<SlotState, string> = {
-  available: "bg-emerald-400",
-  busy: "bg-amber-400",
-  none: "bg-gray-600",
-};
-
-const slotLabel: Record<SlotState, string> = SLOT_LABEL;
 
 const confTone: Record<string, string> = {
   High: "text-emerald-300",
@@ -139,101 +129,6 @@ function SharedBucketCallout({ bucket }: { bucket: LiveOverlay | null }) {
   );
 }
 
-/* ---------- capacity matrix ---------- */
-
-function CapacityMatrix({ portfolio }: { portfolio: ModeledWorkspace[] }) {
-  const top = portfolio[0];
-  const leadInterface =
-    top && top.actionableNow.length > 0 ? top.actionableNow[0] : undefined;
-  const takeaway = top
-    ? leadInterface
-      ? `The highest-priority workspace is ${top.ws.name}. ${top.ws.recommendedAgent} is available now on ${leadInterface} and can take its next step right away.`
-      : `No interface is currently free to take the next step for ${top.ws.name}.`
-    : "";
-  return (
-    <section className="silhat-panel p-5">
-      <div className="flex items-center gap-2">
-        <h2 className="text-sm font-semibold text-gray-100">
-          Capacity by project × interface
-        </h2>
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-[#7fb0ff]/30 bg-[#7fb0ff]/[0.06] px-2 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-[0.18em] text-[#7fb0ff]">
-          <span className="ping-dot ping-dot--blue h-1.5 w-1.5 rounded-full bg-[#7fb0ff]" />
-          live
-        </span>
-      </div>
-      <p className="mt-1 text-xs text-gray-500">
-        Is an agent free on this interface for this project right now — and is there work they can take on it?
-      </p>
-      <div className="mt-4 overflow-x-auto">
-        <table className="w-full min-w-[560px] border-collapse text-left text-sm">
-          <thead>
-            <tr className="border-b border-gray-800">
-              <th className="py-2 pr-3 font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-500">
-                Project
-              </th>
-              {HARNESSES.map((h) => (
-                <th key={h} className="px-2 py-2 text-center font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-500">
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {portfolio.map((m) => {
-              const blockerTitle = (id?: string) =>
-                id ? m.ws.blockers.find((b) => b.id === id)?.title : undefined;
-              return (
-                <tr key={m.ws.id} className="border-b border-gray-800 last:border-0">
-                  <td className="py-2.5 pr-3 align-middle">
-                    <div className="font-medium text-gray-200">{m.ws.name}</div>
-                    <div className="text-[11px] text-gray-500">{m.ws.stage}</div>
-                    {m.ws.sharedBucket && (
-                      <div className="mt-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-[#7fb0ff]">
-                        shared {m.ws.sharedBucket} bucket
-                      </div>
-                    )}
-                  </td>
-                  {HARNESSES.map((h) => {
-                    const slot = m.ws.interfaces[h];
-                    const needsWork = slot.state === "available" && !!slot.work;
-                    return (
-                      <td key={h} className="px-2 py-2.5 text-center align-middle">
-                        <span className="inline-flex items-center gap-1.5 rounded-md border border-gray-800 bg-gray-900 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
-                          <span className={`h-1.5 w-1.5 rounded-full ${slotDot[slot.state]}`} />
-                          {slotLabel[slot.state]}
-                        </span>
-                        {needsWork && (
-                          <div
-                            className="mt-1 text-[10px] font-medium text-[#7fb0ff]"
-                            title={blockerTitle(slot.work)}
-                          >
-                            work needed here
-                          </div>
-                        )}
-                      </td>
-                    );
-                  })}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-      <div className="mt-4 flex flex-wrap items-center gap-2 font-mono text-[10px] uppercase tracking-wider text-gray-500">
-        <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> Available</span>
-        <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-amber-400" /> Busy</span>
-        <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-gray-600" /> No agent</span>
-        <span className="inline-flex items-center gap-1.5 text-[#7fb0ff]">work needed = free interface that can act on a blocker</span>
-      </div>
-      {takeaway && (
-        <p className="mt-4 rounded-lg border border-gray-800 bg-gray-950/70 px-4 py-3 text-sm text-gray-400">
-          <span className="font-semibold text-[#7fb0ff]">Takeaway:</span> {takeaway}
-        </p>
-      )}
-    </section>
-  );
-}
-
 /* ---------- card pieces ---------- */
 
 function StatusBadges({ m }: { m: ModeledWorkspace }) {
@@ -281,15 +176,17 @@ function ReadinessPanel({ m }: { m: ModeledWorkspace }) {
           No percentage — run assessment/scan first. A score is never invented without evidence.
         </div>
       )}
-      {/* Live observed availability (never invented — baseline shown if none). */}
+      {/* Site scan evidence — a scan of the workspace's URL reports on site
+          health only. It is never harness availability (never invented; if no
+          scan has run, we say so and point at the Sync button). */}
       <div className="mt-2 rounded-md border border-[#7fb0ff]/15 bg-[#7fb0ff]/[0.04] px-2.5 py-2">
         <div className="flex items-center justify-between gap-2">
           <span className="text-[11px] font-medium text-gray-300">
             {live
               ? live.cap != null
-                ? `Availability: ${live.cap}%`
-                : "Availability: not detected"
-              : "Availability: reference baseline"}
+                ? `Site scan: ${live.cap}%`
+                : "Site scan: not detected"
+              : "No scan yet — run a scan"}
           </span>
           {live ? (
             <Chip className={live.tier === "High" ? "bg-emerald-500/10 text-emerald-300 ring-emerald-500/30" : live.tier === "Medium" ? "bg-amber-500/10 text-amber-300 ring-amber-500/30" : "bg-rose-500/10 text-rose-300 ring-rose-500/30"}>
@@ -297,13 +194,16 @@ function ReadinessPanel({ m }: { m: ModeledWorkspace }) {
             </Chip>
           ) : (
             <Chip className="bg-gray-700/40 text-gray-400 ring-gray-600/40">
-              no live observation
+              no scan yet
             </Chip>
           )}
         </div>
         {live && live.cap != null && (
           <div className="mt-1.5"><Bar value={live.cap} tone="bg-emerald-400" /></div>
         )}
+        <p className="mt-1.5 text-[10px] text-gray-600">
+          Site health scan from the workspace's URL — not harness availability.
+        </p>
       </div>
       <div className="mt-2 flex items-center justify-between gap-2 text-[11px] text-gray-500">
         <span className="min-w-0 break-words">{m.distanceLabel}</span>
@@ -382,7 +282,7 @@ function ProductCard({ m, now }: { m: ModeledWorkspace; now: number }) {
       <div className="flex items-center justify-between gap-3 border-b border-gray-800 px-4 py-2.5">
         <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-gray-500">
           <span className="h-1.5 w-1.5 rounded-full bg-[#7fb0ff]" />
-          {m.live ? "live sync" : m.scan ? "live scan" : "reference"}
+          {m.live || m.scan ? "site scan" : "no scan yet"}
           <span className="text-gray-600">·</span>
           <span className="text-gray-500">priority #{m.priority} pts</span>
         </div>
@@ -491,12 +391,12 @@ function ProductCard({ m, now }: { m: ModeledWorkspace; now: number }) {
           </div>
           <div>
             <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-gray-500">
-              Evidence · last scan
+              Evidence · site scan
             </div>
             {m.scan ? (
               <>
                 <div className="mt-1 text-sm font-medium text-[#7fb0ff]">
-                  live scan · {ageLabelObs(now, m.scan.scannedAt)}
+                  site scan · {ageLabelObs(now, m.scan.scannedAt)}
                 </div>
                 <div className="font-mono text-[10px] text-gray-500">
                   {m.scan.url?.replace(/^https?:\/\//, "")} ·{" "}
@@ -508,7 +408,7 @@ function ProductCard({ m, now }: { m: ModeledWorkspace; now: number }) {
             ) : m.live ? (
               <>
                 <div className="mt-1 text-sm font-medium text-[#7fb0ff]">
-                  live observation · {ageLabelObs(now, m.live.observedAt)}
+                  site scan · {ageLabelObs(now, m.live.observedAt)}
                 </div>
                 <div className="font-mono text-[10px] text-gray-500">
                   {m.live.provider} · {m.live.url?.replace(/^https?:\/\//, "")} · observed{" "}
@@ -517,16 +417,73 @@ function ProductCard({ m, now }: { m: ModeledWorkspace; now: number }) {
               </>
             ) : (
               <>
-                <div className="mt-1 text-sm font-medium text-gray-200">{m.evidenceLabel}</div>
+                <div className="mt-1 text-sm font-medium text-gray-200">No scan yet — run a scan</div>
                 <div className="font-mono text-[10px] text-gray-500">
-                  {m.ws.lastScan} · no live evidence — reference baseline
+                  site health scan, not harness availability
                 </div>
               </>
             )}
           </div>
         </div>
+        <SyncScanButton url={m.ws.url ?? null} />
       </div>
     </article>
+  );
+}
+
+/* ---------- per-workspace scan control ---------- */
+
+/** "Sync scan" per workspace. Only functional for URLs that map to a known,
+ *  scan-ingestible host (the scan endpoint only persists evidence for those);
+ *  everything else shows a clearly-labeled disabled state and never claims a
+ *  scan will be saved. Site scan only — never presented as harness availability. */
+function SyncScanButton({ url }: { url: string | null }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const canScan = !!url && isKnownScanHost(url);
+
+  if (!canScan) {
+    return (
+      <div className="mt-3 rounded-lg border border-dashed border-gray-800 bg-gray-950/40 px-3 py-2 text-[11px] text-gray-600">
+        Sync scan not available for this workspace yet — its URL isn't a mapped,
+        scan-ingestible host, so a scan would not be persisted.
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-2">
+      <button
+        type="button"
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true);
+          setMsg(null);
+          try {
+            const res = await fetch(`/api/scan-site?url=${encodeURIComponent(url)}`);
+            const j = (await res.json()) as { ok?: boolean };
+            setMsg(
+              j && j.ok !== false
+                ? "Scan complete — readiness re-evaluated"
+                : "Scan ran — site unreachable",
+            );
+            await router.invalidate();
+          } catch {
+            setMsg("Scan failed");
+          } finally {
+            setBusy(false);
+          }
+        }}
+        className="silhat-btn silhat-btn-primary inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold"
+      >
+        {busy ? "Scanning…" : "⇣ Sync scan"}
+      </button>
+      <span className="font-mono text-[10px] uppercase tracking-wider text-gray-500">
+        site health scan · not harness availability
+      </span>
+      {msg && <span className="text-[11px] text-[#7fb0ff]">{msg}</span>}
+    </div>
   );
 }
 
@@ -861,7 +818,6 @@ function Control() {
       )}
 
       <SharedBucketCallout bucket={data?.bucket ?? null} />
-      <CapacityMatrix portfolio={portfolio} />
 
       {/* Portfolio cards */}
       <div className="grid gap-5 lg:grid-cols-2">

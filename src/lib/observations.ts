@@ -109,6 +109,19 @@ export function mapUrlToWorkspaceId(url?: string | null): string | null {
 }
 
 /**
+ * True when a URL's host maps to a known, scan-ingestible product host (ailhat,
+ * ledgato, alvira, alviratech-bridge). The scan endpoint only PERSISTS evidence
+ * for these known hosts — an unmapped URL would be scanned but never saved, so
+ * the /direct Sync scan button is only offered (functional) for these. cto.new /
+ * ChatGPT pages map to the shared Builder bucket, not a product, so they are
+ * never offered per-workspace either.
+ */
+export function isKnownScanHost(url?: string | null): boolean {
+  const id = mapUrlToWorkspaceId(url);
+  return id !== null && id !== CTO_BUCKET_ID;
+}
+
+/**
  * Staleness-driven confidence for an observed availability value: fresh <1h High,
  * <24h Medium, >24h Low. Never broadens an observation's credibility with age.
  */
