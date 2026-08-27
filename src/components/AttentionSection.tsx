@@ -282,9 +282,6 @@ export default function AttentionSection() {
     <section>
       <div className="flex flex-wrap items-center gap-2">
         <p className="silhat-eyebrow text-cyan-300">Intelligence · Attention engine</p>
-        <span className="rounded-full bg-cyan-100 px-2 py-0.5 text-[11px] font-semibold text-cyan-800 dark:bg-cyan-950 dark:text-cyan-300">
-          Phase 5
-        </span>
       </div>
       <h1 className="mt-1 text-2xl font-bold tracking-tight text-gray-50">
         What should I do next?

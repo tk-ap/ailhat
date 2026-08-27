@@ -179,9 +179,6 @@ export default function OpportunitySection() {
     <section className="mt-6">
       <div className="flex flex-wrap items-center gap-2">
         <p className="silhat-eyebrow">Intelligence · Opportunities</p>
-        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-          Phase 3
-        </span>
       </div>
       <h2 className="mt-1 text-2xl font-bold tracking-tight text-gray-50">
         What to improve next

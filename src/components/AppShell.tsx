@@ -4,11 +4,10 @@
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { useStore } from "~/lib/useStore";
-import { useAuth } from "~/lib/useAuth";
 import AuthNav from "~/components/AuthNav";
 import { platformLabel } from "~/lib/store";
 
-export type ShellView = "today" | "intelligence" | "control" | "learn";
+export type ShellView = "today" | "intelligence" | "control" | "learn" | "decisions";
 
 const NAV: { id: ShellView; label: string; to: string; icon: ReactNode; hint: string }[] = [
   {
@@ -75,7 +74,6 @@ export default function AppShell({
   children: ReactNode;
 }) {
   const { state } = useStore();
-  const { user } = useAuth();
 
   const openCount = state.items.filter((i) => i.status !== "done").length;
 
@@ -126,7 +124,8 @@ export default function AppShell({
                   return (
                     <Link
                       key={p.id}
-                      to="/dashboard"
+                      to="/decisions/$productId"
+                      params={{ productId: p.id }}
                       className="silhat-nav"
                       title={platformLabel(p.platform)}
                     >
@@ -171,17 +170,19 @@ export default function AppShell({
 
         {/* Sidebar footer — summary + user */}
         <div className="border-t border-gray-800 px-3 py-3">
-          <div className="mb-3 flex items-center justify-between rounded-lg border border-gray-800 bg-gray-900 px-3 py-2.5">
+          <div className="mb-3 flex items-center justify-between gap-2 rounded-lg border border-gray-800 bg-gray-900 px-3 py-2.5">
             <div className="leading-tight">
               <div className="text-sm font-semibold text-gray-100">
                 {state.products.length} product{state.products.length === 1 ? "" : "s"}
               </div>
               <div className="text-[11px] text-gray-400">{openCount} open signal{openCount === 1 ? "" : "s"}</div>
             </div>
-            <div className="silhat-live">
-              <span className="ping-dot ping-dot--blue h-1.5 w-1.5 rounded-full bg-[#7fb0ff]" />
-              Live
-            </div>
+            {/* Account-scoped honesty: the portfolio is the owner's private data.
+                No unconditional "Live" claim — a live/scan state is never asserted
+                here without real evidence behind it. */}
+            <span className="shrink-0 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-300">
+              Private
+            </span>
           </div>
           <AuthNav compact />
         </div>
@@ -210,15 +211,12 @@ export default function AppShell({
                   ? `Agent Direct · execution capacity & allocation`
                   : active === "learn"
                     ? `Playbook · lessons & worked examples`
-                    : `Attention · prioritised signals`}
+                    : active === "decisions"
+                      ? `Agent Direct · per-product decisions`
+                      : `Attention · prioritised signals`}
             </span>
           </div>
           <div className="flex items-center gap-3">
-            {user && (
-              <span className="hidden max-w-[200px] truncate text-sm text-gray-400 lg:inline">
-                {user.email}
-              </span>
-            )}
             <AuthNav />
           </div>
         </header>

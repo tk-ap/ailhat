@@ -494,7 +494,7 @@ function Brief() {
               <div className="silhat-panel border-dashed px-6 py-16 text-center">
                 <p className="text-lg font-semibold text-gray-200">Nothing to show</p>
                 <p className="mt-1 text-sm text-gray-400">
-                  All signals are handled or hidden. Add products/items or reset demo data to regenerate.
+                  All signals are handled or hidden. Add products or checklist items to your portfolio to surface new signals.
                 </p>
               </div>
             ) : (

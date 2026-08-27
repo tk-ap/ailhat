@@ -15,6 +15,8 @@ import {
   type ItemType,
   type Platform,
   type Product,
+  type ProductDecision,
+  type DecisionDisposition,
   SNOOZE_MS,
   addItem,
   addProduct,
@@ -23,6 +25,8 @@ import {
   loadState,
   resetData,
   saveState,
+  setDecisions,
+  setDecisionDisposition,
   setFeedback,
   setScan,
   recordScan,
@@ -55,6 +59,13 @@ export interface Actions {
   deleteItem: (id: string) => void;
   setScan: (productId: string, result: ScanResult) => void;
   recordScan: (productId: string, result: ScanResult) => void;
+  setDecisions: (productId: string, decisions: ProductDecision[]) => void;
+  setDecisionDisposition: (
+    productId: string,
+    decisionId: string,
+    disposition: DecisionDisposition,
+    reason?: string,
+  ) => void;
   setFeedback: (signalId: string, kind: FeedbackKind) => void;
   setOpportunities: (opps: Opportunity[]) => void;
   setOpportunityFeedback: (oppId: string, kind: FeedbackKind) => void;
@@ -72,6 +83,7 @@ const StoreContext = createContext<Ctx | null>(null);
 const EMPTY: AppState = {
   products: [],
   items: [],
+  decisions: {},
   scans: {},
   scanHistory: {},
   feedback: {},
@@ -79,14 +91,19 @@ const EMPTY: AppState = {
   opportunityFeedback: {},
 };
 
-// Normalise an untrusted server payload into a valid AppState shape.
-function normalizeState(raw: AppState | null | undefined): AppState | null {
+// Normalise an untrusted server payload into a valid AppState shape. Exported so
+// hydration behavior (incl. the per-product `decisions` field) is unit-testable.
+export function normalizeState(raw: AppState | null | undefined): AppState | null {
   if (!raw || typeof raw !== "object") return null;
   const r = raw as Partial<AppState>;
   if (!Array.isArray(r.products)) return null;
   return {
     products: r.products,
     items: Array.isArray(r.items) ? r.items : [],
+    decisions:
+      r.decisions && typeof r.decisions === "object" && !Array.isArray(r.decisions)
+        ? (r.decisions as Record<string, ProductDecision[]>)
+        : {},
     scans: r.scans ?? {},
     scanHistory: r.scanHistory ?? {},
     feedback: r.feedback ?? {},
@@ -207,6 +224,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     deleteItem: (id) => commit(deleteItem(state, id)),
     setScan: (productId, result) => commit(setScan(state, productId, result)),
     recordScan: (productId, result) => commit(recordScan(state, productId, result)),
+    setDecisions: (productId, decisions) =>
+      commit(setDecisions(state, productId, decisions)),
+    setDecisionDisposition: (productId, decisionId, disposition, reason) =>
+      commit(setDecisionDisposition(state, productId, decisionId, disposition, reason)),
     setFeedback: (signalId, kind) =>
       commit(
         setFeedback(state, signalId, {
@@ -222,7 +243,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           ...(kind === "snoozed" ? { until: Date.now() + SNOOZE_MS } : {}),
         }),
       ),
-    resetData: () => commit(resetData()),
+    resetData: () => {
+      // Gate on auth: NEVER reset the authenticated owner's real portfolio. Only
+      // an anonymous/demo session may be reset. This makes a real-data wipe
+      // impossible from the authenticated surface regardless of UI affordance.
+      commit(resetData(state, !user));
+    },
   };
 
   return (

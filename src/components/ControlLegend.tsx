@@ -37,18 +37,6 @@ function Def({
   );
 }
 
-// Small color/label swatch used to map visuals to meaning.
-function Swatch({ className, label }: { className: string; label: string }) {
-  return (
-    <span className="inline-flex items-center gap-1.5 rounded-md border border-gray-800 bg-gray-950/60 px-2 py-1">
-      <span className={`h-2 w-2 rounded-full ${className}`} />
-      <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-gray-300">
-        {label}
-      </span>
-    </span>
-  );
-}
-
 /* ---------- section wrappers ---------- */
 
 function LegendSection({
@@ -156,18 +144,6 @@ export default function ControlLegend() {
             actually free, paired with the <strong className="text-gray-200">recommended agent /
             provider</strong> (the role and harness best placed to take the work).
           </Def>
-          <Def term="Capacity by project × interface" hint="CLI · Web UI · API · Sandbox">
-            The matrix shows whether an <strong className="text-gray-200">agent is free right
-            now</strong>, per project and per interface (the surface an agent works through). Cells
-            read:{" "}
-            <span className="inline-flex flex-wrap items-center gap-1.5 align-middle px-1">
-              <Swatch className="bg-emerald-400" label="Available" />
-              <Swatch className="bg-amber-400" label="Busy" />
-              <Swatch className="bg-gray-600" label="No agent" />
-            </span>
-            . The flag <Swatch className="bg-[#7fb0ff]" label="work needed here" /> marks a free
-            interface that has an actionable blocker sitting on it — a place work can start now.
-          </Def>
           <Def term="Shared cto.new Builder bucket" hint="shared capacity across products">
             Products that draw on one shared{" "}
             <strong className="text-gray-200">cto.new Builder</strong> pool. Working on either one
@@ -184,8 +160,8 @@ export default function ControlLegend() {
           <Def term="Harness / interface" hint="CLI · Web UI · API · Sandbox">
             The <strong className="text-gray-200">surface an agent works through</strong>. A CLI for
             terminal-driven work, a Web UI for browser-driven work, an API for programmatic
-            integration, a Sandbox for isolated runs. The matrix tracks availability on each of
-            these per project.
+            integration, and a Sandbox for isolated runs. Recommended work is paired with the
+            interface best placed to take it.
           </Def>
           <Def term="Agent capacity / availability" hint="available · busy · no agent">
             Whether an <strong className="text-gray-200">agent is free to do work right now</strong>.

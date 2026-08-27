@@ -192,8 +192,8 @@ function GapCard({ gap, rank }: { gap: MarketGapOpportunity; rank: number }) {
             </p>
             <p className="mt-1 text-gray-400">
               This is a market/competitive gap checked against the portfolio — a
-              structural "category provides vs ailhat omits" comparison. Grounded
-              in Phase 4 market-gap research; no competitor pricing is quoted.
+              structural "category provides vs ailhat omits" comparison, grounded
+              in market-gap research; no competitor pricing is quoted.
             </p>
           </div>
         )}
@@ -210,9 +210,6 @@ export default function MarketGapSection() {
     <section className="mt-6">
       <div className="flex flex-wrap items-center gap-2">
         <p className="silhat-eyebrow">Intelligence · Market gaps</p>
-        <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[11px] font-semibold text-orange-800 dark:bg-orange-950 dark:text-orange-300">
-          Phase 4
-        </span>
       </div>
       <h2 className="mt-1 text-2xl font-bold tracking-tight text-gray-50 dark:text-gray-50">
         What the category gives you that ailhat doesn't
@@ -230,14 +227,27 @@ export default function MarketGapSection() {
       )}
 
       {gapCount === 0 ? (
-        <div className="silhat-panel mt-4 border-dashed px-6 py-16 text-center">
-          <p className="text-lg font-semibold text-gray-200 dark:text-gray-200">
-            No market gaps to show
-          </p>
-          <p className="mt-1 text-sm text-gray-400">
-            All observed market gaps are hidden by your feedback.
-          </p>
-        </div>
+        hidden > 0 ? (
+          <div className="silhat-panel mt-4 border-dashed px-6 py-16 text-center">
+            <p className="text-lg font-semibold text-gray-200 dark:text-gray-200">
+              No market gaps to show
+            </p>
+            <p className="mt-1 text-sm text-gray-400">
+              All observed market gaps are hidden by your feedback.
+            </p>
+          </div>
+        ) : (
+          <div className="silhat-panel mt-4 border-dashed px-6 py-16 text-center">
+            <p className="text-lg font-semibold text-gray-200 dark:text-gray-200">
+              No market gaps observed yet
+            </p>
+            <p className="mt-1 text-sm text-gray-400">
+              Market gaps are derived from category and competitive research
+              against your portfolio. Add or scan products to surface gaps
+              grounded in evidence.
+            </p>
+          </div>
+        )
       ) : (
         <div className="mt-4 grid gap-5 xl:grid-cols-2">
           {gaps.map((g, i) => (
