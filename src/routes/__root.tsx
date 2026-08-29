@@ -1,6 +1,7 @@
 import { HeadContent, Outlet, Scripts, createRootRoute } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
+import { WhyAilhatEducation } from "~/components/WhyAilhatEducation";
 import appCss from "~/styles/app.css?url";
 
 export const Route = createRootRoute({
@@ -41,6 +42,7 @@ function RootComponent() {
   return (
     <RootDocument>
       <Outlet />
+      <WhyAilhatEducation />
     </RootDocument>
   );
 }
