@@ -1,31 +1,43 @@
-# Ailhat Portfolio Scope & Agent Control Handoff
+# ailhat Portfolio Scope & Agent Control Handoff
 
 ## Purpose
 
-Ailhat should not operate as if Ailhat is the user's only live business/product. Other live businesses running under the user's cto.new account must remain in portfolio scope and visible enough to avoid neglect.
+ailhat should not operate as if ailhat is the user's only live business/product. Other live businesses running under the user's cto.new account must remain in portfolio scope and visible enough to avoid neglect.
 
 ## Ecosystem role
 
-Ailhat is the **product intelligence layer**:
+ailhat is the **Portfolio Intelligence layer**:
 
 **Observe → Understand → Detect issues/opportunities → Prioritize → Recommend**
 
-Agent Control is the **execution-capacity layer**:
+ailhat also owns **Facilitation**, the human capability/improvement layer:
 
-**Observe capacity → Match work → Reserve window → Route execution → Report completion**
+**Learn → Apply → Observe → Improve**
 
-ALVIRA is the broader ecosystem/platform context layer. Its long-term product model is:
+Facilitation should use real portfolio/workforce context to help the operator understand what to learn or improve next. It is not a generic LMS or academy. See `docs/FACILITATION.md` for the product thesis.
+
+Agent Control is the **execution-capacity and authorization layer**:
+
+**Observe capacity → Match work → Reserve window → Route authorized execution → Report completion**
+
+ALVIRA is the ecosystem's **Context Intelligence** layer. Its long-term product model is:
 
 **Know You → Connect Everywhere → Work With You → Act For You**
 
-Ailhat should not become Agent Control, and Agent Control should not recreate Ailhat's product/market intelligence. The products should exchange normalized context and work items.
+Agent OS / Workforce is foundational infrastructure across the ecosystem, not a separate public offering. cto.new, Codex, and similar environments should be treated as generalized agentic harness leverage/execution rather than as product-specific execution layers.
+
+ailhat should not become Agent Control or the execution harness. Agent Control should not recreate ailhat's Portfolio Intelligence. The systems should exchange normalized context, recommendations, and work items while remaining loosely coupled.
+
+The broader loop is:
+
+**Portfolio Intelligence → Facilitation → Workforce → Execution → Portfolio Intelligence**
 
 ## Current known portfolio
 
 | Product | State | Product context | Readiness |
 |---|---|---|---|
-| Ailhat | Active / private beta / pre-launch | Known | ~65% (directional) |
-| Ledgato | Live | Needs assessment | TBD |
+| ailhat | Active / private beta / pre-launch | Known | ~65% (directional) |
+| LEDGATo | Live | Needs assessment | TBD |
 | ALVIRA | Live / strategic ecosystem | Needs assessment | TBD |
 | ALVIRA Bridge | Live / strategic ecosystem component | Needs assessment | TBD |
 | PolicyGuard | Paused / v1 shown in cto.new portfolio | Needs assessment | TBD |
@@ -41,11 +53,11 @@ The connected cto.new portfolio should be represented as:
 
 **Account → workspace/product → repository/site → observations → work items → execution-capacity relationship**
 
-This lets Ailhat reason across the portfolio without collapsing distinct products into one project.
+This lets ailhat reason across the portfolio without collapsing distinct products into one project.
 
-## Ailhat UI requirement
+## ailhat UI requirement
 
-Add a **Portfolio** / **Other Products** surface to the Ailhat dashboard so the user can see:
+Add a **Portfolio** / **Other Products** surface to the ailhat dashboard so the user can see:
 
 - all known live/discovered products
 - current state
@@ -57,7 +69,7 @@ Add a **Portfolio** / **Other Products** surface to the Ailhat dashboard so the 
 - relationship to Agent Control capacity
 - source/provenance for each fact
 
-The current Ailhat product remains the primary detail view. The portfolio surface exists to prevent the other businesses from disappearing from the user's operating picture.
+The current ailhat product remains the primary detail view. The portfolio surface exists to prevent the other businesses from disappearing from the user's operating picture.
 
 ## Portfolio context fields
 
@@ -110,21 +122,21 @@ Possible states:
 
 Important: paused products must remain visible. The system should recommend **revive, schedule review, or archive** rather than silently dropping them.
 
-## Product intelligence boundary
+## Portfolio Intelligence boundary
 
-Ailhat owns:
+ailhat owns:
 
 **Observe → Understand → Detect issues/opportunities → Prioritize → Recommend**
 
 Agent Control owns:
 
-**Observe capacity → Match work → Reserve window → Route execution → Report completion**
+**Observe capacity → Match work → Reserve window → Route authorized execution → Report completion**
 
-Ailhat should not reproduce Agent Control's account-capacity dashboard. Agent Control should receive Ailhat work items and add execution capacity context.
+ailhat should not reproduce Agent Control's account-capacity dashboard. Agent Control should receive ailhat work items and add execution-capacity and authorization context.
 
 ## Shared work item
 
-Ailhat should be capable of producing a normalized work item containing:
+ailhat should be capable of producing a normalized work item containing:
 
 - product/workspace
 - title
@@ -140,13 +152,13 @@ Ailhat should be capable of producing a normalized work item containing:
 
 Agent Control can then answer:
 
-> Which available AI capacity should execute this, and when?
+> Which available AI capacity should execute this, under what authorization, and when?
 
 ## Ecosystem handoff
 
 The desired loop is:
 
-**Ailhat finding → normalized work item → Agent Control capacity match → execution → result/evidence → Ailhat rescan → updated context**
+**ailhat finding → normalized work item → Agent Control capacity/authorization match → execution → result/evidence → ailhat rescan → updated context**
 
 This should be implemented as data contracts, not by tightly coupling the UIs.
 
@@ -156,8 +168,8 @@ On the dashboard, add a compact portfolio strip or command-center layer:
 
 **PORTFOLIO**
 
-Ailhat · 65% · P0
-Ledgato · Needs assessment
+ailhat · 65% · P0
+LEDGATo · Needs assessment
 ALVIRA · Needs assessment
 ALVIRA Bridge · Needs assessment
 PolicyGuard · Needs assessment
@@ -167,7 +179,7 @@ AdScale Pro · Needs assessment
 
 Clicking a product opens its product-specific context.
 
-Ailhat remains the default selected product; the others must be visible and monitored.
+ailhat remains the default selected product; the others must be visible and monitored.
 
 ## Provenance rule
 
