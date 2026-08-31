@@ -12,6 +12,8 @@ import {
   summarize,
 } from "./brief";
 import { hasScanItem } from "./store";
+import { buildSignalWorkItem } from "./signal-work-item";
+import { savePreparedWorkItem } from "./prepared-work";
 
 export interface UseBrief {
   signals: Signal[]; // ranked + feedback-filtered, ready to render
@@ -20,7 +22,7 @@ export interface UseBrief {
   productCount: number;
   feedback: (signalId: string, kind: FeedbackKind) => void;
   expandToChecklist: (signal: Signal) => { added: number; skipped: number };
-  activate: (signal: Signal) => void; // performs the signal's actOnItem action
+  activate: (signal: Signal) => void; // accepts the signal and prepares Direct continuity
 }
 
 export function useBrief(): UseBrief {
@@ -36,12 +38,8 @@ export function useBrief(): UseBrief {
 
   const feedback = (signalId: string, kind: FeedbackKind) => {
     // Continuity rule: accepting work is not the same thing as resolving the
-    // underlying signal. The previous implementation persisted `acted`, and the
-    // brief engine treats acted feedback as suppressing — so a Fix/Act click made
-    // the card disappear before the user had a durable place to continue.
-    //
-    // Actual acceptance is already persisted through checklist/status mutations
-    // in expandToChecklist()/activate(). Keep the signal visible until fresh
+    // underlying signal. Actual acceptance is persisted through checklist/status
+    // mutations plus the prepared-work queue. Keep the signal visible until fresh
     // product evidence changes the premise or the user explicitly dismisses,
     // snoozes, marks it handled, or marks it wrong.
     if (kind === "acted") return;
@@ -77,10 +75,20 @@ export function useBrief(): UseBrief {
     return { added, skipped };
   };
 
-  // Perform a signal's one-click action that targets an existing item.
+  // Accept the signal without pretending it is resolved. Existing checklist work
+  // is moved forward where appropriate, and a durable prepared artifact is queued
+  // for Direct so the next step is visible across routes/reloads.
   const activate = (signal: Signal) => {
     if (signal.actOnItem) {
       actions.setItemStatus(signal.actOnItem.id, signal.actOnItem.toStatus);
+    }
+    if (signal.level !== "HEALTHY") {
+      const product = signal.productId
+        ? state.products.find((candidate) => candidate.id === signal.productId)
+        : null;
+      savePreparedWorkItem(
+        buildSignalWorkItem(signal, "fix", Date.now(), product),
+      );
     }
   };
 
