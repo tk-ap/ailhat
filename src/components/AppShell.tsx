@@ -104,9 +104,7 @@ export default function AppShell({
 
   return (
     <div className="flex min-h-dvh bg-gray-950 text-gray-100">
-      {/* ---------- Sidebar ---------- */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 shrink-0 flex-col border-r border-gray-800 bg-gray-950/95 sm:flex">
-        {/* Brand — distributed signals resolving into one clear intelligence point. */}
         <Link to="/dashboard" className="flex items-center gap-2.5 pb-4 pl-[18px] pr-4 pt-5">
           <AilhatBrandMark size={42} className="-ml-1" />
           <div className="leading-none">
@@ -117,21 +115,13 @@ export default function AppShell({
           </div>
         </Link>
 
-        {/* Primary nav */}
         <nav className="flex-1 overflow-y-auto px-3 pb-4">
           <div className="silhat-eyebrow px-2.5 pb-1.5">Workspace</div>
           <div className="space-y-0.5">
             {NAV.map((n) => (
               <Link
                 key={n.id}
-                to={
-                  n.to as
-                    | "/dashboard"
-                    | "/brief"
-                    | "/portfolio"
-                    | "/control"
-                    | "/learn"
-                }
+                to={n.to as "/dashboard" | "/brief" | "/portfolio" | "/control" | "/learn"}
                 className={`silhat-nav ${active === n.id ? "silhat-nav-active" : ""}`}
                 title={n.hint}
               >
@@ -149,7 +139,6 @@ export default function AppShell({
             ))}
           </div>
 
-          {/* Active portfolio / products */}
           {state.products.length > 0 && (
             <>
               <div className="silhat-eyebrow px-2.5 pb-1.5 pt-5">Active products</div>
@@ -161,10 +150,10 @@ export default function AppShell({
                   return (
                     <Link
                       key={p.id}
-                      to="/decisions/$productId"
+                      to="/product/$productId"
                       params={{ productId: p.id }}
                       className="silhat-nav"
-                      title={platformLabel(p.platform)}
+                      title={`${platformLabel(p.platform)} · open Product Cockpit`}
                     >
                       <span className="grid h-5 w-5 shrink-0 place-items-center rounded-md border border-gray-700 bg-gray-800 text-[10px] font-bold text-gray-300">
                         {p.name.charAt(0).toUpperCase()}
@@ -182,7 +171,6 @@ export default function AppShell({
             </>
           )}
 
-          {/* Connections / Settings */}
           <div className="silhat-eyebrow px-2.5 pb-1.5 pt-5">System</div>
           <div className="space-y-0.5">
             {BOTTOM_NAV.map((b) => (
@@ -205,7 +193,6 @@ export default function AppShell({
           </div>
         </nav>
 
-        {/* Sidebar footer — summary + user */}
         <div className="border-t border-gray-800 px-3 py-3">
           <div className="mb-3 rounded-lg border border-gray-800 bg-gray-900 px-3 py-2.5">
             <div className="flex items-center justify-between gap-2">
@@ -215,9 +202,6 @@ export default function AppShell({
                 </div>
                 <div className="text-[11px] text-gray-400">{openCount} open signal{openCount === 1 ? "" : "s"}</div>
               </div>
-              {/* Account-scoped honesty: the portfolio is the owner's private data.
-                  No unconditional "Live" claim — a live/scan state is never asserted
-                  here without real evidence behind it. */}
               <span className="shrink-0 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-300">
                 Private
               </span>
@@ -235,9 +219,7 @@ export default function AppShell({
         </div>
       </aside>
 
-      {/* ---------- Main column ---------- */}
       <div className="flex min-w-0 flex-1 flex-col sm:pl-60">
-        {/* Mobile top bar (sidebar hidden on small screens) */}
         <div className="flex items-center justify-between border-b border-gray-800 bg-gray-950 px-4 py-3 sm:hidden">
           <Link to="/dashboard" className="flex items-center gap-2">
             <AilhatBrandMark size={30} />
@@ -255,7 +237,6 @@ export default function AppShell({
           </div>
         </div>
 
-        {/* Desktop top bar with quick summary */}
         <header className="hidden items-center justify-between gap-4 border-b border-gray-800 bg-gray-950/80 px-8 py-3 backdrop-blur sm:flex">
           <div className="flex items-center gap-2 text-sm text-gray-500">
             <span className="text-gray-400">{NAV.find((n) => n.id === active)?.label ?? "ailhat"}</span>
@@ -264,9 +245,9 @@ export default function AppShell({
               {active === "today"
                 ? `Overview · ${state.products.length} active products`
                 : active === "portfolio"
-                  ? `Lifecycle · ${state.products.length} active · ${retiredCount} retired`
+                  ? `Lifecycle + Product Cockpits · ${state.products.length} active · ${retiredCount} retired`
                   : active === "control"
-                    ? `Agent Direct · execution capacity & allocation`
+                    ? `Agent Direct · prepare governed work`
                     : active === "learn"
                       ? `Playbook · lessons & worked examples`
                       : active === "decisions"
