@@ -1,0 +1,79 @@
+/* ailhat signature wordmark motion
+   The visible word reads ailhat; illumination travels right-to-left to hint at
+   the name resolving back into Tahlia when reversed.
+
+   This is intentionally a one-pass brand reveal rather than ambient animation.
+   It should never compete with product information or imply a live system state.
+*/
+
+@keyframes ailhat-wordmark-reverse-illuminate {
+  0% {
+    color: #f2f4f7;
+    text-shadow: none;
+    background-position: 0% 50%;
+  }
+  12% {
+    color: transparent;
+    text-shadow: none;
+  }
+  68% {
+    color: transparent;
+    text-shadow: 0 0 12px rgba(94, 166, 255, 0.18);
+    background-position: 100% 50%;
+  }
+  82% {
+    color: transparent;
+    text-shadow: 0 0 14px rgba(139, 92, 255, 0.24);
+    background-position: 0% 50%;
+  }
+  100% {
+    color: #f2f4f7;
+    text-shadow: none;
+    background-position: 0% 50%;
+  }
+}
+
+/* Desktop sidebar wordmark. The gradient direction is right -> left so the
+   highlight reaches t, a, h, l, i, a in reverse-reading order. */
+aside a[href="/dashboard"] .font-display.text-\[15px\] {
+  background-image: linear-gradient(
+    270deg,
+    #f2f4f7 0%,
+    #9cc8ff 18%,
+    #5ea6ff 38%,
+    #8b5cff 56%,
+    #f2f4f7 78%
+  );
+  background-size: 260% 100%;
+  background-position: 0% 50%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  animation: ailhat-wordmark-reverse-illuminate 1.45s cubic-bezier(0.22, 1, 0.36, 1) 180ms 1 both;
+}
+
+/* Mobile lockup gets the same signature reveal, shortened slightly. */
+.sm\:hidden a[href="/dashboard"] > span.font-bold {
+  background-image: linear-gradient(
+    270deg,
+    #f2f4f7 0%,
+    #9cc8ff 18%,
+    #5ea6ff 38%,
+    #8b5cff 56%,
+    #f2f4f7 78%
+  );
+  background-size: 260% 100%;
+  background-position: 0% 50%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  animation: ailhat-wordmark-reverse-illuminate 1.2s cubic-bezier(0.22, 1, 0.36, 1) 120ms 1 both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  aside a[href="/dashboard"] .font-display.text-\[15px\],
+  .sm\:hidden a[href="/dashboard"] > span.font-bold {
+    animation: none;
+    color: #f2f4f7;
+    background-image: none;
+    text-shadow: none;
+  }
+}
