@@ -1,37 +1,12 @@
 import { createPortal } from "react-dom";
 import { useEffect, useMemo, useState } from "react";
 import { useStore } from "~/lib/useStore";
-
-interface TodayPreference {
-  collapsed: boolean;
-  order: number;
-}
-
-type TodayPreferences = Record<string, TodayPreference>;
-
-const KEY = "ailhat.today-workspace.v1";
-
-function loadPreferences(): TodayPreferences {
-  if (typeof window === "undefined") return {};
-  try {
-    const raw = window.localStorage.getItem(KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw) as unknown;
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
-      ? (parsed as TodayPreferences)
-      : {};
-  } catch {
-    return {};
-  }
-}
-
-function savePreferences(value: TodayPreferences) {
-  try {
-    window.localStorage.setItem(KEY, JSON.stringify(value));
-  } catch {
-    // Presentation state only; never block portfolio state.
-  }
-}
+import {
+  loadTodayPreferences,
+  orderedProductIds,
+  saveTodayPreferences,
+  type TodayPreferences,
+} from "~/lib/today-workspace";
 
 function findProductCard(productName: string): HTMLElement | null {
   const headings = Array.from(document.querySelectorAll<HTMLElement>("main h3"));
@@ -65,17 +40,14 @@ export default function TodayWorkspaceControls() {
   const [hosts, setHosts] = useState<Record<string, HTMLElement>>({});
   const [retireConfirm, setRetireConfirm] = useState<string | null>(null);
 
-  useEffect(() => setPrefs(loadPreferences()), []);
+  useEffect(() => setPrefs(loadTodayPreferences()), []);
 
-  const ordered = useMemo(
-    () =>
-      [...state.products].sort((a, b) => {
-        const ao = prefs[a.id]?.order ?? state.products.findIndex((p) => p.id === a.id);
-        const bo = prefs[b.id]?.order ?? state.products.findIndex((p) => p.id === b.id);
-        return ao - bo;
-      }),
-    [state.products, prefs],
-  );
+  const ordered = useMemo(() => {
+    const ids = orderedProductIds(state.products, prefs);
+    return ids
+      .map((id) => state.products.find((product) => product.id === id))
+      .filter((product): product is (typeof state.products)[number] => !!product);
+  }, [state.products, prefs]);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
@@ -95,7 +67,7 @@ export default function TodayWorkspaceControls() {
 
   const commit = (next: TodayPreferences) => {
     setPrefs(next);
-    savePreferences(next);
+    saveTodayPreferences(next);
   };
 
   const setCollapsed = (id: string, collapsed: boolean) => {
@@ -172,7 +144,13 @@ export default function TodayWorkspaceControls() {
                   setRetireConfirm(null);
                 } else {
                   setRetireConfirm(product.id);
-                  window.setTimeout(() => setRetireConfirm((value) => (value === product.id ? null : value)), 3500);
+                  window.setTimeout(
+                    () =>
+                      setRetireConfirm((value) =>
+                        value === product.id ? null : value,
+                      ),
+                    3500,
+                  );
                 }
               }}
               className={`ml-auto rounded-md px-2 py-1 text-[10px] font-semibold ${
