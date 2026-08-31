@@ -2,6 +2,7 @@ import { HeadContent, Outlet, Scripts, createRootRoute } from "@tanstack/react-r
 import type { ReactNode } from "react";
 
 import OperatingLoopPortal from "~/components/OperatingLoopPortal";
+import ProductWorkspaceContinuityPortal from "~/components/ProductWorkspaceContinuityPortal";
 import { WhyAilhatEducation } from "~/components/WhyAilhatEducation";
 import appCss from "~/styles/app.css?url";
 
@@ -46,6 +47,7 @@ function RootComponent() {
     <RootDocument>
       <Outlet />
       <OperatingLoopPortal />
+      <ProductWorkspaceContinuityPortal />
       <WhyAilhatEducation />
     </RootDocument>
   );
