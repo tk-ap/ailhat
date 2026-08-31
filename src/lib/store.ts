@@ -82,8 +82,53 @@ export function isDecisionDisposition(v: unknown): v is DecisionDisposition {
   );
 }
 
+// ---- Portfolio lifecycle evidence -----------------------------------------
+// Engagement is intentionally semantic instead of using one universal traffic
+// threshold. A low-volume B2B product and a consumer product should not be judged
+// by the same raw visit count. Analytics adapters can provide the underlying
+// metrics in `summary`, but must classify against a product-appropriate baseline.
+export type EngagementLevel = "healthy" | "low" | "none" | "unknown";
+export type EngagementTrend = "up" | "flat" | "down" | "unknown";
+
+export interface ProductEngagementEvidence {
+  source: string;
+  observedAt: number;
+  windowDays: number;
+  level: EngagementLevel;
+  trend?: EngagementTrend;
+  summary?: string;
+}
+
+// Site-change evidence is derived only from successful observations. It means
+// "ailhat observed a material change in the signals it can scan", not that ailhat
+// has perfect deploy history. That distinction is important for retirement prompts.
+export interface ProductActivity {
+  firstObservedAt?: number;
+  lastObservedAt?: number;
+  lastObservedSiteChangeAt?: number;
+}
+
+// A retired product leaves the active planning set, but its complete working
+// context is moved into this archive so reactivation can restore it losslessly.
+export interface RetiredProductArchive {
+  product: Product;
+  retiredAt: number;
+  reason?: string;
+  items: Item[];
+  decisions: ProductDecision[];
+  scan?: ScanResult;
+  scanHistory?: ProductScanHistory;
+  opportunities: Opportunity[];
+  activity?: ProductActivity;
+  engagement?: ProductEngagementEvidence;
+}
+
 export interface AppState {
+  // Active portfolio only. Intelligence/planning engines already use this array,
+  // so moving a product out of it immediately removes prime planning real estate.
   products: Product[];
+  // Preserved, reversible archive. Retiring is explicitly not deletion.
+  retiredProducts: RetiredProductArchive[];
   items: Item[];
   // Owner-entered decision history per product, keyed by STORE product id. Each
   // product's list is seeded from its Direct/seed model recommendations, all
@@ -97,6 +142,9 @@ export interface AppState {
   // history/occurrence/differential state (drives auto-scan status + "what
   // changed" rendering). Same localStorage + server jsonb persistence as scans.
   scanHistory: Record<string, ProductScanHistory>;
+  // Persistent, compact lifecycle evidence used by retirement assessment.
+  productActivity: Record<string, ProductActivity>;
+  engagement: Record<string, ProductEngagementEvidence>;
   // Daily Brief feedback, keyed by stable signal id. Makes attention first-class
   // and persistent even in this localStorage v1.
   feedback: Record<string, FeedbackEntry>;
@@ -206,10 +254,13 @@ export function uid(): string {
 function emptyState(): AppState {
   return {
     products: [],
+    retiredProducts: [],
     items: [],
     decisions: {},
     scans: {},
     scanHistory: {},
+    productActivity: {},
+    engagement: {},
     feedback: {},
     opportunities: [],
     opportunityFeedback: {},
@@ -240,6 +291,9 @@ export function loadState(): AppState {
     const parsed = JSON.parse(raw) as Partial<AppState>;
     return {
       products: Array.isArray(parsed.products) ? parsed.products : [],
+      retiredProducts: Array.isArray(parsed.retiredProducts)
+        ? (parsed.retiredProducts as RetiredProductArchive[])
+        : [],
       items: Array.isArray(parsed.items) ? parsed.items : [],
       decisions:
         parsed.decisions &&
@@ -256,6 +310,18 @@ export function loadState(): AppState {
         typeof parsed.scanHistory === "object" &&
         !Array.isArray(parsed.scanHistory)
           ? (parsed.scanHistory as Record<string, ProductScanHistory>)
+          : {},
+      productActivity:
+        parsed.productActivity &&
+        typeof parsed.productActivity === "object" &&
+        !Array.isArray(parsed.productActivity)
+          ? (parsed.productActivity as Record<string, ProductActivity>)
+          : {},
+      engagement:
+        parsed.engagement &&
+        typeof parsed.engagement === "object" &&
+        !Array.isArray(parsed.engagement)
+          ? (parsed.engagement as Record<string, ProductEngagementEvidence>)
           : {},
       feedback:
         parsed.feedback && typeof parsed.feedback === "object" && !Array.isArray(parsed.feedback)
@@ -290,6 +356,12 @@ export function saveState(state: AppState): void {
   }
 }
 
+function omitKey<T>(record: Record<string, T> | undefined, key: string): Record<string, T> {
+  const next = { ...(record ?? {}) };
+  delete next[key];
+  return next;
+}
+
 // ---- Actions (pure, return new state) ----
 export function addProduct(state: AppState, p: Omit<Product, "id" | "createdAt">): AppState {
   const product: Product = { ...p, id: uid(), createdAt: Date.now() };
@@ -307,10 +379,111 @@ export function updateProduct(
   };
 }
 
+/**
+ * Permanent deletion remains available for the existing explicit delete control,
+ * but unlike the old implementation it preserves the rest of AppState instead of
+ * accidentally dropping scans/feedback/opportunities. Lifecycle retirement should
+ * be preferred when the goal is simply to stop active planning.
+ */
 export function deleteProduct(state: AppState, id: string): AppState {
   return {
+    ...state,
     products: state.products.filter((p) => p.id !== id),
     items: state.items.filter((i) => i.productId !== id),
+    decisions: omitKey(state.decisions, id),
+    scans: omitKey(state.scans, id),
+    scanHistory: omitKey(state.scanHistory, id),
+    productActivity: omitKey(state.productActivity, id),
+    engagement: omitKey(state.engagement, id),
+    opportunities: (state.opportunities ?? []).filter((o) => o.productId !== id),
+    retiredProducts: (state.retiredProducts ?? []).filter((r) => r.product.id !== id),
+  };
+}
+
+/**
+ * Move a product out of the active portfolio while preserving every piece of
+ * product-scoped context needed for future review/reactivation.
+ */
+export function retireProduct(
+  state: AppState,
+  id: string,
+  reason?: string,
+): AppState {
+  const product = state.products.find((p) => p.id === id);
+  if (!product) return state;
+
+  const archive: RetiredProductArchive = {
+    product,
+    retiredAt: Date.now(),
+    ...(reason?.trim() ? { reason: reason.trim() } : {}),
+    items: state.items.filter((i) => i.productId === id),
+    decisions: (state.decisions ?? {})[id] ?? [],
+    scan: (state.scans ?? {})[id],
+    scanHistory: (state.scanHistory ?? {})[id],
+    opportunities: (state.opportunities ?? []).filter((o) => o.productId === id),
+    activity: (state.productActivity ?? {})[id],
+    engagement: (state.engagement ?? {})[id],
+  };
+
+  return {
+    ...state,
+    products: state.products.filter((p) => p.id !== id),
+    retiredProducts: [
+      ...(state.retiredProducts ?? []).filter((r) => r.product.id !== id),
+      archive,
+    ],
+    items: state.items.filter((i) => i.productId !== id),
+    decisions: omitKey(state.decisions, id),
+    scans: omitKey(state.scans, id),
+    scanHistory: omitKey(state.scanHistory, id),
+    productActivity: omitKey(state.productActivity, id),
+    engagement: omitKey(state.engagement, id),
+    opportunities: (state.opportunities ?? []).filter((o) => o.productId !== id),
+  };
+}
+
+/** Restore a retired product and its archived context to active planning. */
+export function reactivateProduct(state: AppState, id: string): AppState {
+  if (state.products.some((p) => p.id === id)) return state;
+  const archive = (state.retiredProducts ?? []).find((r) => r.product.id === id);
+  if (!archive) return state;
+
+  const itemIds = new Set(state.items.map((i) => i.id));
+  const restoredItems = archive.items.filter((i) => !itemIds.has(i.id));
+  const oppIds = new Set((state.opportunities ?? []).map((o) => o.id));
+  const restoredOpps = archive.opportunities.filter((o) => !oppIds.has(o.id));
+
+  return {
+    ...state,
+    products: [...state.products, archive.product],
+    retiredProducts: (state.retiredProducts ?? []).filter((r) => r.product.id !== id),
+    items: [...state.items, ...restoredItems],
+    decisions: { ...(state.decisions ?? {}), [id]: archive.decisions },
+    scans: archive.scan
+      ? { ...(state.scans ?? {}), [id]: archive.scan }
+      : state.scans,
+    scanHistory: archive.scanHistory
+      ? { ...(state.scanHistory ?? {}), [id]: archive.scanHistory }
+      : state.scanHistory,
+    productActivity: archive.activity
+      ? { ...(state.productActivity ?? {}), [id]: archive.activity }
+      : state.productActivity,
+    engagement: archive.engagement
+      ? { ...(state.engagement ?? {}), [id]: archive.engagement }
+      : state.engagement,
+    opportunities: [...(state.opportunities ?? []), ...restoredOpps],
+  };
+}
+
+export function setEngagementEvidence(
+  state: AppState,
+  productId: string,
+  evidence: ProductEngagementEvidence,
+): AppState {
+  if (!state.products.some((p) => p.id === productId)) return state;
+  return {
+    ...state,
+    engagement: { ...(state.engagement ?? {}), [productId]: evidence },
   };
 }
 
@@ -393,12 +566,31 @@ export function reconcileItemsOnScan(
   return changed ? next : items;
 }
 
+function scanFingerprint(result: ScanResult | undefined): string | null {
+  if (!result?.ok) return null;
+  return result.findings
+    .map((f) =>
+      [
+        f.stableKey,
+        f.status,
+        f.severity,
+        f.confidence,
+        f.title,
+        f.detail,
+        f.url ?? "",
+      ].join("|")
+    )
+    .sort()
+    .join("\n");
+}
+
 // Phase 1 — record a fresh observation for a product. Updates the latest result
 // (kept in sync for the brief) AND merges it into the bounded scan history
 // (occurrence counts, differentials, last-known-good). Preserves last-known-good
 // on a failed scan. Also reconciles the checklist so items whose checks now pass
 // auto-complete (positive evidence only), keeping the open count consistent with
-// a fresh scan.
+// a fresh scan. Successful observations additionally maintain compact lifecycle
+// evidence used by retirement assessment.
 export function recordScan(
   state: AppState,
   productId: string,
@@ -406,11 +598,36 @@ export function recordScan(
 ): AppState {
   const prevHistory = (state.scanHistory ?? {})[productId];
   const { history } = mergeScan(prevHistory, result);
+
+  let productActivity = state.productActivity ?? {};
+  if (result.ok) {
+    const observedAt = result.scannedAt ?? Date.now();
+    const prev = productActivity[productId] ?? {};
+    const previousFingerprint = scanFingerprint(prevHistory?.lastGood);
+    const currentFingerprint = scanFingerprint(result);
+    const changed =
+      previousFingerprint !== null &&
+      currentFingerprint !== null &&
+      previousFingerprint !== currentFingerprint;
+
+    productActivity = {
+      ...productActivity,
+      [productId]: {
+        firstObservedAt: prev.firstObservedAt ?? observedAt,
+        lastObservedAt: observedAt,
+        lastObservedSiteChangeAt: changed
+          ? observedAt
+          : prev.lastObservedSiteChangeAt,
+      },
+    };
+  }
+
   return {
     ...state,
     items: reconcileItemsOnScan(state.items, productId, result),
     scans: { ...(state.scans ?? {}), [productId]: result },
     scanHistory: { ...(state.scanHistory ?? {}), [productId]: history },
+    productActivity,
   };
 }
 
@@ -542,8 +759,10 @@ export interface DuplicateFlag {
   productName: string;
 }
 
-// Returns the existing portfolio entries that clash with the given name/url.
-// `excludeId` lets an edit skip the product being edited itself.
+// Returns active OR retired portfolio entries that clash with the given name/url.
+// This prevents a retired product from being accidentally recreated as a duplicate;
+// the owner can reactivate it from Portfolio instead. `excludeId` lets an edit skip
+// the product being edited itself.
 export function detectDuplicates(
   state: AppState,
   name: string,
@@ -553,7 +772,11 @@ export function detectDuplicates(
   const flags: DuplicateFlag[] = [];
   const n = name.trim().toLowerCase();
   const u = url.trim().toLowerCase();
-  for (const p of state.products) {
+  const portfolioProducts = [
+    ...state.products,
+    ...(state.retiredProducts ?? []).map((r) => r.product),
+  ];
+  for (const p of portfolioProducts) {
     if (p.id === excludeId) continue;
     if (n && p.name.trim().toLowerCase() === n) {
       flags.push({ type: "name", value: name.trim(), productName: p.name });
