@@ -56,12 +56,12 @@ function FoundingBetaSignup() {
           </div>
           <h1 className="mt-5 font-display text-3xl font-bold tracking-tight">Build ailhat with us.</h1>
           <p className="mt-3 text-sm leading-6 text-gray-400">
-            Founding Beta members receive full customer-facing access during the beta window in exchange for candid product feedback. This is early access, not a paid subscription and not an owner/admin account.
+            Founding Beta members receive early access to customer-facing ailhat surfaces as they are verified account-safe, in exchange for candid product feedback. This is early access, not a paid subscription and not an owner/admin account.
           </p>
 
           <div className="mt-6 grid gap-3 sm:grid-cols-3">
             {[
-              ["Access", "Customer-facing ailhat"],
+              ["Access", "Tenant-safe beta surfaces"],
               ["Window", "Time-bounded beta"],
               ["Exchange", "Usage + feedback"],
             ].map(([label, value]) => (
