@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { useStore } from "~/lib/useStore";
 import AuthNav from "~/components/AuthNav";
 import AilhatBrandMark from "~/components/AilhatBrandMark";
+import PreparedWorkTray from "~/components/PreparedWorkTray";
 import { platformLabel } from "~/lib/store";
 import { retirementRecommendationCount } from "~/lib/portfolio-lifecycle";
 
@@ -261,7 +262,10 @@ export default function AppShell({
         </header>
 
         <main className="min-w-0 flex-1">
-          <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-8">{children}</div>
+          <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-8">
+            <PreparedWorkTray />
+            {children}
+          </div>
         </main>
       </div>
     </div>
