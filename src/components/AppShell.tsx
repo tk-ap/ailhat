@@ -8,6 +8,7 @@ import AuthNav from "~/components/AuthNav";
 import AilhatBrandMark from "~/components/AilhatBrandMark";
 import TodayWorkspaceControls from "~/components/TodayWorkspaceControls";
 import SolutionWorkflowBridge from "~/components/SolutionWorkflowBridge";
+import AgentJourneyReadiness from "~/components/AgentJourneyReadiness";
 import { platformLabel } from "~/lib/store";
 import { retirementRecommendationCount } from "~/lib/portfolio-lifecycle";
 
@@ -257,7 +258,7 @@ export default function AppShell({
                   : active === "control"
                     ? `Agent Direct · prepare governed work`
                     : active === "learn"
-                      ? `Playbook · lessons & worked examples`
+                      ? `Playbook · lessons · agent readiness · worked examples`
                       : active === "decisions"
                         ? `Agent Direct · per-product decisions`
                         : `Attention · prioritised signals`}
@@ -271,6 +272,7 @@ export default function AppShell({
         <main className="min-w-0 flex-1">
           <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-8">
             <SolutionWorkflowBridge />
+            {(active === "learn" || active === "portfolio") && <AgentJourneyReadiness />}
             {children}
           </div>
         </main>
