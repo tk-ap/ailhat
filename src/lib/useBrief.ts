@@ -34,8 +34,19 @@ export function useBrief(): UseBrief {
     [signals, hidden],
   );
 
-  const feedback = (signalId: string, kind: FeedbackKind) =>
+  const feedback = (signalId: string, kind: FeedbackKind) => {
+    // Continuity rule: accepting work is not the same thing as resolving the
+    // underlying signal. The previous implementation persisted `acted`, and the
+    // brief engine treats acted feedback as suppressing — so a Fix/Act click made
+    // the card disappear before the user had a durable place to continue.
+    //
+    // Actual acceptance is already persisted through checklist/status mutations
+    // in expandToChecklist()/activate(). Keep the signal visible until fresh
+    // product evidence changes the premise or the user explicitly dismisses,
+    // snoozes, marks it handled, or marks it wrong.
+    if (kind === "acted") return;
     actions.setFeedback(signalId, kind);
+  };
 
   // Turn a signal's recommended checklist item(s) into real items, deduped.
   const expandToChecklist = (signal: Signal) => {
