@@ -70,3 +70,7 @@ export function findingLifecycleLabel(issue: ObservedIssue): "regressed" | "acti
   if (issue.present) return "active";
   return "resolved";
 }
+
+// Deletion is intentionally absent. Removing historical evidence must only happen
+// through a separate explicit destructive action on the source history, never as
+// a side effect of hide/condense controls.
