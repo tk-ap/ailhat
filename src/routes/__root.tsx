@@ -9,16 +9,18 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { name: "theme-color", content: "#0c0d12" },
-      { title: "ailhat" },
+      { name: "theme-color", content: "#0B0F17" },
+      { title: "ailhat · Portfolio Intelligence" },
       {
         name: "description",
         content:
-          "ailhat knows what you're building. It tells you what matters next. The portfolio intelligence layer for builders shipping multiple AI-built products across platforms.",
+          "ailhat is Portfolio Intelligence for builders shipping multiple products. Signals condensed into clarity: what changed, why it matters, and what to do next.",
       },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
+      { rel: "stylesheet", href: "/brand/ailhat-motion.css" },
+      { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
       {
         rel: "preconnect",
         href: "https://fonts.googleapis.com",

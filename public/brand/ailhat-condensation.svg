@@ -1,0 +1,41 @@
+<svg width="160" height="160" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">ailhat condensation mark</title>
+  <desc id="desc">Distributed portfolio signals condensing toward one clear intelligence point.</desc>
+  <defs>
+    <radialGradient id="core" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(80 80) rotate(90) scale(22)">
+      <stop stop-color="#F2F4F7"/>
+      <stop offset="0.28" stop-color="#9CC8FF"/>
+      <stop offset="0.62" stop-color="#5EA6FF"/>
+      <stop offset="1" stop-color="#8B5CFF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="halo" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(80 80) rotate(90) scale(64)">
+      <stop stop-color="#5EA6FF" stop-opacity="0.2"/>
+      <stop offset="0.56" stop-color="#8B5CFF" stop-opacity="0.08"/>
+      <stop offset="1" stop-color="#8B5CFF" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <circle cx="80" cy="80" r="64" fill="url(#halo)"/>
+  <g fill="#5EA6FF">
+    <circle cx="80" cy="24" r="2.2"/><circle cx="56" cy="29" r="1.9"/><circle cx="104" cy="31" r="1.8"/>
+    <circle cx="38" cy="42" r="2.1"/><circle cx="66" cy="43" r="1.7"/><circle cx="91" cy="40" r="2.1"/><circle cx="121" cy="45" r="1.9"/>
+    <circle cx="28" cy="63" r="1.8"/><circle cx="49" cy="60" r="2.4"/><circle cx="111" cy="61" r="2.3"/><circle cx="132" cy="65" r="1.8"/>
+    <circle cx="24" cy="86" r="2.1"/><circle cx="43" cy="82" r="1.8"/><circle cx="118" cy="84" r="1.9"/><circle cx="137" cy="89" r="2.0"/>
+    <circle cx="34" cy="108" r="2.0"/><circle cx="54" cy="101" r="1.8"/><circle cx="106" cy="103" r="1.9"/><circle cx="126" cy="110" r="2.1"/>
+    <circle cx="52" cy="127" r="1.9"/><circle cx="75" cy="119" r="1.7"/><circle cx="101" cy="126" r="2.0"/>
+    <circle cx="79" cy="138" r="2.1"/>
+  </g>
+  <g fill="#8B5CFF">
+    <circle cx="68" cy="31" r="1.6"/><circle cx="116" cy="54" r="1.6"/><circle cx="42" cy="72" r="1.5"/>
+    <circle cx="128" cy="78" r="1.5"/><circle cx="45" cy="96" r="1.6"/><circle cx="116" cy="99" r="1.7"/>
+    <circle cx="66" cy="118" r="1.5"/><circle cx="95" cy="115" r="1.6"/>
+  </g>
+  <g fill="#9CC8FF">
+    <circle cx="62" cy="57" r="2.3"/><circle cx="78" cy="49" r="1.9"/><circle cx="96" cy="56" r="2.2"/>
+    <circle cx="55" cy="76" r="2.0"/><circle cx="105" cy="75" r="2.0"/>
+    <circle cx="61" cy="94" r="2.2"/><circle cx="99" cy="95" r="2.1"/>
+    <circle cx="79" cy="108" r="1.9"/>
+  </g>
+  <circle cx="80" cy="80" r="22" fill="url(#core)"/>
+  <circle cx="80" cy="80" r="8.5" fill="#D9EAFF"/>
+  <circle cx="80" cy="80" r="4.5" fill="#F2F4F7"/>
+</svg>
