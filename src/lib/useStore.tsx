@@ -17,16 +17,21 @@ import {
   type Product,
   type ProductDecision,
   type DecisionDisposition,
+  type ProductEngagementEvidence,
+  type RetiredProductArchive,
   SNOOZE_MS,
   addItem,
   addProduct,
   deleteItem,
   deleteProduct,
   loadState,
+  reactivateProduct,
   resetData,
+  retireProduct,
   saveState,
   setDecisions,
   setDecisionDisposition,
+  setEngagementEvidence,
   setFeedback,
   setScan,
   recordScan,
@@ -50,6 +55,12 @@ export interface Actions {
     patch: Partial<Omit<Product, "id" | "createdAt">>,
   ) => void;
   deleteProduct: (id: string) => void;
+  retireProduct: (id: string, reason?: string) => void;
+  reactivateProduct: (id: string) => void;
+  setEngagementEvidence: (
+    productId: string,
+    evidence: ProductEngagementEvidence,
+  ) => void;
   addItem: (i: Omit<Item, "id" | "createdAt">) => void;
   setItemStatus: (id: string, status: ItemStatus) => void;
   updateItem: (
@@ -82,10 +93,13 @@ const StoreContext = createContext<Ctx | null>(null);
 
 const EMPTY: AppState = {
   products: [],
+  retiredProducts: [],
   items: [],
   decisions: {},
   scans: {},
   scanHistory: {},
+  productActivity: {},
+  engagement: {},
   feedback: {},
   opportunities: [],
   opportunityFeedback: {},
@@ -99,6 +113,9 @@ export function normalizeState(raw: AppState | null | undefined): AppState | nul
   if (!Array.isArray(r.products)) return null;
   return {
     products: r.products,
+    retiredProducts: Array.isArray(r.retiredProducts)
+      ? (r.retiredProducts as RetiredProductArchive[])
+      : [],
     items: Array.isArray(r.items) ? r.items : [],
     decisions:
       r.decisions && typeof r.decisions === "object" && !Array.isArray(r.decisions)
@@ -106,6 +123,8 @@ export function normalizeState(raw: AppState | null | undefined): AppState | nul
         : {},
     scans: r.scans ?? {},
     scanHistory: r.scanHistory ?? {},
+    productActivity: r.productActivity ?? {},
+    engagement: r.engagement ?? {},
     feedback: r.feedback ?? {},
     opportunities: Array.isArray(r.opportunities) ? r.opportunities : [],
     opportunityFeedback: r.opportunityFeedback ?? {},
@@ -218,6 +237,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     addProduct: (p) => commit(addProduct(state, p)),
     updateProduct: (id, patch) => commit(updateProduct(state, id, patch)),
     deleteProduct: (id) => commit(deleteProduct(state, id)),
+    retireProduct: (id, reason) => commit(retireProduct(state, id, reason)),
+    reactivateProduct: (id) => commit(reactivateProduct(state, id)),
+    setEngagementEvidence: (productId, evidence) =>
+      commit(setEngagementEvidence(state, productId, evidence)),
     addItem: (i) => commit(addItem(state, i)),
     setItemStatus: (id, status) => commit(updateItem(state, id, { status })),
     updateItem: (id, patch) => commit(updateItem(state, id, patch)),
@@ -266,4 +289,13 @@ export function useStore(): Ctx {
 
 // Helper to keep unused type imports out of the way (Platform, ItemType used by
 // callers via re-export convenience). Re-export types used across the UI.
-export type { ItemStatus, ItemType, Platform, Product, Item, AppState };
+export type {
+  ItemStatus,
+  ItemType,
+  Platform,
+  Product,
+  Item,
+  AppState,
+  ProductEngagementEvidence,
+  RetiredProductArchive,
+};

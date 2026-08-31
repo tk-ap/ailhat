@@ -6,8 +6,15 @@ import type { ReactNode } from "react";
 import { useStore } from "~/lib/useStore";
 import AuthNav from "~/components/AuthNav";
 import { platformLabel } from "~/lib/store";
+import { retirementRecommendationCount } from "~/lib/portfolio-lifecycle";
 
-export type ShellView = "today" | "intelligence" | "control" | "learn" | "decisions";
+export type ShellView =
+  | "today"
+  | "intelligence"
+  | "portfolio"
+  | "control"
+  | "learn"
+  | "decisions";
 
 const NAV: { id: ShellView; label: string; to: string; icon: ReactNode; hint: string }[] = [
   {
@@ -30,6 +37,18 @@ const NAV: { id: ShellView; label: string; to: string; icon: ReactNode; hint: st
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="shrink-0">
         <path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1" strokeLinecap="round" />
         <circle cx="12" cy="12" r="3.2" />
+      </svg>
+    ),
+  },
+  {
+    id: "portfolio",
+    label: "Portfolio",
+    to: "/portfolio",
+    hint: "Active · retired · lifecycle",
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="shrink-0">
+        <rect x="3" y="5" width="18" height="15" rx="2" />
+        <path d="M8 5V3h8v2M3 10h18" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     ),
   },
@@ -75,7 +94,12 @@ export default function AppShell({
 }) {
   const { state } = useStore();
 
-  const openCount = state.items.filter((i) => i.status !== "done").length;
+  const activeIds = new Set(state.products.map((p) => p.id));
+  const openCount = state.items.filter(
+    (i) => activeIds.has(i.productId) && i.status !== "done",
+  ).length;
+  const retirementCount = retirementRecommendationCount(state);
+  const retiredCount = state.retiredProducts?.length ?? 0;
 
   return (
     <div className="flex min-h-dvh bg-gray-950 text-gray-100">
@@ -99,23 +123,35 @@ export default function AppShell({
             {NAV.map((n) => (
               <Link
                 key={n.id}
-                to={n.to as "/dashboard" | "/brief" | "/control" | "/learn"}
+                to={
+                  n.to as
+                    | "/dashboard"
+                    | "/brief"
+                    | "/portfolio"
+                    | "/control"
+                    | "/learn"
+                }
                 className={`silhat-nav ${active === n.id ? "silhat-nav-active" : ""}`}
                 title={n.hint}
               >
                 {n.icon}
                 <span className="truncate">{n.label}</span>
-                {active === n.id && (
+                {n.id === "portfolio" && retirementCount > 0 && (
+                  <span className="ml-auto shrink-0 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">
+                    {retirementCount}
+                  </span>
+                )}
+                {active === n.id && !(n.id === "portfolio" && retirementCount > 0) && (
                   <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-[#7fb0ff]" />
                 )}
               </Link>
             ))}
           </div>
 
-          {/* Portfolio / Products */}
+          {/* Active portfolio / products */}
           {state.products.length > 0 && (
             <>
-              <div className="silhat-eyebrow px-2.5 pb-1.5 pt-5">Portfolio</div>
+              <div className="silhat-eyebrow px-2.5 pb-1.5 pt-5">Active products</div>
               <div className="space-y-0.5">
                 {state.products.slice(0, 8).map((p) => {
                   const open = state.items.filter(
@@ -170,19 +206,29 @@ export default function AppShell({
 
         {/* Sidebar footer — summary + user */}
         <div className="border-t border-gray-800 px-3 py-3">
-          <div className="mb-3 flex items-center justify-between gap-2 rounded-lg border border-gray-800 bg-gray-900 px-3 py-2.5">
-            <div className="leading-tight">
-              <div className="text-sm font-semibold text-gray-100">
-                {state.products.length} product{state.products.length === 1 ? "" : "s"}
+          <div className="mb-3 rounded-lg border border-gray-800 bg-gray-900 px-3 py-2.5">
+            <div className="flex items-center justify-between gap-2">
+              <div className="leading-tight">
+                <div className="text-sm font-semibold text-gray-100">
+                  {state.products.length} active product{state.products.length === 1 ? "" : "s"}
+                </div>
+                <div className="text-[11px] text-gray-400">{openCount} open signal{openCount === 1 ? "" : "s"}</div>
               </div>
-              <div className="text-[11px] text-gray-400">{openCount} open signal{openCount === 1 ? "" : "s"}</div>
+              {/* Account-scoped honesty: the portfolio is the owner's private data.
+                  No unconditional "Live" claim — a live/scan state is never asserted
+                  here without real evidence behind it. */}
+              <span className="shrink-0 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-300">
+                Private
+              </span>
             </div>
-            {/* Account-scoped honesty: the portfolio is the owner's private data.
-                No unconditional "Live" claim — a live/scan state is never asserted
-                here without real evidence behind it. */}
-            <span className="shrink-0 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-300">
-              Private
-            </span>
+            {retiredCount > 0 && (
+              <Link
+                to="/portfolio"
+                className="mt-2 block border-t border-gray-800 pt-2 text-[11px] text-gray-500 hover:text-gray-300"
+              >
+                {retiredCount} retired · context preserved
+              </Link>
+            )}
           </div>
           <AuthNav compact />
         </div>
@@ -196,7 +242,16 @@ export default function AppShell({
             <div className="silhat-brand">A</div>
             <span className="font-bold tracking-tight">ailhat</span>
           </Link>
-          <AuthNav compact />
+          <div className="flex items-center gap-2">
+            <Link
+              to="/portfolio"
+              className="rounded-lg border border-gray-800 px-2.5 py-1.5 text-xs font-semibold text-gray-400"
+            >
+              Portfolio
+              {retirementCount > 0 ? ` · ${retirementCount}` : ""}
+            </Link>
+            <AuthNav compact />
+          </div>
         </div>
 
         {/* Desktop top bar with quick summary */}
@@ -206,14 +261,16 @@ export default function AppShell({
             <span className="text-gray-600">/</span>
             <span className="truncate text-gray-500">
               {active === "today"
-                ? `Overview · ${state.products.length} products`
-                : active === "control"
-                  ? `Agent Direct · execution capacity & allocation`
-                  : active === "learn"
-                    ? `Playbook · lessons & worked examples`
-                    : active === "decisions"
-                      ? `Agent Direct · per-product decisions`
-                      : `Attention · prioritised signals`}
+                ? `Overview · ${state.products.length} active products`
+                : active === "portfolio"
+                  ? `Lifecycle · ${state.products.length} active · ${retiredCount} retired`
+                  : active === "control"
+                    ? `Agent Direct · execution capacity & allocation`
+                    : active === "learn"
+                      ? `Playbook · lessons & worked examples`
+                      : active === "decisions"
+                        ? `Agent Direct · per-product decisions`
+                        : `Attention · prioritised signals`}
             </span>
           </div>
           <div className="flex items-center gap-3">
