@@ -62,18 +62,12 @@ export default function SolutionWorkflowBridge() {
     return subscribeSolutionWorkflows(refresh);
   }, []);
 
-  // Establish the hydration baseline once. We only create solution workflows for
-  // issues added after the current authenticated state is ready, never for old
-  // checklist history discovered on page load.
   useEffect(() => {
     if (!ready || initialized.current) return;
     seenItems.current = new Set(state.items.map((item) => item.id));
     initialized.current = true;
   }, [ready, state.items]);
 
-  // A new bug/issue added after a successful scan is a concrete handoff into the
-  // solution loop. Preserve product + item + scan key so every following surface
-  // knows exactly which work is being continued.
   useEffect(() => {
     if (!ready || !initialized.current) return;
     let changed = false;
@@ -90,8 +84,6 @@ export default function SolutionWorkflowBridge() {
     if (changed) setWorkflows(loadSolutionWorkflows());
   }, [ready, state.items, state.products, state.scanHistory]);
 
-  // Human completion advances to verification, not resolution. A completed
-  // implementation still needs fresh observation to prove the condition changed.
   useEffect(() => {
     if (!ready || workflows.length === 0) return;
     let changed = false;
@@ -111,25 +103,27 @@ export default function SolutionWorkflowBridge() {
     [workflows],
   );
 
-  if (!active) return null;
+  const activeHistory = active ? state.scanHistory?.[active.productId] : undefined;
+  const activeFinding =
+    active?.scanKey && activeHistory ? activeHistory.issues?.[active.scanKey] : undefined;
 
-  const onProduct = location.pathname === `/product/${encodeURIComponent(active.productId)}` ||
-    location.pathname === `/product/${active.productId}`;
-  const onDirect = location.pathname === "/control";
-  const item = state.items.find((candidate) => candidate.id === active.itemId);
-  const history = state.scanHistory?.[active.productId];
-  const finding = active.scanKey ? history?.issues?.[active.scanKey] : undefined;
-
-  // Fresh scan evidence can close a scan-linked workflow. For manually-created
-  // post-scan issues, a human still needs to explicitly assess the verification
-  // result because there is no stable scan key to prove closure automatically.
+  // Fresh scan evidence can close a scan-linked workflow. This watcher stays
+  // mounted even when there is no active workflow so hook order is stable.
   useEffect(() => {
-    if (!active || active.stage !== "verify" || !active.scanKey || !finding) return;
-    if (!finding.present) {
+    if (!active || active.stage !== "verify" || !active.scanKey || !activeFinding) return;
+    if (!activeFinding.present) {
       setSolutionWorkflowStage(active.id, "resolved");
       setWorkflows(loadSolutionWorkflows());
     }
-  }, [active, finding]);
+  }, [active, activeFinding]);
+
+  if (!active) return null;
+
+  const onProduct =
+    location.pathname === `/product/${encodeURIComponent(active.productId)}` ||
+    location.pathname === `/product/${active.productId}`;
+  const onDirect = location.pathname === "/control";
+  const item = state.items.find((candidate) => candidate.id === active.itemId);
 
   const setStage = (stage: SolutionWorkflowStage) => {
     setSolutionWorkflowStage(active.id, stage);
@@ -216,9 +210,6 @@ export default function SolutionWorkflowBridge() {
           >
             Re-scan in Product Cockpit →
           </Link>
-        )}
-        {active.stage === "resolved" && (
-          <span className="text-xs font-semibold text-emerald-300">Verified resolved</span>
         )}
       </div>
     </section>
