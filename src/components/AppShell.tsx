@@ -1,10 +1,11 @@
-// Ailhat app shell — the premium dark command-center sidebar that wraps the
-// authenticated app views (dashboard "Today", brief "Intelligence"). Desktop-first.
-// Must be rendered inside AuthProvider + StoreProvider (routes provide these).
+// ailhat app shell — Portfolio Intelligence navigation for the authenticated
+// product experience. Desktop-first. Must be rendered inside AuthProvider +
+// StoreProvider (routes provide these).
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { useStore } from "~/lib/useStore";
 import AuthNav from "~/components/AuthNav";
+import AilhatBrandMark from "~/components/AilhatBrandMark";
 import { platformLabel } from "~/lib/store";
 import { retirementRecommendationCount } from "~/lib/portfolio-lifecycle";
 
@@ -105,13 +106,13 @@ export default function AppShell({
     <div className="flex min-h-dvh bg-gray-950 text-gray-100">
       {/* ---------- Sidebar ---------- */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 shrink-0 flex-col border-r border-gray-800 bg-gray-950/95 sm:flex">
-        {/* Brand */}
-        <Link to="/dashboard" className="flex items-center gap-2.5 pl-[22px] pr-4 pb-4 pt-5">
-          <div className="silhat-brand">A</div>
+        {/* Brand — distributed signals resolving into one clear intelligence point. */}
+        <Link to="/dashboard" className="flex items-center gap-2.5 pb-4 pl-[18px] pr-4 pt-5">
+          <AilhatBrandMark size={42} className="-ml-1" />
           <div className="leading-none">
             <div className="font-display text-[15px] font-bold tracking-tight text-gray-50">ailhat</div>
-            <div className="mt-1 font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-[#7fb0ff]">
-              Command center
+            <div className="mt-1 font-mono text-[9px] font-semibold uppercase tracking-[0.2em] text-[#7fb0ff]">
+              Portfolio Intelligence
             </div>
           </div>
         </Link>
@@ -239,7 +240,7 @@ export default function AppShell({
         {/* Mobile top bar (sidebar hidden on small screens) */}
         <div className="flex items-center justify-between border-b border-gray-800 bg-gray-950 px-4 py-3 sm:hidden">
           <Link to="/dashboard" className="flex items-center gap-2">
-            <div className="silhat-brand">A</div>
+            <AilhatBrandMark size={30} />
             <span className="font-bold tracking-tight">ailhat</span>
           </Link>
           <div className="flex items-center gap-2">
