@@ -97,6 +97,39 @@ Prepared work is never the same as executed work. Direct is the seam where accep
 - Mark incorrect — invalidate the current premise; do not regenerate the same inference from identical evidence.
 - Acted — does not mean resolved. The signal remains part of the operating loop until outcome evidence confirms resolution or the user explicitly dismisses/handles it.
 
+## Agent Journey Readiness
+
+Agent Journey Readiness belongs to **ailhat** as part of Portfolio Intelligence.
+
+The question is not only whether a page is technically healthy. It is whether an authorized agent can successfully accomplish the product's important jobs:
+
+1. **Discover** — identify the product and its relevant offering.
+2. **Understand** — interpret what the product does, for whom, and what action is appropriate.
+3. **Act** — find and invoke the correct action surface instead of guessing through brittle visual interaction.
+4. **Recover** — understand a blocked state, retry safely, or escalate with useful evidence.
+
+Critical journeys should be defined per product and eventually become executable test cases. Examples include:
+
+- understand the offering and intended user
+- complete the primary signup / booking / request / purchase path
+- identify and invoke the correct structured action or WebMCP-style tool surface
+- recover safely from authentication, authorization, runtime, or missing-action blockers
+
+A future journey runner should record each stall with evidence and feed failures into the same ailhat lifecycle:
+
+**Agent journey test → finding → Review → Solution → Direct → Implement → re-test → resolved/regressed**
+
+Do not claim a journey was tested until an actual runner executed it. Defined-but-unexecuted journeys remain **Needs test**.
+
+### Ecosystem boundary
+
+- **ALVIRA / Context Intelligence** answers: what should the authorized agent know about the person, goals, constraints, preferences, and context?
+- **ailhat / Portfolio Intelligence** answers: can this product actually be understood and operated by agents, what is failing, and what should change?
+- **LEDGATo / Authorization Intelligence** answers: is the proposed action allowed, governed, and evidenced?
+- **Agent OS / Workforce** remains foundational execution infrastructure, not a separate public product.
+
+WebMCP is therefore a possible enabling interface, not the product category. The durable ailhat capability is **Agent Journey Readiness**.
+
 ## Persistence
 
 Workspace composition can remain inside the existing account-scoped JSONB state without a database migration:
@@ -112,3 +145,5 @@ workspacePreferences: Record<string, ProductWorkspacePreference>
 ```
 
 Finding visibility is currently presentation-only and persisted separately from scan evidence. It must remain logically separate from ProductScanHistory so a hidden resolved finding can automatically reappear when it regresses.
+
+The first Agent Journey Readiness pass stores journey definitions browser-side and labels them **Needs test**. Move journey definitions/results into account-scoped persistence when the actual journey runner and Direct multi-tenant boundaries are ready.
