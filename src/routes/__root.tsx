@@ -1,6 +1,7 @@
 import { HeadContent, Outlet, Scripts, createRootRoute } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
+import { FoundingBetaFeedback } from "~/components/FoundingBetaFeedback";
 import { WhyAilhatEducation } from "~/components/WhyAilhatEducation";
 import appCss from "~/styles/app.css?url";
 
@@ -43,6 +44,7 @@ function RootComponent() {
     <RootDocument>
       <Outlet />
       <WhyAilhatEducation />
+      <FoundingBetaFeedback />
     </RootDocument>
   );
 }
