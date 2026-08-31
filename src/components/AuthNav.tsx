@@ -1,9 +1,11 @@
 // Small auth-affording control for the nav. Renders the current user's email
 // + Log out when authed; otherwise a "Log in" link. Must be rendered inside an
-// AuthProvider. The login page itself decides signup-vs-login based on whether
-// the users table is empty.
+// AuthProvider. Owner-link visibility is only a convenience; /owner is enforced
+// server-side against AILHAT_OWNER_EMAIL.
 import { Link } from "@tanstack/react-router";
 import { useAuth } from "~/lib/useAuth";
+
+const DEFAULT_OWNER_EMAIL = "tahlia.ashwood@gmail.com";
 
 export default function AuthNav({ compact = false }: { compact?: boolean }) {
   const { user, loading, logout } = useAuth();
@@ -13,12 +15,22 @@ export default function AuthNav({ compact = false }: { compact?: boolean }) {
   }
 
   if (user) {
+    const isOwner = user.email.trim().toLowerCase() === DEFAULT_OWNER_EMAIL;
     return (
       <div className="flex items-center gap-2">
         {!compact && (
           <span className="hidden max-w-[160px] truncate text-sm text-gray-500 sm:inline dark:text-gray-400">
             {user.email}
           </span>
+        )}
+        {isOwner && (
+          <Link
+            to="/owner"
+            title="Owner dashboard"
+            className="rounded-lg border border-[#7fb0ff]/25 bg-[#7fb0ff]/5 px-2.5 py-1.5 text-xs font-semibold text-[#9dc2ff] transition hover:border-[#7fb0ff]/50"
+          >
+            Owner
+          </Link>
         )}
         <button
           onClick={() => void logout()}
