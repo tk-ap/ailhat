@@ -12,19 +12,25 @@ The mark should feel precise, infrastructural, observant, and slightly atmospher
 
 The name began personally: **ailhat is Tahlia reversed**.
 
-It also carries a second meaning associated with **morning dew**. That metaphor maps naturally to the product:
+There is a real etymological throughline worth preserving accurately. **Tahlia** is commonly used as a modern spelling/variant in the broader Talia/Talya name family. The established Hebrew **Talia/Talya** derivation comes from `tal` (dew) + `Yah` (a divine name), giving the sense **“dew from God” / “God’s dew.”** The exact spelling **Tahlia** also has modern English/Australian usage, so product copy should avoid claiming that every historical use of the exact spelling has one single Hebrew origin.
+
+For the brand story, the dew meaning is still unusually coherent with the product:
 
 - small signals accumulate before they are obvious;
-- unseen change becomes visible;
+- unseen conditions become visible through their evidence;
 - freshness matters because stale evidence is dangerous;
 - clarity emerges from distributed observation;
 - the useful output is not the raw signal field, but what condenses from it.
+
+A useful conceptual sentence is:
+
+> Dew is visible evidence of conditions that were already present. ailhat does the same for a product portfolio.
 
 The name story is supporting brand context, not the primary category explanation.
 
 Suggested About copy:
 
-> **Why ailhat?** The name began personally — Tahlia, reversed. It also carries another meaning: morning dew. That became an unexpectedly accurate metaphor for the product. ailhat watches a portfolio continuously, gathering small changes, weak signals, and evidence until something worth acting on becomes visible.
+> **Why ailhat?** The name began personally — Tahlia, reversed. Talia/Talya also carries a Hebrew meaning associated with dew from God. That became an unexpectedly accurate metaphor for the product: ailhat watches a portfolio continuously, gathering small changes, weak signals, and evidence until something worth acting on becomes visible.
 
 ## Category lockup
 
@@ -78,15 +84,39 @@ This is especially appropriate for:
 
 Do not use constant particle motion simply as background decoration.
 
+### Signature reverse wordmark reveal
+
+The wordmark carries a second, more personal motion cue: **ailhat illuminates from right to left**.
+
+The visual sequence should imply:
+
+`t → a → h → l → i → a`
+
+That direction subtly acknowledges that `ailhat` resolves back to **Tahlia** when read in reverse. It should not literally replace the displayed word with Tahlia; the reference should remain discoverable rather than explanatory.
+
+Implementation rules:
+
+- one-pass reveal on first meaningful brand appearance;
+- approximately 1.2–1.5 seconds;
+- right-to-left blue/violet illumination, then settle to the normal neutral wordmark;
+- no continuous pulsing or looping;
+- never use the animation as a live-data/status indicator;
+- respect `prefers-reduced-motion` and render a static wordmark when motion is reduced.
+
+Current implementation:
+
+`/public/brand/ailhat-motion.css`
+
 ## Core verbal idea
 
-Preferred articulation:
+Preferred tagline:
 
-> **Many signals. One clarity.**
+> **Signals condensed into clarity.**
+
+This is the canonical working tagline for the Condensation direction.
 
 Supporting lines:
 
-- **Signals condense into clarity.**
 - **What matters becomes visible.**
 - **Portfolio signals, resolved.**
 - **Small signals become visible before they become obvious.**
@@ -152,6 +182,8 @@ Desktop brand block:
 
 Mobile may use the icon + `ailhat` without the descriptor when space is constrained.
 
+The right-to-left wordmark illumination is appropriate here as the first subtle brand reveal.
+
 ### Intelligence
 
 The brand metaphor should be reflected through reduction:
@@ -172,6 +204,7 @@ Do not:
 - use dew/morning language on every screen;
 - make the mark resemble a crypto token, galaxy illustration, or loading spinner;
 - let the peripheral particle detail compromise favicon/sidebar recognition;
+- loop the reverse wordmark animation continuously;
 - use `Ailhat` capitalization in product copy — write **ailhat** lowercase.
 
 ## Status
