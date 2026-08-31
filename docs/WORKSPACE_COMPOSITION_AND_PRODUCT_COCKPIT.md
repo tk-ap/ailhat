@@ -1,238 +1,105 @@
-# ailhat workspace composition + product cockpit
+# Workspace composition, Intelligence, Product Cockpit, and operating continuity
 
-## Why this pass exists
+## Canonical hierarchy
 
-The current shell still reflects the original owner-era information architecture:
+**Portfolio = membership**  
+**Today = attention**  
+**Intelligence = judgment**  
+**Product Cockpit = depth**  
+**Direct = action**
 
-- sidebar product links go directly to a narrow per-product decisions surface;
-- Today renders every active product in raw storage order;
-- lifecycle retirement exists, but Today has no explicit composition controls;
-- there is no single all-up product surface that gathers the product's current intelligence, scan history, work, decisions, opportunities, and lifecycle state.
+The operating loop is:
 
-This pass reconciles those surfaces around one model:
+**Scan → Review → Prepare work → Execute / hand off → Re-scan → Resolve or reopen**
 
-> Portfolio controls membership and lifecycle. Today controls attention and layout. Intelligence edits the portfolio into a ranked brief. Product Cockpit controls one product in depth. Direct turns an accepted intelligence action into an agent-ready work artifact.
+Portfolio controls membership and lifecycle. Today controls attention and layout. Intelligence edits the portfolio into a ranked brief. Product Cockpit controls one product in depth. Direct turns an accepted intelligence action into an agent-ready work artifact. Re-scan is how ailhat verifies whether the intended product change actually happened.
 
-## 1. Portfolio membership vs workspace visibility
+## Workspace composition
 
-These concepts must stay distinct.
+Active products participate in Portfolio Intelligence, scanning, prioritization, opportunity detection, and planning. Retired products leave those active engines but preserve their working context for later review or reactivation.
 
-### Active
+Today visibility is presentation only:
 
-The product is part of the prime Portfolio Intelligence set. It participates in scanning, prioritization, opportunity detection, Direct, and portfolio planning.
+- expanded
+- collapsed
+- hidden from Today
 
-### Retired
+A product hidden from Today remains active and intelligent. Retirement is a separate lifecycle action.
 
-The product leaves the active intelligence/planning set. Its product-scoped context is archived and reversible. Retirement is not deletion.
+Explicit user order should be authoritative for Today and the active-product sidebar. New active products append. Reactivated products return visible, expanded, and at the end of the explicit order unless the user later moves them.
 
-### Today visibility
+## Product Cockpit
 
-A product can remain active while its Today presentation changes. This is presentation/attention state, not portfolio lifecycle state.
+Each active product should open an all-up `/product/:productId` operating page containing:
 
-Initial Today presentation states:
-
-- **Expanded** — full Today card.
-- **Collapsed** — compact status/signal row, still visible.
-- **Hidden from Today** — not rendered on Today, but remains active elsewhere.
-
-Hidden-from-Today must never silently behave like retirement.
-
-## 2. Today as a configurable workspace
-
-Today should no longer mean "all active products in insertion order." It is the user's current operating surface.
-
-### Required controls
-
-For each active product:
-
-- move up
-- move down
-- collapse / expand
-- hide from Today / restore to Today
-- open Product Cockpit
-- retire product
-
-A later pass can replace up/down with drag-and-drop after keyboard/mobile ordering is proven.
-
-### Ordering
-
-The user's explicit order is authoritative for Today and the active-product sidebar. New active products append to the end unless the user moves them.
-
-Retiring a product removes it from the Today order. Reactivating it appends it to the end by default.
-
-### Workspace manager
-
-Today should expose a compact **Customize workspace** control that reveals:
-
-- ordered active-product list;
-- visibility state for each product;
-- collapsed/expanded state;
-- retired-product count with link to Portfolio Lifecycle.
-
-This prevents layout controls from competing with the intelligence itself.
-
-### What belongs on Today
-
-Today is the immediate action surface, not the place to repeat every intelligence artifact. Prefer:
-
-- the top 1–3 portfolio actions worth attention now;
-- compact per-product status/change summaries;
-- active work already accepted by the user;
-- lifecycle prompts that require a decision;
-- links into Product Cockpit for detail.
-
-Do not duplicate full evidence, full signal reasoning, market-gap detail, and complete opportunity inventories here.
-
-## 3. Sidebar product behavior
-
-The sidebar's product list is navigation, not a checklist/decision shortcut.
-
-Clicking a product must open:
-
-`/product/:productId`
-
-The sidebar should use the same explicit product order as Today. Hidden-from-Today products remain available in the sidebar because they are still active products. Retired products do not appear in the active sidebar.
-
-The existing per-product decisions surface remains available as a section/deep link from Product Cockpit rather than being the default product destination.
-
-## 4. Product Cockpit
-
-Each active product gets one all-up operating page.
-
-### Header
-
-- product name
-- platform
-- canonical URL
-- active / lifecycle status
-- last successful observation
-- last ailhat-observable change
-- open signal count
-- quick actions: Scan, Edit, Retire
-
-### Intelligence snapshot
-
-At minimum:
-
-- current open checklist/work items
-- latest scan findings / scan health
-- most recent scan differential
-- active opportunities
-- lifecycle assessment / retirement evidence
+- product name, platform, canonical URL, and lifecycle state
+- last successful observation and latest scan differential
+- product-specific signals with evidence/reasoning
+- open checklist/work
+- opportunities and market gaps scoped to the product
 - engagement evidence when connected
+- lifecycle/retirement evidence
+- decisions and relevant deep links
+- actions to scan/re-scan, review Intelligence, prepare agent direction, and retire
 
-### Full evidence home
+The Product Cockpit is where detailed evidence lives. Portfolio should remain the membership/lifecycle index instead of duplicating every product's operational detail.
 
-Product Cockpit is the canonical home for product-specific depth that currently makes Intelligence too dense:
+## Finding lifecycle: active, resolved, regressed
 
-- complete evidence lists;
-- full reasoning and thresholds;
-- historical signal/differential context;
-- detailed scan results;
-- product-specific opportunities and market gaps;
-- signal history and user feedback;
-- decision history;
-- lifecycle and engagement evidence.
+Finding history is evidence and must not disappear merely because the active view becomes quieter.
 
-Intelligence can deep-link directly to the relevant product/signal section instead of rendering all of this inline.
+- **Active** — currently failing evidence. Show prominently.
+- **Resolved** — the finding is no longer present in fresh observation. Preserve the history, but default it to a condensed presentation. The user may explicitly hide it from the active view.
+- **Regressed** — a previously resolved finding is failing again. Re-surface it automatically as active, even if the older resolved finding had been hidden or condensed.
 
-### Decision history
+Hide/condense is **presentation state only**. It must never mutate or delete `ProductScanHistory`.
 
-The current per-product decisions experience becomes a section of the cockpit, with a deep link if the full decision editor remains a separate route temporarily.
+A destructive delete is a separate explicit action. There is no implicit delete as a consequence of resolution, hiding, condensation, dismissal, or re-scan.
 
-### Today controls
+The current branch introduces `src/lib/finding-visibility.ts` as the non-destructive presentation contract. It defaults resolved findings to `condensed`, allows `hidden`, and forces any currently present/regressed issue back to `expanded` so new evidence cannot stay accidentally hidden.
 
-The cockpit should also expose:
+## Intelligence density
 
-- Show on Today / Hide from Today
-- Expanded / Collapsed on Today
-- Move earlier / later in Today
+Intelligence should read as an editorial brief rather than a wall of equally weighted diagnostics:
 
-This makes workspace composition available from both the workspace and the product itself.
+1. Lead brief — the highest-leverage portfolio action
+2. What changed — compact ranked material changes/signals
+3. Worth watching — lighter opportunities/drift/market gaps
+4. Portfolio pulse — compact counts/trends
 
-## 5. Intelligence as an editorial brief
+Full evidence and computation details should be collapsed by default and primarily available in Product Cockpit.
 
-Intelligence should stop presenting every valid data product at equal visual weight.
+## Agent-ready actions
 
-The current stack — portfolio summary, highest-leverage card, attention engine, full signal cards, opportunities, and market gaps — contains useful information but creates excessive simultaneous hierarchy.
+`Fix` and `Investigate` should create inspectable prepared work rather than only write feedback or checklist state.
 
-### Default Intelligence composition
+A Fix artifact should include:
 
-1. **Lead brief** — one highest-leverage portfolio action with a clear reason and primary action.
-2. **What changed** — a compact ranked stream of material changes/signals across products.
-3. **Worth watching** — a lighter secondary section for opportunities, drift, and market gaps.
-4. **Portfolio pulse** — compact aggregate counts/trends, not four large competing dashboard tiles when those counts are not themselves actionable.
+- stable signal/work-item id
+- target product and URL
+- problem statement
+- evidence/provenance
+- desired outcome
+- explicit acceptance criteria
+- constraints/do-not-break when known
+- context links/cockpit anchor
+- recommended skills/capabilities only when grounded
+- execution status = `prepared`
 
-Evidence and computation details should be collapsed by default and live primarily in Product Cockpit.
+An Investigate artifact should include the question, known evidence, unknowns, sources/surfaces to inspect, a stop condition, and the decision the investigation should unlock.
 
-### Compact signal anatomy
+Prepared work is never the same as executed work. Direct is the seam where accepted intelligence becomes governed work for a replaceable execution harness.
 
-Default card:
+## Feedback semantics
 
-- product
-- signal title
-- one-sentence why-it-matters
-- confidence/provenance cue when needed
-- primary executable action
-- secondary overflow/detail control
+- Snooze — defer until a defined time or evidence-change condition.
+- Dismiss — suppress the current inference until the underlying evidence materially changes.
+- Mark incorrect — invalidate the current premise; do not regenerate the same inference from identical evidence.
+- Acted — does not mean resolved. The signal remains part of the operating loop until outcome evidence confirms resolution or the user explicitly dismisses/handles it.
 
-Expanded detail may show evidence/reasoning, but should not be the default visual state for every signal.
+## Persistence
 
-## 6. Agent-ready action semantics
-
-Intelligence actions must have real downstream outcomes. "Act" or "Fix" cannot merely mutate feedback state or add generic checklist items.
-
-### Fix
-
-Compile an agent-ready work item containing at minimum:
-
-- stable signal/work-item id;
-- target product and URL;
-- problem statement;
-- evidence/provenance;
-- desired outcome;
-- explicit acceptance criteria;
-- constraints / do-not-break boundaries when known;
-- relevant context links or product-cockpit anchor;
-- recommended skills/capabilities when grounded;
-- execution status = prepared, not falsely claimed executed.
-
-Then route the user to Direct with the prepared artifact, with copy/export/handoff options.
-
-### Investigate
-
-Compile a bounded research task containing:
-
-- question to resolve;
-- evidence already known;
-- unknowns to verify;
-- sources/surfaces to inspect;
-- stop condition / definition of sufficient evidence;
-- expected decision unlocked by the investigation.
-
-This should become a Direct/research work item, not simply another checklist row.
-
-### Snooze
-
-Defer presentation until a defined time or evidence-change condition. No execution artifact is created.
-
-### Dismiss
-
-Suppress the current signal until its underlying evidence materially changes. Preserve the decision as learning feedback.
-
-### Mark incorrect
-
-Record negative model/signal feedback and invalidate the current signal premise. The same inference should not resurface unchanged from identical evidence.
-
-### Checklist use
-
-Checklist items remain useful as human-visible execution state, but they are an output/supporting representation of accepted work — not the terminal outcome of the Intelligence action.
-
-## 7. Persistence model
-
-Workspace composition should persist account-wide, alongside the existing account-scoped portfolio state.
-
-Recommended state shape:
+Workspace composition can remain inside the existing account-scoped JSONB state without a database migration:
 
 ```ts
 interface ProductWorkspacePreference {
@@ -244,65 +111,4 @@ interface ProductWorkspacePreference {
 workspacePreferences: Record<string, ProductWorkspacePreference>
 ```
 
-Backward compatibility:
-
-- products without a saved preference default to visible + expanded;
-- order falls back to the existing product array order;
-- no database schema migration is required because portfolio state is already stored as JSONB.
-
-Prepared agent work should use a stable, explicit work-item representation rather than overloading signal feedback state.
-
-## 8. Lifecycle interactions
-
-### Retire
-
-`active product + workspace preference -> retired archive`
-
-Retirement should preserve the product's last workspace preference in its archive where practical, but reactivation may safely append it to Today rather than restoring a stale position.
-
-### Reactivate
-
-`retired archive -> active product`
-
-Default:
-
-- visible on Today: yes
-- collapsed: no
-- order: end of current active set
-
-### Delete
-
-Permanent delete remains a destructive secondary action. It should not be the visually primary way to remove a product from Today.
-
-## 9. Acceptance criteria
-
-This pass is complete when:
-
-1. Clicking ALVIRA, LEDGATo, etc. in the sidebar opens an all-up product page, not only decisions.
-2. Today no longer depends solely on raw insertion order.
-3. A user can reorder products on Today.
-4. A user can collapse a product without changing its active intelligence status.
-5. A user can hide an active product from Today without retiring it.
-6. A user can retire a product and it disappears from active Today/sidebar/planning surfaces while retaining context.
-7. A retired product can be reactivated.
-8. Workspace composition persists after reload/account hydration.
-9. The sidebar and Today share the same user-defined active-product order.
-10. The UI clearly distinguishes hidden, collapsed, active, and retired states.
-11. Intelligence defaults to a concise editorial brief rather than fully expanded evidence cards.
-12. Product Cockpit owns the complete product-specific evidence/reasoning history.
-13. Fix produces a prepared agent-ready work item with acceptance criteria and evidence.
-14. Investigate produces a bounded research work item with a stop condition.
-15. Snooze, Dismiss, and Mark incorrect have distinct persistent semantics.
-16. No action claims execution merely because a work artifact was prepared or handed off.
-
-## Product principle
-
-Today is not the portfolio database. It is the user's chosen attention surface.
-
-Intelligence is not the evidence warehouse. It is ailhat's editorial judgment about what matters across the portfolio.
-
-Portfolio is not merely navigation. It is the membership/lifecycle boundary for what ailhat is actively reasoning about.
-
-A product page is not just its decision history. It is the product's operating context inside Portfolio Intelligence.
-
-Direct is the seam where accepted intelligence becomes prepared, governed work for an execution harness.
+Finding visibility is currently presentation-only and persisted separately from scan evidence. It must remain logically separate from ProductScanHistory so a hidden resolved finding can automatically reappear when it regresses.
