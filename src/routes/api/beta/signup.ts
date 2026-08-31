@@ -7,6 +7,7 @@ import {
   validateAuthInput,
 } from "~/lib/auth";
 import { redeemFoundingBetaInvite } from "~/lib/access";
+import { validateFoundingBetaInvite } from "~/lib/beta-invites";
 import { sessionCookieForRequest } from "~/lib/request-auth";
 
 export const Route = createFileRoute("/api/beta/signup")({
@@ -33,6 +34,14 @@ export const Route = createFileRoute("/api/beta/signup")({
         }
 
         try {
+          const validInvite = await validateFoundingBetaInvite(inviteToken, parsed.email);
+          if (!validInvite) {
+            return Response.json(
+              { ok: false, error: "That Founding Beta invite is invalid, expired, or belongs to another email." },
+              { status: 403 },
+            );
+          }
+
           const existing = await findUserByEmail(parsed.email);
           if (existing) {
             return Response.json(
@@ -45,8 +54,8 @@ export const Route = createFileRoute("/api/beta/signup")({
           const redeemed = await redeemFoundingBetaInvite(inviteToken, user.email, user.id);
           if (!redeemed) {
             return Response.json(
-              { ok: false, error: "That Founding Beta invite is invalid, expired, or belongs to another email." },
-              { status: 403 },
+              { ok: false, error: "That Founding Beta invite was already used. Ask for a fresh invite." },
+              { status: 409 },
             );
           }
 
