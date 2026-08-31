@@ -14,11 +14,12 @@ export const Route = createRootRoute({
       {
         name: "description",
         content:
-          "ailhat is Portfolio Intelligence for builders shipping multiple products. It condenses distributed portfolio signals into what changed, why it matters, and what to do next.",
+          "ailhat is Portfolio Intelligence for builders shipping multiple products. Signals condensed into clarity: what changed, why it matters, and what to do next.",
       },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
+      { rel: "stylesheet", href: "/brand/ailhat-motion.css" },
       { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
       {
         rel: "preconnect",
