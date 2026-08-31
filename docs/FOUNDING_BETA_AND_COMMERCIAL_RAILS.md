@@ -36,7 +36,7 @@ Recommended initial access window: **45 days**.
 
 Invitation links expire after **7 days** by default.
 
-Founding Beta users receive unrestricted access to customer-facing ailhat functionality available during their access window. They do not receive:
+Founding Beta users receive access to customer-facing ailhat functionality that has been verified account-scoped during their access window. They do not receive:
 
 - `/owner`
 - cohort metrics
@@ -45,6 +45,14 @@ Founding Beta users receive unrestricted access to customer-facing ailhat functi
 - internal founder diagnostics
 
 Founding Beta exists to answer product questions, not to simulate revenue.
+
+### Tenant-safety gate
+
+ailhat began as a single-owner product, so multi-user access must be opened surface-by-surface rather than assumed safe.
+
+The portfolio persistence layer is user-scoped, but the current Agent Direct implementation still reads the owner-era `seedPortfolio` and a shared availability-observation feed for any authenticated session. **Agent Direct must not be considered beta-ready until those inputs are account-scoped or explicitly gated.**
+
+The Founding Beta rail can be merged before invitations are issued, but the first invite should not be sent until the tenant-safety audit is complete for every authenticated surface.
 
 ### Feedback exchange
 
