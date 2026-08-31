@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
 import { useStore } from "~/lib/useStore";
 import AuthNav from "~/components/AuthNav";
 import AilhatBrandMark from "~/components/AilhatBrandMark";
-import PreparedWorkTray from "~/components/PreparedWorkTray";
+import TodayWorkspaceControls from "~/components/TodayWorkspaceControls";
 import { platformLabel } from "~/lib/store";
 import { retirementRecommendationCount } from "~/lib/portfolio-lifecycle";
 
@@ -23,7 +23,7 @@ const NAV: { id: ShellView; label: string; to: string; icon: ReactNode; hint: st
     id: "today",
     label: "Today",
     to: "/dashboard",
-    hint: "Signals · portfolio",
+    hint: "Signals · active portfolio · composition",
     icon: (
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="shrink-0">
         <path d="M3 12h4l2-6 4 12 2-6h6" strokeLinecap="round" strokeLinejoin="round" />
@@ -39,18 +39,6 @@ const NAV: { id: ShellView; label: string; to: string; icon: ReactNode; hint: st
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="shrink-0">
         <path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1" strokeLinecap="round" />
         <circle cx="12" cy="12" r="3.2" />
-      </svg>
-    ),
-  },
-  {
-    id: "portfolio",
-    label: "Portfolio",
-    to: "/portfolio",
-    hint: "Active · retired · lifecycle",
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="shrink-0">
-        <rect x="3" y="5" width="18" height="15" rx="2" />
-        <path d="M8 5V3h8v2M3 10h18" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     ),
   },
@@ -103,6 +91,11 @@ export default function AppShell({
   const retirementCount = retirementRecommendationCount(state);
   const retiredCount = state.retiredProducts?.length ?? 0;
 
+  const viewLabel =
+    active === "portfolio"
+      ? "Product"
+      : NAV.find((n) => n.id === active)?.label ?? "ailhat";
+
   return (
     <div className="flex min-h-dvh bg-gray-950 text-gray-100">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 shrink-0 flex-col border-r border-gray-800 bg-gray-950/95 sm:flex">
@@ -122,18 +115,13 @@ export default function AppShell({
             {NAV.map((n) => (
               <Link
                 key={n.id}
-                to={n.to as "/dashboard" | "/brief" | "/portfolio" | "/control" | "/learn"}
+                to={n.to as "/dashboard" | "/brief" | "/control" | "/learn"}
                 className={`silhat-nav ${active === n.id ? "silhat-nav-active" : ""}`}
                 title={n.hint}
               >
                 {n.icon}
                 <span className="truncate">{n.label}</span>
-                {n.id === "portfolio" && retirementCount > 0 && (
-                  <span className="ml-auto shrink-0 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">
-                    {retirementCount}
-                  </span>
-                )}
-                {active === n.id && !(n.id === "portfolio" && retirementCount > 0) && (
+                {active === n.id && (
                   <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-[#7fb0ff]" />
                 )}
               </Link>
@@ -142,7 +130,7 @@ export default function AppShell({
 
           {state.products.length > 0 && (
             <>
-              <div className="silhat-eyebrow px-2.5 pb-1.5 pt-5">Active products</div>
+              <div className="silhat-eyebrow px-2.5 pb-1.5 pt-5">Portfolio</div>
               <div className="space-y-0.5">
                 {state.products.slice(0, 8).map((p) => {
                   const open = state.items.filter(
@@ -169,6 +157,25 @@ export default function AppShell({
                   );
                 })}
               </div>
+            </>
+          )}
+
+          {retiredCount > 0 && (
+            <>
+              <div className="silhat-eyebrow px-2.5 pb-1.5 pt-5">Preserved</div>
+              <Link
+                to="/portfolio"
+                className="silhat-nav"
+                title="Retired products · context preserved"
+              >
+                <span className="flex h-[16px] w-[16px] shrink-0 items-center justify-center">
+                  <span className="h-1.5 w-1.5 rounded-full bg-gray-600" />
+                </span>
+                <span className="truncate">Archive</span>
+                <span className="ml-auto shrink-0 rounded-full bg-gray-800 px-1.5 py-0.5 text-[10px] font-semibold text-gray-500">
+                  {retiredCount}
+                </span>
+              </Link>
             </>
           )}
 
@@ -207,13 +214,11 @@ export default function AppShell({
                 Private
               </span>
             </div>
-            {retiredCount > 0 && (
-              <Link
-                to="/portfolio"
-                className="mt-2 block border-t border-gray-800 pt-2 text-[11px] text-gray-500 hover:text-gray-300"
-              >
-                {retiredCount} retired · context preserved
-              </Link>
+            {(retiredCount > 0 || retirementCount > 0) && (
+              <div className="mt-2 border-t border-gray-800 pt-2 text-[11px] text-gray-500">
+                {retirementCount > 0 ? `${retirementCount} lifecycle review${retirementCount === 1 ? "" : "s"} · ` : ""}
+                {retiredCount > 0 ? `${retiredCount} preserved` : "manage from Today"}
+              </div>
             )}
           </div>
           <AuthNav compact />
@@ -227,26 +232,27 @@ export default function AppShell({
             <span className="font-bold tracking-tight">ailhat</span>
           </Link>
           <div className="flex items-center gap-2">
-            <Link
-              to="/portfolio"
-              className="rounded-lg border border-gray-800 px-2.5 py-1.5 text-xs font-semibold text-gray-400"
-            >
-              Portfolio
-              {retirementCount > 0 ? ` · ${retirementCount}` : ""}
-            </Link>
+            {retiredCount > 0 && (
+              <Link
+                to="/portfolio"
+                className="rounded-lg border border-gray-800 px-2.5 py-1.5 text-xs font-semibold text-gray-400"
+              >
+                Archive · {retiredCount}
+              </Link>
+            )}
             <AuthNav compact />
           </div>
         </div>
 
         <header className="hidden items-center justify-between gap-4 border-b border-gray-800 bg-gray-950/80 px-8 py-3 backdrop-blur sm:flex">
           <div className="flex items-center gap-2 text-sm text-gray-500">
-            <span className="text-gray-400">{NAV.find((n) => n.id === active)?.label ?? "ailhat"}</span>
+            <span className="text-gray-400">{viewLabel}</span>
             <span className="text-gray-600">/</span>
             <span className="truncate text-gray-500">
               {active === "today"
-                ? `Overview · ${state.products.length} active products`
+                ? `Active portfolio · reorder · condense · retire`
                 : active === "portfolio"
-                  ? `Lifecycle + Product Cockpits · ${state.products.length} active · ${retiredCount} retired`
+                  ? `Product cockpit / preserved archive`
                   : active === "control"
                     ? `Agent Direct · prepare governed work`
                     : active === "learn"
@@ -262,12 +268,10 @@ export default function AppShell({
         </header>
 
         <main className="min-w-0 flex-1">
-          <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-8">
-            <PreparedWorkTray />
-            {children}
-          </div>
+          <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-8">{children}</div>
         </main>
       </div>
+      {active === "today" && <TodayWorkspaceControls />}
     </div>
   );
 }
