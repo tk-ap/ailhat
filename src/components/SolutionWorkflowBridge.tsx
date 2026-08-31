@@ -1,5 +1,6 @@
 import { Link, useLocation } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
+import AgentJourneyReadiness from "~/components/AgentJourneyReadiness";
 import { useStore } from "~/lib/useStore";
 import {
   loadSolutionWorkflows,
@@ -49,7 +50,7 @@ function WorkflowRail({ stage }: { stage: SolutionWorkflowStage }) {
   );
 }
 
-export default function SolutionWorkflowBridge() {
+function SolutionWorkflowState() {
   const location = useLocation();
   const { state, ready } = useStore();
   const [workflows, setWorkflows] = useState<SolutionWorkflow[]>([]);
@@ -107,8 +108,6 @@ export default function SolutionWorkflowBridge() {
   const activeFinding =
     active?.scanKey && activeHistory ? activeHistory.issues?.[active.scanKey] : undefined;
 
-  // Fresh scan evidence can close a scan-linked workflow. This watcher stays
-  // mounted even when there is no active workflow so hook order is stable.
   useEffect(() => {
     if (!active || active.stage !== "verify" || !active.scanKey || !activeFinding) return;
     if (!activeFinding.present) {
@@ -213,5 +212,14 @@ export default function SolutionWorkflowBridge() {
         )}
       </div>
     </section>
+  );
+}
+
+export default function SolutionWorkflowBridge() {
+  return (
+    <>
+      <AgentJourneyReadiness />
+      <SolutionWorkflowState />
+    </>
   );
 }
