@@ -13,6 +13,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { findUserByToken, parseCookies, SESSION_COOKIE } from "./auth";
 import { seedPortfolio } from "./portfolio-seed.server";
+import { isOwnerEmail } from "./access";
 
 export interface DecisionSeedRecommendation {
   id: string;
@@ -36,7 +37,7 @@ export const getDecisionSeeds = createServerFn({ method: "GET" }).handler(
     } catch {
       user = null;
     }
-    if (!user) return [];
+    if (!user || !isOwnerEmail(user.email)) return [];
 
     return seedPortfolio.map((ws) => ({
       productName: ws.name,

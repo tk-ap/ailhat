@@ -44,6 +44,7 @@ import {
   scanEvidenceObservation,
 } from "./observations.ts";
 import type { AvailabilityObservation } from "./observations.ts";
+import { isOwnerEmail } from "./access.ts";
 
 function jsonResponse(
   body: unknown,
@@ -118,7 +119,7 @@ export async function handleRestRoute(
         const token =
           parseCookies(req.headers.get("cookie"))[SESSION_COOKIE] ?? "";
         const owner = token ? await findUserByToken(token) : null;
-        if (owner && mapUrlToWorkspaceId(result.url)) {
+        if (owner && isOwnerEmail(owner.email) && mapUrlToWorkspaceId(result.url)) {
           await upsertObservation(scanEvidenceObservation(result));
         }
       } catch (err) {
@@ -163,6 +164,20 @@ export async function handleRestRoute(
           "access-control-allow-headers": "content-type",
         },
       });
+    }
+    const observationToken =
+      parseCookies(req.headers.get("cookie"))[SESSION_COOKIE] ?? "";
+    const observationUser = observationToken
+      ? await findUserByToken(observationToken)
+      : null;
+    if (!observationUser) {
+      return jsonResponse({ ok: false, error: "Not authenticated." }, 401);
+    }
+    if (!isOwnerEmail(observationUser.email)) {
+      return jsonResponse(
+        { ok: false, error: "This observation feed is not enabled for this account yet." },
+        403,
+      );
     }
     if (req.method === "POST") {
       let parsed: unknown = null;

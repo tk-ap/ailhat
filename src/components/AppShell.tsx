@@ -160,7 +160,7 @@ export default function AppShell({
                   return (
                     <Link
                       key={p.id}
-                      to="/decisions/$productId"
+                      to="/products/$productId"
                       params={{ productId: p.id }}
                       className="silhat-nav"
                       title={platformLabel(p.platform)}
@@ -269,7 +269,7 @@ export default function AppShell({
                     : active === "learn"
                       ? `Playbook · lessons & worked examples`
                       : active === "decisions"
-                        ? `Agent Direct · per-product decisions`
+                        ? `Product review · evidence · priorities · decisions`
                         : `Attention · prioritised signals`}
             </span>
           </div>

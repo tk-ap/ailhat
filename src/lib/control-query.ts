@@ -22,6 +22,7 @@ import { modelWorkspaces } from "./control-scoring";
 import type { ModeledWorkspace } from "./control-scoring";
 import { modelDemoPortfolio } from "./demo-portfolio";
 import { findUserByToken, parseCookies, SESSION_COOKIE } from "./auth";
+import { isOwnerEmail } from "./access";
 
 export interface ControlPayload {
   /** False when the request did not carry a valid owner session. */
@@ -60,6 +61,20 @@ export const getAgentControl = createServerFn({ method: "GET" }).handler(
         observations: [],
         bucket: null,
         portfolio: modelDemoPortfolio(now),
+        modeledAt: now,
+      };
+    }
+
+    // The legacy Direct seed and observation feed model the founder's private
+    // portfolio. Authentication alone is not authorization to receive it.
+    // Beta/customer accounts remain safely empty until Direct is derived from
+    // their own portfolio_state and tenant-scoped evidence.
+    if (!isOwnerEmail(user.email)) {
+      return {
+        authenticated: true,
+        observations: [],
+        bucket: null,
+        portfolio: [],
         modeledAt: now,
       };
     }

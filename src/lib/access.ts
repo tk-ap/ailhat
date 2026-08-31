@@ -199,6 +199,55 @@ export async function redeemFoundingBetaInvite(
   return true;
 }
 
+/**
+ * Create an invited beta account and consume its invite in one database
+ * statement. If the invite is invalid, expired, already used, or belongs to a
+ * different email, no user is created. The invite claim, account, entitlement,
+ * and neutral plan therefore cannot drift apart under concurrent requests.
+ */
+export async function createInvitedBetaUser(
+  token: string,
+  email: string,
+  passwordHash: string,
+): Promise<AuthUser | null> {
+  if (!token) return null;
+  await migrateAccess();
+  const normalized = normalizeEmail(email);
+  const rows = await sql()`
+    with claimed as (
+      update founding_beta_invites
+         set redeemed_at = now()
+       where token_hash = ${sha256(token)}
+         and lower(email) = lower(${normalized})
+         and expires_at > now()
+         and redeemed_at is null
+       returning id, access_days
+    ), created as (
+      insert into users (email, password_hash)
+      select ${normalized}, ${passwordHash}
+        from claimed
+      returning id, email
+    ), marked as (
+      update founding_beta_invites
+         set redeemed_by = (select id from created)
+       where id = (select id from claimed)
+    ), granted as (
+      insert into founding_beta_access (user_id, expires_at, source)
+      select created.id, now() + claimed.access_days * interval '1 day', 'invite'
+        from created cross join claimed
+      returning user_id
+    ), planned as (
+      insert into account_plans (user_id, plan_key, status, source)
+      select user_id, 'free', 'active', 'internal' from granted
+      on conflict (user_id) do nothing
+    )
+    select id, email from created
+  `;
+  if (!rows.length) return null;
+  const row = rows[0] as { id: number; email: string };
+  return { id: Number(row.id), email: row.email };
+}
+
 export async function revokeFoundingBeta(owner: AuthUser, userId: number): Promise<void> {
   if (!isOwnerEmail(owner.email)) throw new Error("Owner access required.");
   await migrateAccess();

@@ -1,19 +1,23 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
   createSession,
-  createUser,
   findUserByEmail,
   hashPassword,
   validateAuthInput,
 } from "~/lib/auth";
-import { redeemFoundingBetaInvite } from "~/lib/access";
-import { validateFoundingBetaInvite } from "~/lib/beta-invites";
+import { createInvitedBetaUser } from "~/lib/access";
 import { sessionCookieForRequest } from "~/lib/request-auth";
 
 export const Route = createFileRoute("/api/beta/signup")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        if (process.env.AILHAT_BETA_INVITES_ENABLED !== "true") {
+          return Response.json(
+            { ok: false, error: "Founding Beta signup is not open yet." },
+            { status: 409 },
+          );
+        }
         let body: unknown;
         try {
           body = await request.json();
@@ -34,14 +38,6 @@ export const Route = createFileRoute("/api/beta/signup")({
         }
 
         try {
-          const validInvite = await validateFoundingBetaInvite(inviteToken, parsed.email);
-          if (!validInvite) {
-            return Response.json(
-              { ok: false, error: "That Founding Beta invite is invalid, expired, or belongs to another email." },
-              { status: 403 },
-            );
-          }
-
           const existing = await findUserByEmail(parsed.email);
           if (existing) {
             return Response.json(
@@ -50,12 +46,15 @@ export const Route = createFileRoute("/api/beta/signup")({
             );
           }
 
-          const user = await createUser(parsed.email, await hashPassword(parsed.password));
-          const redeemed = await redeemFoundingBetaInvite(inviteToken, user.email, user.id);
-          if (!redeemed) {
+          const user = await createInvitedBetaUser(
+            inviteToken,
+            parsed.email,
+            await hashPassword(parsed.password),
+          );
+          if (!user) {
             return Response.json(
-              { ok: false, error: "That Founding Beta invite was already used. Ask for a fresh invite." },
-              { status: 409 },
+              { ok: false, error: "That Founding Beta invite is invalid, expired, used, or belongs to another email." },
+              { status: 403 },
             );
           }
 
