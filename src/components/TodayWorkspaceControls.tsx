@@ -26,12 +26,68 @@ function ensureControlHost(card: HTMLElement, productId: string): HTMLElement | 
   return host;
 }
 
+function setDisplay(node: HTMLElement | null, value: string) {
+  if (node) node.style.display = value;
+}
+
 function applyCollapsed(card: HTMLElement, collapsed: boolean) {
-  const children = Array.from(card.children) as HTMLElement[];
-  children.forEach((child, index) => {
+  const cardChildren = Array.from(card.children) as HTMLElement[];
+  const header = cardChildren[0] ?? null;
+
+  // The full scan/checklist body should disappear in condensed mode.
+  cardChildren.forEach((child, index) => {
     if (index === 0) return;
     child.style.display = collapsed ? "none" : "";
   });
+
+  if (!header) return;
+  card.dataset.todayDensity = collapsed ? "condensed" : "expanded";
+  header.style.padding = collapsed ? "0.55rem 0.75rem" : "";
+  header.style.borderBottomWidth = collapsed ? "0" : "";
+
+  const controls = header.querySelector<HTMLElement>("[data-today-controls]");
+  if (controls) {
+    controls.style.marginTop = collapsed ? "0.45rem" : "";
+    controls.style.paddingTop = collapsed ? "0.45rem" : "";
+    controls.style.gap = collapsed ? "0.25rem" : "";
+  }
+
+  // ProductCard's first header child is the normal product summary row unless
+  // the user is actively editing. In condensed mode retain only the identity
+  // row (name + platform) and open-count badge. Everything operational returns
+  // on Expand.
+  const summary = header.firstElementChild as HTMLElement | null;
+  if (!summary || summary === controls) return;
+
+  const heading = summary.querySelector<HTMLElement>("h3");
+  const identityRow = heading?.parentElement as HTMLElement | null;
+  const identityColumn = identityRow?.parentElement as HTMLElement | null;
+
+  if (identityColumn) {
+    Array.from(identityColumn.children).forEach((child) => {
+      const el = child as HTMLElement;
+      if (el === identityRow) return;
+      el.style.display = collapsed ? "none" : "";
+    });
+  }
+
+  if (heading) {
+    heading.style.fontSize = collapsed ? "0.95rem" : "";
+    heading.style.lineHeight = collapsed ? "1.25rem" : "";
+  }
+
+  const actionColumn = summary.children[1] as HTMLElement | undefined;
+  if (actionColumn) {
+    Array.from(actionColumn.children).forEach((child) => {
+      const el = child as HTMLElement;
+      const isOpenCount = el.tagName === "SPAN" && /open/i.test(el.textContent ?? "");
+      setDisplay(el, collapsed && !isOpenCount ? "none" : "");
+    });
+    actionColumn.style.alignItems = collapsed ? "center" : "";
+  }
+
+  summary.style.alignItems = collapsed ? "center" : "";
+  summary.style.gap = collapsed ? "0.5rem" : "";
 }
 
 export default function TodayWorkspaceControls() {
@@ -56,8 +112,8 @@ export default function TodayWorkspaceControls() {
         const card = findProductCard(product.name);
         if (!card) return;
         card.style.order = String(index);
-        applyCollapsed(card, prefs[product.id]?.collapsed ?? false);
         const host = ensureControlHost(card, product.id);
+        applyCollapsed(card, prefs[product.id]?.collapsed ?? false);
         if (host) nextHosts[product.id] = host;
       });
       setHosts(nextHosts);
