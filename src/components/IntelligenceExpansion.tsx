@@ -71,7 +71,7 @@ function saveRadar(items: RadarSignal[]) {
   }
 }
 
-export default function IntelligenceExpansion() {
+export default function IntelligenceExpansion({ hideRadar = false }: { hideRadar?: boolean }) {
   const { state, actions } = useStore();
   const navigate = useNavigate();
   const [signals, setSignals] = useState<RadarSignal[]>([]);
@@ -169,7 +169,7 @@ export default function IntelligenceExpansion() {
 
   return (
     <div className="space-y-6">
-      <section className="silhat-panel p-5">
+      {!hideRadar ? <section className="silhat-panel p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="silhat-eyebrow">RADAR · external opportunity intelligence</p>
@@ -287,7 +287,7 @@ export default function IntelligenceExpansion() {
             })}
           </div>
         )}
-      </section>
+      </section> : null}
 
       <section className="silhat-panel p-5">
         <div>

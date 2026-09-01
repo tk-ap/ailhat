@@ -37,11 +37,14 @@ import {
   recordScan,
   setOpportunities,
   setOpportunityFeedback,
+  addExternalSignal,
+  updateExternalSignal,
   updateItem,
   updateProduct,
 } from "./store";
 import type { ScanResult } from "./scanSite";
 import type { Opportunity } from "./opportunity";
+import type { ExternalSignal } from "./external-signal";
 import { useAuth } from "./useAuth";
 
 // The store module never touches localStorage at import time, so importing it is
@@ -80,6 +83,11 @@ export interface Actions {
   setFeedback: (signalId: string, kind: FeedbackKind) => void;
   setOpportunities: (opps: Opportunity[]) => void;
   setOpportunityFeedback: (oppId: string, kind: FeedbackKind) => void;
+  addExternalSignal: (signal: ExternalSignal) => void;
+  updateExternalSignal: (
+    id: string,
+    patch: Partial<Pick<ExternalSignal, "status" | "recommendation">>,
+  ) => void;
   resetData: () => void;
 }
 
@@ -103,6 +111,7 @@ const EMPTY: AppState = {
   feedback: {},
   opportunities: [],
   opportunityFeedback: {},
+  externalSignals: [],
 };
 
 // Normalise an untrusted server payload into a valid AppState shape. Exported so
@@ -128,6 +137,7 @@ export function normalizeState(raw: AppState | null | undefined): AppState | nul
     feedback: r.feedback ?? {},
     opportunities: Array.isArray(r.opportunities) ? r.opportunities : [],
     opportunityFeedback: r.opportunityFeedback ?? {},
+    externalSignals: Array.isArray(r.externalSignals) ? r.externalSignals : [],
   };
 }
 
@@ -266,6 +276,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           ...(kind === "snoozed" ? { until: Date.now() + SNOOZE_MS } : {}),
         }),
       ),
+    addExternalSignal: (signal) => commit(addExternalSignal(state, signal)),
+    updateExternalSignal: (id, patch) => commit(updateExternalSignal(state, id, patch)),
     resetData: () => {
       // Gate on auth: NEVER reset the authenticated owner's real portfolio. Only
       // an anonymous/demo session may be reset. This makes a real-data wipe

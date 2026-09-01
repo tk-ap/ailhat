@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from "~/lib/useAuth";
 import AppShell from "~/components/AppShell";
 import OpportunitySection from "~/components/OpportunitySection";
 import MarketGapSection from "~/components/MarketGapSection";
+import RadarSection from "~/components/RadarSection";
 
 export const Route = createFileRoute("/brief")({
   component: () => (
@@ -69,6 +70,7 @@ function Intelligence() {
         </section>
       ) : (
         <>
+          <RadarSection />
           <OpportunitySection />
           <MarketGapSection />
         </>

@@ -227,7 +227,7 @@ export default function SolutionWorkflowBridge() {
 
   return (
     <>
-      {location.pathname === "/brief" && <IntelligenceExpansion />}
+      {location.pathname === "/brief" && <IntelligenceExpansion hideRadar />}
       <AgentJourneyReadiness />
       <SolutionWorkflowState />
     </>

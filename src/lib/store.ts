@@ -5,6 +5,7 @@
 import type { ScanResult, CheckStatus } from "./scanSite";
 import type { ProductScanHistory } from "./observation";
 import type { Opportunity } from "./opportunity";
+import type { ExternalSignal } from "./external-signal";
 import { mergeScan } from "./observation";
 
 export type Platform =
@@ -156,6 +157,9 @@ export interface AppState {
   // Feedback keyed by stable opportunity id — how Ailhat personalises which
   // opportunities matter. "investigate" is non-suppressing; dismiss/acted hide.
   opportunityFeedback: Record<string, FeedbackEntry>;
+  // RADAR v1 — owner-captured external signals, assessed against the portfolio.
+  // These are inputs to Portfolio Intelligence, never a generic idea feed.
+  externalSignals: ExternalSignal[];
 }
 
 // Feedback a builder gives to a Daily Brief signal — this is how Ailhat learns.
@@ -264,6 +268,7 @@ function emptyState(): AppState {
     feedback: {},
     opportunities: [],
     opportunityFeedback: {},
+    externalSignals: [],
   };
 }
 
@@ -336,6 +341,9 @@ export function loadState(): AppState {
         !Array.isArray(parsed.opportunityFeedback)
           ? (parsed.opportunityFeedback as Record<string, FeedbackEntry>)
           : {},
+      externalSignals: Array.isArray(parsed.externalSignals)
+        ? (parsed.externalSignals as ExternalSignal[])
+        : [],
     };
   } catch {
     const empty = emptyState();
@@ -666,6 +674,23 @@ export function setOpportunityFeedback(
       ...state.opportunityFeedback,
       [oppId]: { ...entry, at: Date.now() },
     },
+  };
+}
+
+export function addExternalSignal(state: AppState, signal: ExternalSignal): AppState {
+  return { ...state, externalSignals: [signal, ...(state.externalSignals ?? [])] };
+}
+
+export function updateExternalSignal(
+  state: AppState,
+  id: string,
+  patch: Partial<Pick<ExternalSignal, "status" | "recommendation">>,
+): AppState {
+  return {
+    ...state,
+    externalSignals: (state.externalSignals ?? []).map((signal) =>
+      signal.id === id ? { ...signal, ...patch } : signal,
+    ),
   };
 }
 
