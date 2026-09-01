@@ -147,3 +147,7 @@ workspacePreferences: Record<string, ProductWorkspacePreference>
 Finding visibility is currently presentation-only and persisted separately from scan evidence. It must remain logically separate from ProductScanHistory so a hidden resolved finding can automatically reappear when it regresses.
 
 The first Agent Journey Readiness pass stores journey definitions browser-side and labels them **Needs test**. Move journey definitions/results into account-scoped persistence when the actual journey runner and Direct multi-tenant boundaries are ready.
+
+## Deployment source
+
+Production is linked to the GitHub `main` branch in Vercel. This documentation-only edit is safe to deploy and is also used to verify that Git-triggered production deployment is active after the repository link was repaired.
