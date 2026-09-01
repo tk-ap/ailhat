@@ -11,6 +11,7 @@ import TodayAttentionSummary from "~/components/TodayAttentionSummary";
 import SolutionWorkflowBridge from "~/components/SolutionWorkflowBridge";
 import AgentJourneyReadiness from "~/components/AgentJourneyReadiness";
 import AskAilhat from "~/components/AskAilhat";
+import AddContext from "~/components/AddContext";
 import { platformLabel } from "~/lib/store";
 import { retirementRecommendationCount } from "~/lib/portfolio-lifecycle";
 
@@ -304,6 +305,7 @@ export default function AppShell({
         </main>
       </div>
       {active === "today" && <TodayWorkspaceControls />}
+      <AddContext />
       <AskAilhat />
     </div>
   );
