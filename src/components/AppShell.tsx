@@ -19,7 +19,8 @@ export type ShellView =
   | "portfolio"
   | "control"
   | "learn"
-  | "decisions";
+  | "decisions"
+  | "owner";
 
 const NAV: { id: ShellView; label: string; to: string; icon: ReactNode; hint: string }[] = [
   {
@@ -97,7 +98,9 @@ export default function AppShell({
   const viewLabel =
     active === "portfolio"
       ? "Product"
-      : NAV.find((n) => n.id === active)?.label ?? "ailhat";
+      : active === "owner"
+        ? "Owner Dashboard"
+        : NAV.find((n) => n.id === active)?.label ?? "ailhat";
 
   return (
     <div className="flex min-h-dvh bg-gray-950 text-gray-100">
@@ -262,7 +265,9 @@ export default function AppShell({
                       ? `Playbook · lessons · agent readiness · worked examples`
                       : active === "decisions"
                         ? `Agent Direct · per-product decisions`
-                        : `RADAR · opportunity routing · launch readiness · deeper judgment`}
+                        : active === "owner"
+                          ? `Operator controls · access · system health`
+                          : `RADAR · opportunity routing · launch readiness · deeper judgment`}
             </span>
           </div>
           <div className="flex items-center gap-3">
