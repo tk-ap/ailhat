@@ -7,6 +7,7 @@ import { useStore } from "~/lib/useStore";
 import AuthNav from "~/components/AuthNav";
 import AilhatBrandMark from "~/components/AilhatBrandMark";
 import TodayWorkspaceControls from "~/components/TodayWorkspaceControls";
+import TodayAttentionSummary from "~/components/TodayAttentionSummary";
 import SolutionWorkflowBridge from "~/components/SolutionWorkflowBridge";
 import AgentJourneyReadiness from "~/components/AgentJourneyReadiness";
 import { platformLabel } from "~/lib/store";
@@ -25,7 +26,7 @@ const NAV: { id: ShellView; label: string; to: string; icon: ReactNode; hint: st
     id: "today",
     label: "Today",
     to: "/dashboard",
-    hint: "Signals · active portfolio · composition",
+    hint: "Current attention · active portfolio · composition",
     icon: (
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="shrink-0">
         <path d="M3 12h4l2-6 4 12 2-6h6" strokeLinecap="round" strokeLinejoin="round" />
@@ -36,7 +37,7 @@ const NAV: { id: ShellView; label: string; to: string; icon: ReactNode; hint: st
     id: "intelligence",
     label: "Intelligence",
     to: "/brief",
-    hint: "Opportunities · risks · trends",
+    hint: "RADAR · opportunity routing · launch readiness · deeper judgment",
     icon: (
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="shrink-0">
         <path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1" strokeLinecap="round" />
@@ -252,7 +253,7 @@ export default function AppShell({
             <span className="text-gray-600">/</span>
             <span className="truncate text-gray-500">
               {active === "today"
-                ? `Active portfolio · reorder · condense · retire`
+                ? `Current attention · active portfolio · reorder · condense · retire`
                 : active === "portfolio"
                   ? `Product cockpit / preserved archive`
                   : active === "control"
@@ -261,7 +262,7 @@ export default function AppShell({
                       ? `Playbook · lessons · agent readiness · worked examples`
                       : active === "decisions"
                         ? `Agent Direct · per-product decisions`
-                        : `Attention · prioritised signals`}
+                        : `RADAR · opportunity routing · launch readiness · deeper judgment`}
             </span>
           </div>
           <div className="flex items-center gap-3">
@@ -272,6 +273,7 @@ export default function AppShell({
         <main className="min-w-0 flex-1">
           <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-8">
             <SolutionWorkflowBridge />
+            {active === "today" && <TodayAttentionSummary />}
             {active === "learn" && <AgentJourneyReadiness />}
             {children}
           </div>
