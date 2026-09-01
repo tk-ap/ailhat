@@ -30,6 +30,12 @@ const rank: Record<SolutionWorkflowStage, number> = {
   resolved: 5,
 };
 
+function sourceLabel(workflow: SolutionWorkflow) {
+  if (workflow.source === "scan-finding") return "from scan evidence";
+  if (workflow.source === "external-opportunity") return "from external opportunity routing";
+  return "added after scan";
+}
+
 function WorkflowRail({ stage }: { stage: SolutionWorkflowStage }) {
   return (
     <div className="mt-3 flex flex-wrap items-center gap-1.5">
@@ -144,7 +150,7 @@ function SolutionWorkflowState() {
           <p className="silhat-eyebrow">Solution workflow · continuity</p>
           <h2 className="mt-1 text-sm font-semibold text-gray-100">{active.itemTitle}</h2>
           <p className="mt-1 text-xs leading-5 text-gray-500">
-            {active.productName} · {active.source === "scan-finding" ? "from scan evidence" : "added after scan"}
+            {active.productName} · {sourceLabel(active)}
             {item ? ` · checklist ${item.status.replace("_", " ")}` : ""}
           </p>
         </div>
