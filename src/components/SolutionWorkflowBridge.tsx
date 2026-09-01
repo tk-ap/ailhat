@@ -2,6 +2,7 @@ import { Link, useLocation } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import AgentJourneyReadiness from "~/components/AgentJourneyReadiness";
 import IntelligenceExpansion from "~/components/IntelligenceExpansion";
+import PreparedWorkTray from "~/components/PreparedWorkTray";
 import { useStore } from "~/lib/useStore";
 import { buildSignalWorkItem } from "~/lib/signal-work-item";
 import { savePreparedWorkItem } from "~/lib/prepared-work";
@@ -96,7 +97,6 @@ function SolutionWorkflowState() {
     if (changed) setWorkflows(loadSolutionWorkflows());
   }, [ready, state.items, state.products, state.scanHistory]);
 
-  // Completing implementation starts verification; it does not resolve the work.
   useEffect(() => {
     if (!ready || workflows.length === 0) return;
     let changed = false;
@@ -111,9 +111,6 @@ function SolutionWorkflowState() {
     if (changed) setWorkflows(loadSolutionWorkflows());
   }, [ready, state.items, workflows]);
 
-  // Evidence reconciliation. A verification result only counts when it comes from
-  // a successful scan that happened AFTER verification was requested. A resolved
-  // scan-backed finding reopens if a later successful scan observes it again.
   useEffect(() => {
     if (!ready || workflows.length === 0) return;
     let changed = false;
@@ -346,7 +343,8 @@ export default function SolutionWorkflowBridge() {
   return (
     <>
       {location.pathname === "/brief" && <IntelligenceExpansion />}
-      <AgentJourneyReadiness />
+      {location.pathname.startsWith("/product/") && <AgentJourneyReadiness />}
+      <PreparedWorkTray />
       <SolutionWorkflowState />
     </>
   );
