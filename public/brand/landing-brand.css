@@ -1,0 +1,18 @@
+/* Transitional landing-brand bridge.
+   The public landing still contains the pre-brand-refresh square A badge.
+   Render the canonical condensation mark there until the landing header is
+   refactored to use AilhatBrandMark directly. */
+header a[href="#top"] > div:first-child {
+  width: 42px !important;
+  height: 42px !important;
+  flex: 0 0 42px !important;
+  border-radius: 0 !important;
+  background-color: transparent !important;
+  background-image: url("/brand/ailhat-condensation.svg") !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-size: contain !important;
+  box-shadow: none !important;
+  color: transparent !important;
+  font-size: 0 !important;
+}
