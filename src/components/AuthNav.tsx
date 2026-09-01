@@ -1,9 +1,17 @@
-// Small auth-affording control for the nav. Renders the current user's email
-// + Log out when authed; otherwise a "Log in" link. Must be rendered inside an
-// AuthProvider. The login page itself decides signup-vs-login based on whether
-// the users table is empty.
+// Small auth/profile affordance for the nav. Authenticated users get a profile
+// menu; owner-only controls live here rather than in the normal workspace nav.
 import { Link } from "@tanstack/react-router";
 import { useAuth } from "~/lib/useAuth";
+import { isOwnerUser } from "~/lib/owner-access";
+
+function ProfileIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4.5 21a7.5 7.5 0 0 1 15 0" strokeLinecap="round" />
+    </svg>
+  );
+}
 
 export default function AuthNav({ compact = false }: { compact?: boolean }) {
   const { user, loading, logout } = useAuth();
@@ -13,34 +21,60 @@ export default function AuthNav({ compact = false }: { compact?: boolean }) {
   }
 
   if (user) {
+    const owner = isOwnerUser(user);
     return (
-      <div className="flex items-center gap-2">
-        {!compact && (
-          <span className="hidden max-w-[160px] truncate text-sm text-gray-500 sm:inline dark:text-gray-400">
-            {user.email}
-          </span>
-        )}
-        <button
-          onClick={() => void logout()}
-          title="Log out"
-          className="flex items-center gap-1.5 rounded-lg border border-gray-700 px-2.5 py-1.5 text-sm font-medium text-gray-300 transition hover:bg-gray-800 hover:text-gray-100"
+      <details className="group relative">
+        <summary
+          className={`flex cursor-pointer list-none items-center gap-2 rounded-lg border border-gray-700 text-sm font-medium text-gray-300 transition hover:bg-gray-800 hover:text-gray-100 [&::-webkit-details-marker]:hidden ${
+            compact ? "px-2.5 py-2" : "px-2.5 py-1.5"
+          }`}
+          title="Profile"
         >
-          {compact && (
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+          <ProfileIcon />
+          {!compact && (
+            <span className="hidden max-w-[160px] truncate sm:inline">{user.email}</span>
           )}
-          {compact ? "" : "Log out"}
-        </button>
-      </div>
+          {compact && <span className="text-xs">Profile</span>}
+          <span className="text-[10px] text-gray-600 transition group-open:rotate-180">⌄</span>
+        </summary>
+
+        <div
+          className={`absolute z-50 mt-2 w-64 overflow-hidden rounded-xl border border-gray-800 bg-gray-950 shadow-2xl ${
+            compact ? "bottom-full left-0 mb-2 mt-0" : "right-0"
+          }`}
+        >
+          <div className="border-b border-gray-800 px-3 py-3">
+            <p className="truncate text-sm font-semibold text-gray-100">{user.email}</p>
+            <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-gray-500">
+              {owner ? "Owner account" : "Account"}
+            </p>
+          </div>
+
+          <div className="p-1.5">
+            {owner && (
+              <Link
+                to="/owner"
+                className="flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-900 hover:text-gray-100"
+              >
+                <span>Owner Dashboard</span>
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-[#7fb0ff]">Private</span>
+              </Link>
+            )}
+            <button
+              type="button"
+              onClick={() => void logout()}
+              className="flex w-full items-center rounded-lg px-3 py-2 text-left text-sm font-medium text-gray-400 hover:bg-gray-900 hover:text-gray-100"
+            >
+              Log out
+            </button>
+          </div>
+        </div>
+      </details>
     );
   }
 
   return (
-    <Link
-      to="/login"
-      className="silhat-btn silhat-btn-ghost"
-    >
+    <Link to="/login" className="silhat-btn silhat-btn-ghost">
       Log in
     </Link>
   );
