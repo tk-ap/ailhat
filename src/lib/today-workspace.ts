@@ -1,6 +1,9 @@
 export interface TodayPreference {
   collapsed: boolean;
   order: number;
+  // Position to restore when a condensed product is expanded again. Optional so
+  // previously-persisted v1 preferences remain valid without migration.
+  restoreOrder?: number;
 }
 
 export type TodayPreferences = Record<string, TodayPreference>;
