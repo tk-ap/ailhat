@@ -1,10 +1,45 @@
 version: 0.1.0
-product: ailhat
-category: portfolio-intelligence
-ecosystem_source: tk-ap/agent-os
-ecosystem_contract: ecosystem/ECOSYSTEM.md
-product_directive: products/ailhat.md
-owns: [portfolio-observation, signal-classification, prioritization, initiative-creation, facilitation, capability-development, outcome-measurement]
-produces: [portfolio-signal, work-item, objective, facilitation-record, capability-signal, outcome-assessment]
-consumes: [product-evidence, workforce-status, authority-status, outcome-event]
-must_not_own: [canonical-agent-identity, skill-resolution, runtime-authorization, harness-specific-execution, canonical-workforce-registry]
+product_key: ailhat
+agent_os_repository: tk-ap/agent-os
+routing_source: registry/product-routing.yaml
+repository: tk-ap/ailhat
+
+local:
+  owns:
+    - portfolio-observation
+    - signal-classification
+    - portfolio-prioritization
+    - initiative-creation
+    - facilitation
+    - reversible-product-lifecycle-state
+    - outcome-measurement
+  produces:
+    - portfolio-signal
+    - work-item
+    - objective
+    - facilitation-record
+    - capability-signal
+    - outcome-assessment
+  consumes:
+    - product-evidence
+    - approved-context-reference
+    - outcome-event
+    - governance-evidence
+  must_not_own:
+    - canonical-agent-identity
+    - canonical-workforce-routing
+    - generic-authorization-intelligence
+    - harness-specific-execution
+    - canonical-context-store
+  constraints:
+    - portfolio-intelligence-proposes-work-but-does-not-authorize-it
+    - simulated-findings-must-be-labeled
+    - retirement-is-reversible-and-never-automatic
+    - inactivity-alone-is-not-retirement-evidence
+    - facilitation-must-remain-attached-to-live-portfolio-work
+
+rules:
+  canonical_product_role_from_routing_source: true
+  local_metadata_may_narrow_or_add_implementation_detail: true
+  local_metadata_must_not_redefine_canonical_role: true
+  cross_product_writes_require_explicit_task_authorization: true
