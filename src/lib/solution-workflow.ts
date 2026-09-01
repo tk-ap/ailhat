@@ -8,6 +8,11 @@ export type SolutionWorkflowStage =
   | "verify"
   | "resolved";
 
+export type SolutionWorkflowSource =
+  | "scan-finding"
+  | "post-scan-issue"
+  | "external-opportunity";
+
 export interface SolutionWorkflow {
   schema: "ailhat.solution-workflow/v1";
   id: string;
@@ -16,7 +21,7 @@ export interface SolutionWorkflow {
   itemId: string;
   itemTitle: string;
   scanKey?: string;
-  source: "scan-finding" | "post-scan-issue";
+  source: SolutionWorkflowSource;
   stage: SolutionWorkflowStage;
   createdAt: string;
   updatedAt: string;
@@ -58,6 +63,14 @@ function persist(workflows: SolutionWorkflow[]): SolutionWorkflow[] {
   return bounded;
 }
 
+function workflowSource(item: Item): SolutionWorkflowSource {
+  if (item.scanKey) return "scan-finding";
+  if (item.description?.startsWith("External opportunity signal from ")) {
+    return "external-opportunity";
+  }
+  return "post-scan-issue";
+}
+
 export function startSolutionWorkflow(product: Product, item: Item): SolutionWorkflow {
   const now = new Date().toISOString();
   const workflow: SolutionWorkflow = {
@@ -68,7 +81,7 @@ export function startSolutionWorkflow(product: Product, item: Item): SolutionWor
     itemId: item.id,
     itemTitle: item.title,
     ...(item.scanKey ? { scanKey: item.scanKey } : {}),
-    source: item.scanKey ? "scan-finding" : "post-scan-issue",
+    source: workflowSource(item),
     stage: "solution",
     createdAt: now,
     updatedAt: now,
