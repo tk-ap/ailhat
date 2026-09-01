@@ -1,6 +1,7 @@
 import { Link, useLocation } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import AgentJourneyReadiness from "~/components/AgentJourneyReadiness";
+import IntelligenceExpansion from "~/components/IntelligenceExpansion";
 import { useStore } from "~/lib/useStore";
 import {
   loadSolutionWorkflows,
@@ -216,8 +217,11 @@ function SolutionWorkflowState() {
 }
 
 export default function SolutionWorkflowBridge() {
+  const location = useLocation();
+
   return (
     <>
+      {location.pathname === "/brief" && <IntelligenceExpansion />}
       <AgentJourneyReadiness />
       <SolutionWorkflowState />
     </>
