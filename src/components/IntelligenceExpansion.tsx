@@ -1,6 +1,8 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useStore } from "~/lib/useStore";
+import { loadState } from "~/lib/store";
+import { startSolutionWorkflow } from "~/lib/solution-workflow";
 
 const RADAR_KEY = "ailhat.radar-signals.v1";
 const FRESH_SCAN_MS = 7 * 24 * 60 * 60 * 1000;
@@ -71,6 +73,7 @@ function saveRadar(items: RadarSignal[]) {
 
 export default function IntelligenceExpansion() {
   const { state, actions } = useStore();
+  const navigate = useNavigate();
   const [signals, setSignals] = useState<RadarSignal[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState("");
@@ -123,6 +126,8 @@ export default function IntelligenceExpansion() {
       setMessage("Choose a natural owner product before routing this signal into product work.");
       return;
     }
+
+    const routedAt = Date.now();
     actions.addItem({
       productId: product.id,
       type: signal.route === "FEATURE" ? "feature" : "issue",
@@ -130,7 +135,28 @@ export default function IntelligenceExpansion() {
       description: `External opportunity signal from ${signal.source}. ${signal.summary}${signal.sourceUrl ? ` Source: ${signal.sourceUrl}` : ""}`,
       status: "open",
     });
-    setMessage(`Added to ${product.name} as open work. Continue in its Product Cockpit or Direct.`);
+
+    const createdItem = loadState().items
+      .filter(
+        (item) =>
+          item.productId === product.id &&
+          item.title === signal.title &&
+          item.createdAt >= routedAt - 1000,
+      )
+      .sort((a, b) => b.createdAt - a.createdAt)[0];
+
+    if (createdItem) {
+      startSolutionWorkflow(product, createdItem);
+      setMessage(`Added to ${product.name} and opened as an external-opportunity solution workflow.`);
+    } else {
+      setMessage(`Added to ${product.name}. Opening its Product Cockpit to continue the work.`);
+    }
+
+    void navigate({
+      to: "/product/$productId",
+      params: { productId: product.id },
+      hash: "solution-workflow",
+    });
   };
 
   const setOwner = (id: string, nextProductId: string) => {
