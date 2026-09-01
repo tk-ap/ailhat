@@ -22,6 +22,7 @@ export const Route = createRootRoute({
     links: [
       { rel: "stylesheet", href: appCss },
       { rel: "stylesheet", href: "/brand/ailhat-motion.css" },
+      { rel: "stylesheet", href: "/brand/landing-brand.css" },
       { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
       {
         rel: "preconnect",
