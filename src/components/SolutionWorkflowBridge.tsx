@@ -3,6 +3,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import AgentJourneyReadiness from "~/components/AgentJourneyReadiness";
 import IntelligenceExpansion from "~/components/IntelligenceExpansion";
 import { useStore } from "~/lib/useStore";
+import { buildSignalWorkItem } from "~/lib/signal-work-item";
+import { savePreparedWorkItem } from "~/lib/prepared-work";
+import type { Signal } from "~/lib/brief";
 import {
   loadSolutionWorkflows,
   setSolutionWorkflowStage,
@@ -61,6 +64,7 @@ function SolutionWorkflowState() {
   const location = useLocation();
   const { state, ready } = useStore();
   const [workflows, setWorkflows] = useState<SolutionWorkflow[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const initialized = useRef(false);
   const seenItems = useRef<Set<string>>(new Set());
 
@@ -92,6 +96,7 @@ function SolutionWorkflowState() {
     if (changed) setWorkflows(loadSolutionWorkflows());
   }, [ready, state.items, state.products, state.scanHistory]);
 
+  // Completing implementation starts verification; it does not resolve the work.
   useEffect(() => {
     if (!ready || workflows.length === 0) return;
     let changed = false;
@@ -106,34 +111,112 @@ function SolutionWorkflowState() {
     if (changed) setWorkflows(loadSolutionWorkflows());
   }, [ready, state.items, workflows]);
 
-  const active = useMemo(
-    () => workflows.find((workflow) => workflow.stage !== "resolved"),
+  // Evidence reconciliation. A verification result only counts when it comes from
+  // a successful scan that happened AFTER verification was requested. A resolved
+  // scan-backed finding reopens if a later successful scan observes it again.
+  useEffect(() => {
+    if (!ready || workflows.length === 0) return;
+    let changed = false;
+
+    for (const workflow of workflows) {
+      const history = state.scanHistory?.[workflow.productId];
+      const scanAt = history?.lastGood?.scannedAt ?? 0;
+      if (!scanAt) continue;
+      const finding = workflow.scanKey ? history?.issues?.[workflow.scanKey] : undefined;
+
+      if (workflow.stage === "verify") {
+        const requestedAt = Date.parse(workflow.verifyRequestedAt ?? workflow.updatedAt);
+        if (!Number.isFinite(requestedAt) || scanAt <= requestedAt || !workflow.scanKey || !finding) {
+          continue;
+        }
+        setSolutionWorkflowStage(workflow.id, finding.present ? "solution" : "resolved");
+        changed = true;
+        continue;
+      }
+
+      if (workflow.stage === "resolved" && workflow.scanKey && finding?.present) {
+        const resolvedAt = Date.parse(workflow.updatedAt);
+        if (Number.isFinite(resolvedAt) && scanAt > resolvedAt) {
+          setSolutionWorkflowStage(workflow.id, "solution");
+          changed = true;
+        }
+      }
+    }
+
+    if (changed) setWorkflows(loadSolutionWorkflows());
+  }, [ready, state.scanHistory, workflows]);
+
+  const activeWorkflows = useMemo(
+    () => workflows.filter((workflow) => workflow.stage !== "resolved"),
     [workflows],
   );
 
-  const activeHistory = active ? state.scanHistory?.[active.productId] : undefined;
-  const activeFinding =
-    active?.scanKey && activeHistory ? activeHistory.issues?.[active.scanKey] : undefined;
+  const active = useMemo(() => {
+    if (selectedId) {
+      const selected = activeWorkflows.find((workflow) => workflow.id === selectedId);
+      if (selected) return selected;
+    }
+    return activeWorkflows[0];
+  }, [activeWorkflows, selectedId]);
 
   useEffect(() => {
-    if (!active || active.stage !== "verify" || !active.scanKey || !activeFinding) return;
-    if (!activeFinding.present) {
-      setSolutionWorkflowStage(active.id, "resolved");
-      setWorkflows(loadSolutionWorkflows());
+    if (!active) {
+      if (selectedId) setSelectedId(null);
+      return;
     }
-  }, [active, activeFinding]);
+    if (selectedId !== active.id) setSelectedId(active.id);
+  }, [active, selectedId]);
 
   if (!active) return null;
+
+  const activeHistory = state.scanHistory?.[active.productId];
+  const activeFinding =
+    active.scanKey && activeHistory ? activeHistory.issues?.[active.scanKey] : undefined;
+  const latestGoodAt = activeHistory?.lastGood?.scannedAt ?? 0;
+  const verifyRequestedAt = Date.parse(active.verifyRequestedAt ?? active.updatedAt);
+  const hasFreshVerificationScan =
+    active.stage === "verify" &&
+    Number.isFinite(verifyRequestedAt) &&
+    latestGoodAt > verifyRequestedAt;
 
   const onProduct =
     location.pathname === `/product/${encodeURIComponent(active.productId)}` ||
     location.pathname === `/product/${active.productId}`;
   const onDirect = location.pathname === "/control";
   const item = state.items.find((candidate) => candidate.id === active.itemId);
+  const product = state.products.find((candidate) => candidate.id === active.productId);
 
   const setStage = (stage: SolutionWorkflowStage) => {
     setSolutionWorkflowStage(active.id, stage);
     setWorkflows(loadSolutionWorkflows());
+  };
+
+  const prepareArtifact = () => {
+    if (!item || !product) return;
+    const evidence = activeFinding
+      ? [`${activeFinding.title} — ${activeFinding.detail}`]
+      : item.description?.trim()
+        ? [item.description.trim()]
+        : [`Checklist item “${item.title}” is ${item.status.replace("_", " ")}.`];
+    const signal: Signal = {
+      id: `workflow:${active.id}`,
+      level: item.type === "bug" ? "ACT_NOW" : "REVIEW",
+      productId: product.id,
+      productName: product.name,
+      title: item.title,
+      summary: item.description?.trim() || `Tracked solution work for ${product.name}.`,
+      evidence,
+      reasoning:
+        "This artifact is prepared from the active ailhat solution workflow and its currently available evidence. Preparation does not claim execution or outcome verification.",
+      recommendation: `Resolve “${item.title}” on ${product.name}, then verify the result with fresh evidence.`,
+      action: `Use this prepared artifact to guide the implementation of “${item.title}”.`,
+      priority: 500,
+      recItems: [],
+    };
+    savePreparedWorkItem(
+      buildSignalWorkItem(signal, item.type === "feature" ? "investigate" : "fix", Date.now(), product),
+    );
+    setStage("prepared");
   };
 
   return (
@@ -154,22 +237,44 @@ function SolutionWorkflowState() {
             {item ? ` · checklist ${item.status.replace("_", " ")}` : ""}
           </p>
         </div>
-        <span className="rounded-full border border-gray-700 bg-gray-950 px-2.5 py-1 font-mono text-[9px] font-semibold uppercase tracking-wider text-gray-400">
-          {active.stage}
-        </span>
+        <div className="flex items-center gap-2">
+          {activeWorkflows.length > 1 && (
+            <select
+              aria-label="Active solution workflow"
+              value={active.id}
+              onChange={(event) => setSelectedId(event.target.value)}
+              className="max-w-[240px] rounded-lg border border-gray-700 bg-gray-950 px-2 py-1 text-xs text-gray-300"
+            >
+              {activeWorkflows.map((workflow) => (
+                <option key={workflow.id} value={workflow.id}>
+                  {workflow.productName} · {workflow.itemTitle}
+                </option>
+              ))}
+            </select>
+          )}
+          <span className="rounded-full border border-gray-700 bg-gray-950 px-2.5 py-1 font-mono text-[9px] font-semibold uppercase tracking-wider text-gray-400">
+            {active.stage}
+          </span>
+        </div>
       </div>
 
       <WorkflowRail stage={active.stage} />
 
-      {active.stage === "verify" && (
+      {active.stage === "verify" && !hasFreshVerificationScan && (
         <p className="mt-3 text-sm leading-6 text-amber-100/90">
-          Implementation is marked done. Re-scan {active.productName} before calling this resolved. Fresh evidence should either close the finding or return it as regressed.
+          Implementation is marked done. Re-scan {active.productName}; only a successful scan newer than this verification request can move the workflow forward.
         </p>
+      )}
+
+      {active.stage === "verify" && hasFreshVerificationScan && !active.scanKey && (
+        <div className="mt-3 rounded-lg border border-amber-400/20 bg-amber-400/[0.04] px-3 py-2 text-sm leading-6 text-amber-100/90">
+          Fresh scan evidence is available, but this issue is not measured by a specific scan rule. Review the relevant user path before explicitly confirming resolution.
+        </div>
       )}
 
       {onDirect && (
         <p className="mt-3 text-sm leading-6 text-gray-300">
-          Direct is continuing the linked issue above. Prepare or export the agent instruction here; doing so is not the same as execution or verification.
+          Direct is continuing the linked issue above. A prepared artifact must exist before the workflow can claim preparation; preparation is still not execution or verification.
         </p>
       )}
 
@@ -180,26 +285,30 @@ function SolutionWorkflowState() {
       )}
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        {!onProduct && (
+        {!onProduct && !onDirect && (
           <Link
             to="/product/$productId"
             params={{ productId: active.productId }}
-            onClick={() => setStage("solution")}
             className="silhat-btn silhat-btn-primary"
           >
             Open solution workflow →
           </Link>
         )}
-        {onProduct && active.stage !== "verify" && (
+        {onProduct && active.stage !== "verify" && rank[active.stage] < rank.prepared && (
           <Link
             to="/control"
-            onClick={() => setStage("prepared")}
+            onClick={prepareArtifact}
             className="silhat-btn silhat-btn-primary"
           >
-            Open Direct to prepare →
+            Prepare in Direct →
           </Link>
         )}
-        {onDirect && rank[active.stage] < rank.implementation && (
+        {onProduct && active.stage === "prepared" && (
+          <Link to="/control" className="silhat-btn silhat-btn-primary">
+            Open prepared work in Direct →
+          </Link>
+        )}
+        {onDirect && active.stage === "prepared" && (
           <button
             type="button"
             onClick={() => setStage("implementation")}
@@ -208,7 +317,7 @@ function SolutionWorkflowState() {
             Direction handed off / implementing
           </button>
         )}
-        {active.stage === "verify" && (
+        {active.stage === "verify" && !hasFreshVerificationScan && (
           <Link
             to="/product/$productId"
             params={{ productId: active.productId }}
@@ -216,6 +325,15 @@ function SolutionWorkflowState() {
           >
             Re-scan in Product Cockpit →
           </Link>
+        )}
+        {active.stage === "verify" && hasFreshVerificationScan && !active.scanKey && (
+          <button
+            type="button"
+            onClick={() => setStage("resolved")}
+            className="silhat-btn silhat-btn-primary"
+          >
+            Confirm reviewed + resolved
+          </button>
         )}
       </div>
     </section>
