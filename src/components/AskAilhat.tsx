@@ -3,6 +3,13 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useAuth } from "~/lib/useAuth";
 import { useBrief } from "~/lib/useBrief";
 import { useStore } from "~/lib/useStore";
+import type { ContextEnvelope } from "~/lib/context-envelope";
+import {
+  addContextEnvelope,
+  createUserContextEnvelope,
+  loadContextEnvelopes,
+  subscribeContextEnvelopes,
+} from "~/lib/context-store";
 
 interface GuideAction {
   label: string;
@@ -54,6 +61,18 @@ function saveContext(context: WorkingContext) {
   }
 }
 
+function contextLens(items: ContextEnvelope[]): WorkingContext {
+  const active = items.filter((item) => item.verificationStatus !== "disputed" && item.verificationStatus !== "stale");
+  const focus = active.find((item) => item.contextType === "focus" && item.subjectType === "product" && item.subjectId);
+  const goal = active.find((item) => item.contextType === "goal");
+  const constraint = active.find((item) => item.contextType === "constraint");
+  return {
+    productId: focus?.subjectId,
+    goal: goal?.content,
+    constraint: constraint?.content,
+  };
+}
+
 function inferredGoal(lower: string): string | undefined {
   if (/launch|ship|ready for users|go live/.test(lower)) return "Launch";
   if (/customer|acquisition|sales|revenue|paying user|paying customer/.test(lower)) return "Acquisition";
@@ -79,8 +98,21 @@ export default function AskAilhat() {
   const [query, setQuery] = useState("");
   const [answer, setAnswer] = useState<GuideAnswer | null>(null);
   const [context, setContext] = useState<WorkingContext>({});
+  const [envelopes, setEnvelopes] = useState<ContextEnvelope[]>([]);
 
-  useEffect(() => setContext(loadContext()), []);
+  useEffect(() => {
+    const refresh = () => {
+      const nextEnvelopes = loadContextEnvelopes();
+      setEnvelopes(nextEnvelopes);
+      const stored = loadContext();
+      const shared = contextLens(nextEnvelopes);
+      const merged = { ...stored, ...shared };
+      setContext(merged);
+      saveContext(merged);
+    };
+    refresh();
+    return subscribeContextEnvelopes(refresh);
+  }, []);
 
   const openItems = useMemo(
     () => state.items.filter((item) => item.status !== "done"),
@@ -93,28 +125,74 @@ export default function AskAilhat() {
 
   if (loading || !user) return null;
 
-  const updateContext = (patch: Partial<WorkingContext>) => {
+  const updateContext = (patch: Partial<WorkingContext>, writeEnvelope = true) => {
     const next = { ...context, ...patch };
     for (const key of Object.keys(next) as Array<keyof WorkingContext>) {
       if (!next[key]) delete next[key];
     }
     setContext(next);
     saveContext(next);
+
+    if (writeEnvelope) {
+      const subjectProduct = next.productId ? state.products.find((product) => product.id === next.productId) : undefined;
+      if (patch.productId) {
+        const product = state.products.find((candidate) => candidate.id === patch.productId);
+        if (product) {
+          addContextEnvelope(createUserContextEnvelope({
+            contextType: "focus",
+            content: `${product.name} is the current working focus.`,
+            subjectType: "product",
+            subjectId: product.id,
+            scope: "shared",
+            domain: "portfolio-intelligence",
+            extensions: { productName: product.name, capturedVia: "Ask ailhat" },
+          }));
+        }
+      }
+      if (patch.goal) {
+        addContextEnvelope(createUserContextEnvelope({
+          contextType: "goal",
+          content: patch.goal,
+          subjectType: subjectProduct ? "product" : "portfolio",
+          subjectId: subjectProduct?.id,
+          scope: "shared",
+          domain: "portfolio-intelligence",
+          extensions: { capturedVia: "Ask ailhat" },
+        }));
+      }
+      if (patch.constraint) {
+        addContextEnvelope(createUserContextEnvelope({
+          contextType: "constraint",
+          content: patch.constraint,
+          subjectType: subjectProduct ? "product" : "portfolio",
+          subjectId: subjectProduct?.id,
+          scope: "shared",
+          domain: "portfolio-intelligence",
+          extensions: { capturedVia: "Ask ailhat" },
+        }));
+      }
+    }
     return next;
   };
 
   const answerForProduct = (product: { id: string; name: string }, working: WorkingContext): GuideAnswer => {
     const productSignals = signals.filter((signal) => signal.productId === product.id);
     const productOpen = openItems.filter((item) => item.productId === product.id);
+    const relevantContext = envelopes.filter(
+      (item) => item.subjectType === "portfolio" || (item.subjectType === "product" && item.subjectId === product.id),
+    );
     const highest = productSignals[0];
     const qualifiers = [working.goal ? `goal: ${working.goal}` : "", working.constraint ? `constraint: ${working.constraint}` : ""]
       .filter(Boolean)
       .join(" · ");
+    const contextNote = relevantContext.length > 0
+      ? ` ${relevantContext.length} supplied context item${relevantContext.length === 1 ? " is" : "s are"} attached; focus, goal, and constraint context affect this working lens while evidence remains separately verified.`
+      : "";
 
     return {
       text: highest
-        ? `I’m prioritizing within ${product.name}${qualifiers ? ` (${qualifiers})` : ""}. It has ${productOpen.length} open item${productOpen.length === 1 ? "" : "s"}; the highest-ranked current signal is “${highest.title}”. ${highest.recommendation}`
-        : `I’m prioritizing within ${product.name}${qualifiers ? ` (${qualifiers})` : ""}. It has ${productOpen.length} open item${productOpen.length === 1 ? "" : "s"} and no currently ranked attention signal. Review its Product Cockpit before inventing new work.`,
+        ? `I’m prioritizing within ${product.name}${qualifiers ? ` (${qualifiers})` : ""}. It has ${productOpen.length} open item${productOpen.length === 1 ? "" : "s"}; the highest-ranked current signal is “${highest.title}”. ${highest.recommendation}${contextNote}`
+        : `I’m prioritizing within ${product.name}${qualifiers ? ` (${qualifiers})` : ""}. It has ${productOpen.length} open item${productOpen.length === 1 ? "" : "s"} and no currently ranked attention signal. Review its Product Cockpit before inventing new work.${contextNote}`,
       action: { label: `Resolve in ${product.name} cockpit`, to: "/product/$productId", productId: product.id },
     };
   };
@@ -125,9 +203,9 @@ export default function AskAilhat() {
     const lower = q.toLowerCase();
 
     if (/reset focus|clear focus|clear context|portfolio-wide/.test(lower)) {
-      updateContext({ productId: undefined, goal: undefined, constraint: undefined });
+      updateContext({ productId: undefined, goal: undefined, constraint: undefined }, false);
       setAnswer({
-        text: "Working focus cleared. I’ll use portfolio-wide evidence again.",
+        text: "Working focus cleared for this navigator. Saved context envelopes remain available until you remove them from Add Context.",
         action: { label: "Review portfolio-wide priorities", to: "/dashboard" },
       });
       return;
@@ -151,7 +229,7 @@ export default function AskAilhat() {
     if (matched && declaresFocus) {
       setAnswer({
         ...answerForProduct(matched, working),
-        text: `Got it — ${matched.name} is now the working focus${working.goal ? `, with ${working.goal.toLowerCase()} as the goal` : ""}${working.constraint ? ` and ${working.constraint} as a constraint` : ""}. ${answerForProduct(matched, working).text}`,
+        text: `Got it — ${matched.name} is now the working focus${working.goal ? `, with ${working.goal.toLowerCase()} as the goal` : ""}${working.constraint ? ` and ${working.constraint} as a constraint` : ""}. I saved that lens as transferable user-supplied context. ${answerForProduct(matched, working).text}`,
       });
       return;
     }
@@ -171,7 +249,7 @@ export default function AskAilhat() {
       setAnswer(
         highest
           ? {
-              text: `Portfolio-wide, the highest-leverage current signal is “${highest.title}”. ${highest.summary} Recommended next step: ${highest.recommendation}${working.goal ? ` I’m also keeping your ${working.goal.toLowerCase()} goal in view.` : ""}`,
+              text: `Portfolio-wide, the highest-leverage current signal is “${highest.title}”. ${highest.summary} Recommended next step: ${highest.recommendation}${working.goal ? ` I’m also keeping your ${working.goal.toLowerCase()} goal in view.` : ""}${working.constraint ? ` Constraint in view: ${working.constraint}.` : ""}`,
               action: highest.productId
                 ? { label: "Resolve in Product Cockpit", to: "/product/$productId", productId: highest.productId }
                 : { label: "Review current priorities", to: "/dashboard" },
@@ -185,17 +263,12 @@ export default function AskAilhat() {
     }
 
     if (/launch|ready|readiness|ship|users/.test(lower)) {
-      if (activeProduct) {
-        setAnswer({
-          text: `For ${activeProduct.name}, use Launch Readiness to separate verified evidence from unknowns, then resolve product-specific blockers in its cockpit.`,
-          action: { label: "Review Launch Readiness", to: "/brief" },
-        });
-      } else {
-        setAnswer({
-          text: "Launch Readiness lives in Intelligence because ailhat separates observed evidence from assumptions. Review evidence coverage before treating a clean deployment or basic scan as proof that the full user journey works.",
-          action: { label: "Review Launch Readiness", to: "/brief" },
-        });
-      }
+      setAnswer({
+        text: activeProduct
+          ? `For ${activeProduct.name}, use Launch Readiness to separate verified evidence from unknowns, then resolve product-specific blockers in its cockpit.`
+          : "Launch Readiness lives in Intelligence because ailhat separates observed evidence from assumptions. Review evidence coverage before treating a clean deployment or basic scan as proof that the full user journey works.",
+        action: { label: "Review Launch Readiness", to: "/brief" },
+      });
       return;
     }
 
@@ -225,7 +298,7 @@ export default function AskAilhat() {
 
     if (goal || constraint) {
       setAnswer({
-        text: `I’ve incorporated ${goal ? `the ${goal.toLowerCase()} goal` : "your stated goal"}${constraint ? ` and the ${constraint} constraint` : ""} into the working context. Ask “what should I do next?” and I’ll rerank the recommendation through that lens.`,
+        text: `I’ve incorporated ${goal ? `the ${goal.toLowerCase()} goal` : "your stated goal"}${constraint ? ` and the ${constraint} constraint` : ""} into the working context and saved it as transferable user-supplied context. Ask “what should I do next?” and I’ll rerank through that lens.`,
         action: activeProduct
           ? { label: `Review ${activeProduct.name}`, to: "/product/$productId", productId: activeProduct.id }
           : { label: "Review Today", to: "/dashboard" },
@@ -234,7 +307,7 @@ export default function AskAilhat() {
     }
 
     setAnswer({
-      text: `I can navigate the evidence ailhat already has: ${state.products.length} active product${state.products.length === 1 ? "" : "s"}, ${openItems.length} open work item${openItems.length === 1 ? "" : "s"}, and ${signals.length} ranked attention signal${signals.length === 1 ? "" : "s"}. Tell me what product, goal, or constraint you are focused on and later recommendations will acknowledge it.`,
+      text: `I can navigate ${state.products.length} active product${state.products.length === 1 ? "" : "s"}, ${openItems.length} open work item${openItems.length === 1 ? "" : "s"}, ${signals.length} ranked attention signal${signals.length === 1 ? "" : "s"}, and ${envelopes.length} supplied context envelope${envelopes.length === 1 ? "" : "s"}. Tell me what product, goal, or constraint you are focused on and later recommendations will acknowledge it.`,
       action: { label: "Review Today", to: "/dashboard" },
     });
   };
@@ -275,7 +348,7 @@ export default function AskAilhat() {
                 <p className="silhat-eyebrow text-[#7fb0ff]">Portfolio navigator</p>
                 <h2 className="mt-1 text-base font-bold text-gray-100">Ask ailhat</h2>
                 <p className="mt-1 text-xs leading-5 text-gray-500">
-                  Guidance over evidence + your working focus. Recommends and routes; does not execute work.
+                  Guidance over evidence + shared working context. Recommends and routes; does not execute work.
                 </p>
               </div>
               <button type="button" onClick={() => setOpen(false)} className="rounded-md px-2 py-1 text-sm text-gray-500 hover:bg-gray-900 hover:text-gray-200" aria-label="Close Ask ailhat">×</button>
@@ -286,15 +359,15 @@ export default function AskAilhat() {
                   <button
                     key={chip.key}
                     type="button"
-                    onClick={() => updateContext({ [chip.key]: undefined })}
+                    onClick={() => updateContext({ [chip.key]: undefined }, false)}
                     className="rounded-full border border-[#7fb0ff]/25 bg-[#7fb0ff]/[0.06] px-2.5 py-1 text-[10px] font-semibold text-[#9cc8ff]"
-                    title="Remove from working context"
+                    title="Remove from this working lens"
                   >
                     {chip.label} ×
                   </button>
                 ))}
-                <button type="button" onClick={() => { updateContext({ productId: undefined, goal: undefined, constraint: undefined }); setAnswer(null); }} className="px-2 py-1 text-[10px] font-semibold text-gray-600 hover:text-gray-300">
-                  Reset
+                <button type="button" onClick={() => { updateContext({ productId: undefined, goal: undefined, constraint: undefined }, false); setAnswer(null); }} className="px-2 py-1 text-[10px] font-semibold text-gray-600 hover:text-gray-300">
+                  Reset lens
                 </button>
               </div>
             )}
