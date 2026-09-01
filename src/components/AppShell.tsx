@@ -272,7 +272,7 @@ export default function AppShell({
         <main className="min-w-0 flex-1">
           <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-8">
             <SolutionWorkflowBridge />
-            {(active === "learn" || active === "portfolio") && <AgentJourneyReadiness />}
+            {active === "learn" && <AgentJourneyReadiness />}
             {children}
           </div>
         </main>
