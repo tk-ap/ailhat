@@ -1,5 +1,5 @@
 import { HeadContent, Outlet, Scripts, createRootRoute } from "@tanstack/react-router";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 
 import OperatingLoopPortal from "~/components/OperatingLoopPortal";
 import ProductWorkspaceContinuityPortal from "~/components/ProductWorkspaceContinuityPortal";
@@ -45,12 +45,59 @@ export const Route = createRootRoute({
 function RootComponent() {
   return (
     <RootDocument>
+      <StaleChunkRecovery />
       <Outlet />
       <OperatingLoopPortal />
       <ProductWorkspaceContinuityPortal />
       <WhyAilhatEducation />
     </RootDocument>
   );
+}
+
+function StaleChunkRecovery() {
+  useEffect(() => {
+    const storageKey = "ailhat:stale-chunk-reload-at";
+
+    const looksLikeStaleChunk = (value: unknown) => {
+      const text = String(value ?? "");
+      return (
+        /Failed to fetch dynamically imported module/i.test(text) ||
+        /Importing a module script failed/i.test(text) ||
+        /error loading dynamically imported module/i.test(text) ||
+        /Loading chunk .* failed/i.test(text) ||
+        /\/assets\/[^\s]+\.js/i.test(text)
+      );
+    };
+
+    const recover = () => {
+      const now = Date.now();
+      const lastReload = Number(sessionStorage.getItem(storageKey) ?? "0");
+      if (Number.isFinite(lastReload) && now - lastReload < 15_000) return;
+
+      sessionStorage.setItem(storageKey, String(now));
+      window.location.reload();
+    };
+
+    const onError = (event: ErrorEvent) => {
+      if (looksLikeStaleChunk(`${event.message} ${event.filename}`)) recover();
+    };
+
+    const onUnhandledRejection = (event: PromiseRejectionEvent) => {
+      const reason = event.reason;
+      const message = reason instanceof Error ? `${reason.name} ${reason.message}` : reason;
+      if (looksLikeStaleChunk(message)) recover();
+    };
+
+    window.addEventListener("error", onError);
+    window.addEventListener("unhandledrejection", onUnhandledRejection);
+
+    return () => {
+      window.removeEventListener("error", onError);
+      window.removeEventListener("unhandledrejection", onUnhandledRejection);
+    };
+  }, []);
+
+  return null;
 }
 
 function RootDocument({ children }: { children: ReactNode }) {
