@@ -21,6 +21,7 @@ export type ShellView =
   | "control"
   | "learn"
   | "decisions"
+  | "connections"
   | "owner";
 
 const NAV: { id: ShellView; label: string; to: string; icon: ReactNode; hint: string }[] = [
@@ -75,8 +76,8 @@ const NAV: { id: ShellView; label: string; to: string; icon: ReactNode; hint: st
   },
 ];
 
-const BOTTOM_NAV: { label: string; disabled: boolean }[] = [
-  { label: "Connections", disabled: true },
+const BOTTOM_NAV: { label: string; to?: "/connections"; disabled: boolean }[] = [
+  { label: "Connections", to: "/connections", disabled: false },
   { label: "Settings", disabled: true },
 ];
 
@@ -101,7 +102,9 @@ export default function AppShell({
       ? "Product"
       : active === "owner"
         ? "Owner Dashboard"
-        : NAV.find((n) => n.id === active)?.label ?? "ailhat";
+        : active === "connections"
+          ? "Connections"
+          : NAV.find((n) => n.id === active)?.label ?? "ailhat";
 
   return (
     <div className="flex min-h-dvh bg-gray-950 text-gray-100">
@@ -188,23 +191,36 @@ export default function AppShell({
 
           <div className="silhat-eyebrow px-2.5 pb-1.5 pt-5">System</div>
           <div className="space-y-0.5">
-            {BOTTOM_NAV.map((b) => (
-              <div
-                key={b.label}
-                className="flex w-full cursor-not-allowed items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-gray-600"
-                title={b.disabled ? "Coming soon" : undefined}
-              >
-                <span className="flex h-[16px] w-[16px] shrink-0 items-center justify-center">
-                  <span className="h-1.5 w-1.5 rounded-full bg-gray-700" />
-                </span>
-                <span className="truncate">{b.label}</span>
-                {b.disabled && (
+            {BOTTOM_NAV.map((b) =>
+              b.disabled || !b.to ? (
+                <div
+                  key={b.label}
+                  className="flex w-full cursor-not-allowed items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-gray-600"
+                  title="Coming soon"
+                >
+                  <span className="flex h-[16px] w-[16px] shrink-0 items-center justify-center">
+                    <span className="h-1.5 w-1.5 rounded-full bg-gray-700" />
+                  </span>
+                  <span className="truncate">{b.label}</span>
                   <span className="ml-auto shrink-0 rounded border border-gray-800 px-1 py-px text-[9px] font-semibold uppercase tracking-wide text-gray-600">
                     Soon
                   </span>
-                )}
-              </div>
-            ))}
+                </div>
+              ) : (
+                <Link
+                  key={b.label}
+                  to={b.to}
+                  className={`silhat-nav ${active === "connections" ? "silhat-nav-active" : ""}`}
+                  title="Evidence sources · execution destinations · permissions · health"
+                >
+                  <span className="flex h-[16px] w-[16px] shrink-0 items-center justify-center">
+                    <span className={`h-1.5 w-1.5 rounded-full ${active === "connections" ? "bg-[#7fb0ff]" : "bg-gray-600"}`} />
+                  </span>
+                  <span className="truncate">{b.label}</span>
+                  {active === "connections" && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-[#7fb0ff]" />}
+                </Link>
+              ),
+            )}
           </div>
         </nav>
 
@@ -268,7 +284,9 @@ export default function AppShell({
                         ? `Agent Direct · per-product decisions`
                         : active === "owner"
                           ? `Operator controls · access · system health`
-                          : `RADAR · opportunity routing · launch readiness · deeper judgment`}
+                          : active === "connections"
+                            ? `Evidence sources · execution destinations · permissions · sync health`
+                            : `RADAR · opportunity routing · launch readiness · deeper judgment`}
             </span>
           </div>
           <div className="flex items-center gap-3">
