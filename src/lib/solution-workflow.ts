@@ -25,6 +25,8 @@ export interface SolutionWorkflow {
   stage: SolutionWorkflowStage;
   createdAt: string;
   updatedAt: string;
+  /** Timestamp set when implementation enters verification. A scan must be newer than this to close/reopen the workflow. */
+  verifyRequestedAt?: string;
 }
 
 const KEY = "ailhat.solution-workflow.v1";
@@ -95,9 +97,15 @@ export function setSolutionWorkflowStage(
   id: string,
   stage: SolutionWorkflowStage,
 ): SolutionWorkflow[] {
+  const now = new Date().toISOString();
   const next = loadSolutionWorkflows().map((workflow) =>
     workflow.id === id
-      ? { ...workflow, stage, updatedAt: new Date().toISOString() }
+      ? {
+          ...workflow,
+          stage,
+          updatedAt: now,
+          ...(stage === "verify" ? { verifyRequestedAt: now } : {}),
+        }
       : workflow,
   );
   return persist(next);
