@@ -34,7 +34,6 @@ function applyCollapsed(card: HTMLElement, collapsed: boolean) {
   const cardChildren = Array.from(card.children) as HTMLElement[];
   const header = cardChildren[0] ?? null;
 
-  // The full scan/checklist body should disappear in condensed mode.
   cardChildren.forEach((child, index) => {
     if (index === 0) return;
     child.style.display = collapsed ? "none" : "";
@@ -52,10 +51,6 @@ function applyCollapsed(card: HTMLElement, collapsed: boolean) {
     controls.style.gap = collapsed ? "0.25rem" : "";
   }
 
-  // ProductCard's first header child is the normal product summary row unless
-  // the user is actively editing. In condensed mode retain only the identity
-  // row (name + platform) and open-count badge. Everything operational returns
-  // on Expand.
   const summary = header.firstElementChild as HTMLElement | null;
   if (!summary || summary === controls) return;
 
@@ -126,29 +121,71 @@ export default function TodayWorkspaceControls() {
     saveTodayPreferences(next);
   };
 
+  const normalizeOrder = (
+    ids: string[],
+    base: TodayPreferences,
+    overrides: Record<string, Partial<TodayPreferences[string]>> = {},
+  ) => {
+    const next = { ...base };
+    ids.forEach((productId, index) => {
+      next[productId] = {
+        collapsed: next[productId]?.collapsed ?? false,
+        order: index,
+        ...(next[productId]?.restoreOrder !== undefined
+          ? { restoreOrder: next[productId]?.restoreOrder }
+          : {}),
+        ...(overrides[productId] ?? {}),
+      };
+    });
+    return next;
+  };
+
   const setCollapsed = (id: string, collapsed: boolean) => {
-    const currentOrder = ordered.findIndex((p) => p.id === id);
-    commit({
-      ...prefs,
+    const ids = ordered.map((product) => product.id);
+    const currentIndex = ids.indexOf(id);
+    if (currentIndex < 0) return;
+
+    if (collapsed) {
+      // Remember the user's current priority position, then move this product to
+      // the end of Today. Condense therefore means "de-prioritise for now", not
+      // merely "hide some pixels".
+      ids.splice(currentIndex, 1);
+      ids.push(id);
+      const next = normalizeOrder(ids, prefs, {
+        [id]: {
+          collapsed: true,
+          restoreOrder: currentIndex,
+        },
+      });
+      commit(next);
+      return;
+    }
+
+    // Expand restores the position the product occupied immediately before it
+    // was condensed. If that position is no longer available, clamp safely into
+    // the current active portfolio ordering.
+    ids.splice(currentIndex, 1);
+    const remembered = prefs[id]?.restoreOrder ?? currentIndex;
+    const target = Math.max(0, Math.min(remembered, ids.length));
+    ids.splice(target, 0, id);
+    const next = normalizeOrder(ids, prefs, {
       [id]: {
-        order: prefs[id]?.order ?? currentOrder,
-        collapsed,
+        collapsed: false,
+        restoreOrder: target,
       },
     });
+    commit(next);
   };
 
   const move = (id: string, delta: -1 | 1) => {
+    if (prefs[id]?.collapsed) return;
     const ids = ordered.map((p) => p.id);
     const from = ids.indexOf(id);
     const to = from + delta;
     if (from < 0 || to < 0 || to >= ids.length) return;
     [ids[from], ids[to]] = [ids[to], ids[from]];
-    const next = { ...prefs };
-    ids.forEach((productId, index) => {
-      next[productId] = {
-        collapsed: next[productId]?.collapsed ?? false,
-        order: index,
-      };
+    const next = normalizeOrder(ids, prefs, {
+      [id]: { restoreOrder: to },
     });
     commit(next);
   };
@@ -161,30 +198,35 @@ export default function TodayWorkspaceControls() {
         const collapsed = prefs[product.id]?.collapsed ?? false;
         return createPortal(
           <>
-            <button
-              type="button"
-              onClick={() => move(product.id, -1)}
-              disabled={index === 0}
-              className="rounded-md border border-gray-700 px-2 py-1 text-[10px] font-semibold text-gray-400 hover:text-gray-200 disabled:opacity-30"
-              title="Move this product earlier on Today"
-            >
-              ↑ Earlier
-            </button>
-            <button
-              type="button"
-              onClick={() => move(product.id, 1)}
-              disabled={index === ordered.length - 1}
-              className="rounded-md border border-gray-700 px-2 py-1 text-[10px] font-semibold text-gray-400 hover:text-gray-200 disabled:opacity-30"
-              title="Move this product later on Today"
-            >
-              ↓ Later
-            </button>
+            {!collapsed && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => move(product.id, -1)}
+                  disabled={index === 0}
+                  className="rounded-md border border-gray-700 px-2 py-1 text-[10px] font-semibold text-gray-400 hover:text-gray-200 disabled:opacity-30"
+                  title="Move this product earlier on Today"
+                >
+                  ↑ Earlier
+                </button>
+                <button
+                  type="button"
+                  onClick={() => move(product.id, 1)}
+                  disabled={index === ordered.length - 1}
+                  className="rounded-md border border-gray-700 px-2 py-1 text-[10px] font-semibold text-gray-400 hover:text-gray-200 disabled:opacity-30"
+                  title="Move this product later on Today"
+                >
+                  ↓ Later
+                </button>
+              </>
+            )}
             <button
               type="button"
               onClick={() => setCollapsed(product.id, !collapsed)}
               className="rounded-md border border-gray-700 px-2 py-1 text-[10px] font-semibold text-gray-300 hover:border-[#7fb0ff]/50 hover:text-[#7fb0ff]"
+              title={collapsed ? "Expand and restore this product's previous position" : "Condense and move this product to the bottom"}
             >
-              {collapsed ? "Expand" : "Condense"}
+              {collapsed ? "Expand · restore" : "Condense"}
             </button>
             <a
               href={`/product/${encodeURIComponent(product.id)}`}
