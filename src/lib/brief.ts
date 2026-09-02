@@ -10,6 +10,7 @@
 import type { AppState, Item, ItemStatus, ItemType } from "./store";
 import type { ScanFinding } from "./scanSite";
 import { severityToItemType } from "./scanSite";
+import { assessQueueStall } from "./work-lifecycle";
 
 export type AttentionLevel = "ACT_NOW" | "REVIEW" | "OPPORTUNITY" | "HEALTHY";
 
@@ -19,6 +20,13 @@ export const LEVEL_ORDER: Record<AttentionLevel, number> = {
   OPPORTUNITY: 2,
   HEALTHY: 3,
 };
+
+export interface SignalInference {
+  kind: "observation" | "inference";
+  confidence: "HIGH" | "MEDIUM" | "LOW";
+  basis: string[];
+  missingEvidence?: string[];
+}
 
 // Concrete checklist item that can be added to a product (deduped on add).
 export interface RecItem {
@@ -44,14 +52,15 @@ export interface Signal {
   priority: number; // higher = more important within a level
   recItems: RecItem[]; // recommended checklist item(s) to add
   actOnItem?: { id: string; label: string; toStatus: ItemStatus };
+  inference?: SignalInference;
 }
 
 const DAY = 24 * 60 * 60 * 1000;
 
 // ---- thresholds (tunable, exported for tests) ----
 export const OLD_BUG_DAYS = 7; // open bug older than this → ACT NOW
-export const STALLED_OPEN = 3; // open items at/above this → concentration
-export const STALLED_DONE_DAYS = 7; // no done work in this window → stalled
+export const STALLED_OPEN = 3; // unresolved-item count that triggers a queue review
+export const STALLED_DONE_DAYS = 7; // absence of done work is evidence, not proof of a stall
 export const SCAN_FRESH_DAYS = 3; // scan younger than this counts as "fresh"
 export const CROSS_TITLE_RE =
   /publish|port|cross|madethis|vercel|share/i; // signals cross-platform intent
@@ -168,25 +177,60 @@ function polishScanSignal(
   };
 }
 
-function stalledSignal(p: AppState["products"][number], open: Item[]): Signal {
+function queueReviewSignal(
+  p: AppState["products"][number],
+  open: Item[],
+): Signal {
+  const assessment = assessQueueStall({
+    openCount: open.length,
+    recentCompletionObserved: false,
+    activeExecutionObserved: false,
+    // Item lifecycle history does not currently prove that the whole queue was
+    // unchanged across repeated observations, so ailhat must not call it stalled.
+    repeatedUnchangedObservationObserved: false,
+    dispositionEvidenceObserved: false,
+  }, STALLED_OPEN);
+
+  const missingEvidence =
+    assessment.state === "suspected"
+      ? assessment.missingEvidence
+      : [
+          "Whether this same queue remained unchanged across repeated observations.",
+          "Whether work completed outside ailhat's observed surfaces.",
+          "Whether items were deliberately deferred, descoped, or superseded.",
+        ];
+
   return {
-    id: `stalled-${p.id}`,
-    level: "ACT_NOW",
+    id: `queue-review-${p.id}`,
+    level: "REVIEW",
     productId: p.id,
     productName: p.name,
-    title: `${open.length} open items on ${p.name} and nothing completed`,
+    title: `${open.length} unresolved items on ${p.name} need a queue decision`,
     summary:
-      "Work is accumulating on " + p.name + " with no recent completion — the queue is stalling.",
+      `ailhat observes ${open.length} unresolved items and no recorded completion in the last ${STALLED_DONE_DAYS} days. That is a queue-state observation, not proof that shipping has stalled.`,
     evidence: [
-      `${open.length} open items (>=${STALLED_OPEN}) and no done work in the last ${STALLED_DONE_DAYS} days on ${p.name}: ` +
+      `${open.length} unresolved items (>=${STALLED_OPEN}) are recorded on ${p.name}: ` +
         open.map((i) => `“${i.title}”`).join(", "),
+      `No done item created in the last ${STALLED_DONE_DAYS} days is recorded for ${p.name}.`,
+      "No unresolved item is currently marked in progress.",
     ],
     reasoning:
-      "A never-shrinking open queue is the signature of a stalled shipping loop — items sit, momentum dies, and none of this work reaches users.",
-    recommendation: "Clear the stalled queue on " + p.name + ".",
-    action: "Batch these into a focused sprint — finish or explicitly descope each one.",
-    priority: 800 + open.length,
+      `${assessment.reason} ailhat does not yet have enough item-transition evidence to establish an unchanged queue, deliberate disposition, or external completion as fact.`,
+    recommendation: "Review the unresolved queue on " + p.name + " and record the decision state.",
+    action:
+      "Mark active work in progress, or disposition each item as Act, Defer, Descope, Supersede, or Already fixed; verify the original condition before retiring work as done.",
+    priority: 450 + open.length,
     recItems: [],
+    inference: {
+      kind: "inference",
+      confidence: "MEDIUM",
+      basis: [
+        `${open.length} unresolved items are recorded.`,
+        `No recent completion is recorded within ${STALLED_DONE_DAYS} days.`,
+        "No item is marked in progress.",
+      ],
+      missingEvidence,
+    },
   };
 }
 
@@ -381,7 +425,11 @@ export function computeBrief(state: AppState): Signal[] {
 
     const done = pItems.filter((i) => i.status === "done");
     const recentDone = done.some((i) => now - i.createdAt < STALLED_DONE_DAYS * DAY);
-    const stalled = open.length >= STALLED_OPEN && !recentDone;
+    const activeExecutionObserved = open.some((i) => i.status === "in_progress");
+    const queueNeedsDecision =
+      open.length >= STALLED_OPEN &&
+      !recentDone &&
+      !activeExecutionObserved;
 
     let urgent = false;
 
@@ -393,13 +441,14 @@ export function computeBrief(state: AppState): Signal[] {
       signals.push(scanBugSignal(p, bugs));
       urgent = true;
     }
-    if (stalled) {
-      signals.push(stalledSignal(p, open));
-      urgent = true;
-    }
 
     if (!urgent) {
-      if (scanFresh && bugs.length === 0 && polish.length > 0) {
+      if (queueNeedsDecision) {
+        // Current AppState does not retain enough item-transition evidence to
+        // prove repeated unchanged observations, so this is deliberately a
+        // REVIEW signal rather than a definitive ACT_NOW "stalled" diagnosis.
+        signals.push(queueReviewSignal(p, open));
+      } else if (scanFresh && bugs.length === 0 && polish.length > 0) {
         signals.push(polishScanSignal(p, polish));
       } else if (open.length > 0) {
         signals.push(reviewOpenSignal(p, open));

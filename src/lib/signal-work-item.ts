@@ -2,6 +2,11 @@ import type { Signal } from "./brief";
 import type { Product } from "./store";
 import { recommendSkillsFor } from "./directiveSkills";
 import type { SkillRef } from "./directiveSkills";
+import {
+  createObservedLifecycle,
+  decideWork,
+  type WorkLifecycle,
+} from "./work-lifecycle";
 
 export type SignalWorkMode = "fix" | "investigate";
 export type SignalWorkStatus = "prepared";
@@ -12,12 +17,14 @@ export interface SignalWorkEvidence {
 }
 
 export interface SignalWorkItem {
-  schema: "ailhat.signal-work-item/v1";
+  schema: "ailhat.signal-work-item/v2";
   id: string;
   mode: SignalWorkMode;
   status: SignalWorkStatus;
   generatedAt: string;
   signalId: string;
+  sourceObservationIds: string[];
+  lifecycle: WorkLifecycle;
   product: {
     id: string | null;
     name: string | null;
@@ -55,6 +62,13 @@ function productSnapshot(signal: Signal, product?: Product | null) {
   };
 }
 
+function sourceObservationIds(signal: Signal): string[] {
+  const scanKeys = signal.recItems
+    .map((item) => item.scanKey)
+    .filter((key): key is string => Boolean(key));
+  return scanKeys.length > 0 ? [...new Set(scanKeys)] : [signal.id];
+}
+
 function fixAcceptanceCriteria(signal: Signal): string[] {
   const criteria = [
     `The condition described by “${signal.title}” is no longer reproducible.`,
@@ -77,6 +91,11 @@ export function buildSignalWorkItem(
 ): SignalWorkItem {
   const target = productSnapshot(signal, product);
   const generatedAt = new Date(generatedAtMs).toISOString();
+  const observations = sourceObservationIds(signal);
+  const observed = createObservedLifecycle(observations, generatedAt);
+  // Preparing a fix is an explicit Act decision, but remains pre-execution.
+  // Investigate stays at Observe until the premise is strong enough to decide.
+  const lifecycle = mode === "fix" ? decideWork(observed, "act", generatedAt) : observed;
   const skillText = [
     signal.title,
     signal.summary,
@@ -86,12 +105,14 @@ export function buildSignalWorkItem(
   ].join(" ");
 
   const base: SignalWorkItem = {
-    schema: "ailhat.signal-work-item/v1",
+    schema: "ailhat.signal-work-item/v2",
     id: `${signal.id}:${mode}`,
     mode,
     status: "prepared",
     generatedAt,
     signalId: signal.id,
+    sourceObservationIds: observations,
+    lifecycle,
     product: target,
     title: mode === "fix" ? `Fix: ${signal.title}` : `Investigate: ${signal.title}`,
     problem: signal.summary,
@@ -131,7 +152,7 @@ export function buildSignalWorkItem(
       stopCondition:
         "Stop when the premise can be confirmed or rejected with enough evidence to choose a next action without materially important unknowns being hidden.",
       decisionUnlocked:
-        "Fix, defer, dismiss as non-material, or mark the original signal incorrect with a documented reason.",
+        "Act, defer, descope, supersede, or mark already fixed with a documented reason; verify before retiring work as done.",
     };
   }
 
@@ -140,6 +161,7 @@ export function buildSignalWorkItem(
 
 export function compileSignalWorkItemMarkdown(item: SignalWorkItem): string {
   const product = item.product.name ?? "Portfolio-level signal";
+  const disposition = item.lifecycle.disposition ?? "undecided";
   const lines = [
     `# ${item.title}`,
     "",
@@ -147,6 +169,14 @@ export function compileSignalWorkItemMarkdown(item: SignalWorkItem): string {
     `**Product:** ${product}${item.product.url ? ` · ${item.product.url}` : ""}`,
     `**Signal:** ${item.signalId}`,
     `**Generated:** ${item.generatedAt}`,
+    "",
+    "## Lifecycle",
+    `**Stage:** ${item.lifecycle.stage}`,
+    `**Disposition:** ${disposition}`,
+    `**Verification:** ${item.lifecycle.verificationResult}`,
+    `**Source observations:** ${item.sourceObservationIds.length}`,
+    "",
+    "A decision to Act is not execution evidence. Work may only be represented as started when execution evidence exists, and only retired as done after verification resolves the original condition.",
     "",
     "## Problem",
     item.problem,
