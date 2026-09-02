@@ -1,186 +1,182 @@
-# ailhat Portfolio Scope & Agent Control Handoff
+# ailhat Portfolio Scope & Governed Action Handoff
 
 ## Purpose
 
-ailhat should not operate as if ailhat is the user's only live business/product. Other live businesses running under the user's cto.new account must remain in portfolio scope and visible enough to avoid neglect.
+ailhat should maintain a truthful operating picture across the user's portfolio without assuming that ailhat itself is the only place where product work happens.
+
+Portfolio Intelligence should combine production observation, repository context, deployment evidence, ailhat history, and external market/engagement signals while preserving the provenance and authority scope of each source.
+
+See `docs/PORTFOLIO_EVIDENCE_ARCHITECTURE.md` for the canonical evidence hierarchy.
 
 ## Ecosystem role
 
-ailhat is the **Portfolio Intelligence layer**:
+ailhat is **Portfolio Intelligence**:
 
-**Observe → Understand → Detect issues/opportunities → Prioritize → Recommend**
+**Observe → Reconcile evidence → Detect Opportunity / Risk / Drift / Work → Prioritize → Recommend → Verify**
 
-ailhat also owns **Facilitation**, the human capability/improvement layer:
+ailhat also owns **Facilitation**:
 
 **Learn → Apply → Observe → Improve**
 
-Facilitation should use real portfolio/workforce context to help the operator understand what to learn or improve next. It is not a generic LMS or academy. See `docs/FACILITATION.md` for the product thesis.
+Agent Direct is ailhat's user-facing handoff surface for turning an accepted evidence-backed decision into governed action. It does not grant authority or become the execution runtime.
 
-Agent Control is the **execution-capacity and authorization layer**:
+Agent OS / Workforce is the host-agnostic control plane for task-first workforce composition, agents, skills, routing, handoffs, harness/host selection, execution policy, verification, and returned evidence.
 
-**Observe capacity → Match work → Reserve window → Route authorized execution → Report completion**
+Agent Control is the authorization-intelligence layer in the Agent OS control plane where integrated. It is not a separate public ailhat offering and should not be represented as ailhat's generic execution-capacity dashboard.
 
-ALVIRA is the ecosystem's **Context Intelligence** layer. Its long-term product model is:
+LEDGATo participates only when work materially intersects its defined governance or enforcement scope.
 
-**Know You → Connect Everywhere → Work With You → Act For You**
-
-Agent OS / Workforce is foundational infrastructure across the ecosystem, not a separate public offering. cto.new, Codex, and similar environments should be treated as generalized agentic harness leverage/execution rather than as product-specific execution layers.
-
-ailhat should not become Agent Control or the execution harness. Agent Control should not recreate ailhat's Portfolio Intelligence. The systems should exchange normalized context, recommendations, and work items while remaining loosely coupled.
+ALVIRA / MeOS owns Context Intelligence. ALVIRA Bridge is the gated secondary capability for approved context delivery.
 
 The broader loop is:
 
-**Portfolio Intelligence → Facilitation → Workforce → Execution → Portfolio Intelligence**
+**Portfolio Intelligence → Decide → Agent Direct → governed task / authorization as required → execution → evidence → Verify → Portfolio Intelligence**
 
-## Current known portfolio
+## Portfolio identity model
 
-| Product | State | Product context | Readiness |
-|---|---|---|---|
-| ailhat | Active / private beta / pre-launch | Known | ~65% (directional) |
-| LEDGATo | Live | Needs assessment | TBD |
-| ALVIRA | Live / strategic ecosystem | Needs assessment | TBD |
-| ALVIRA Bridge | Live / strategic ecosystem component | Needs assessment | TBD |
-| PolicyGuard | Paused / v1 shown in cto.new portfolio | Needs assessment | TBD |
-| WEBSITEHERO | Paused / purchased-business portfolio | Needs assessment | TBD |
-| TrendVault | Paused / purchased-business portfolio | Needs assessment | TBD |
-| AdScale Pro | Paused / purchased-business portfolio | Needs assessment | TBD |
+A product should be represented by an identity bundle rather than a single live URL:
 
-Do not invent readiness scores, traction, customer claims, or business claims for products that have not been assessed.
+**Product → production URL(s) → repository/repositories → deployment project/environment → observations → decisions/work → verification history**
 
-## Account / workspace relationship
+Repository and deployment links are optional, but recommended when available because they let ailhat distinguish user-facing reality from implementation activity and release state.
 
-The connected cto.new portfolio should be represented as:
-
-**Account → workspace/product → repository/site → observations → work items → execution-capacity relationship**
-
-This lets ailhat reason across the portfolio without collapsing distinct products into one project.
-
-## ailhat UI requirement
-
-Add a **Portfolio** / **Other Products** surface to the ailhat dashboard so the user can see:
-
-- all known live/discovered products
-- current state
-- last scan / last attention
-- readiness status
-- unresolved blockers
-- next recommended action
-- attention age / neglect risk
-- relationship to Agent Control capacity
-- source/provenance for each fact
-
-The current ailhat product remains the primary detail view. The portfolio surface exists to prevent the other businesses from disappearing from the user's operating picture.
-
-## Portfolio context fields
-
-Every product/workspace record should support at minimum:
+Useful identity fields include:
 
 - `name`
 - `slug`
 - `state`
-- `source`
-- `account_ref`
 - `platform`
-- `url`
-- `repo_ref`
+- `production_urls`
+- `repo_refs`
+- `deployment_refs`
 - `description`
 - `customer_target`
 - `business_model`
 - `launch_stage`
-- `readiness_score`
-- `readiness_confidence`
-- `distance_to_first_paid_client`
-- `last_meaningful_work_at`
-- `last_scan_at`
-- `last_attention_at`
-- `next_review_at`
-- `attention_status`
-- `neglect_risk`
-- `open_blocker_count`
-- `top_next_action`
 - `context_source`
 - `context_updated_at`
 
-Use nullable fields when evidence is not yet available.
+Use nullable/unknown states when evidence is unavailable.
 
-## Neglect detection
+Do not hard-code a static portfolio table as canonical product truth. Product inventory should come from the user's current portfolio records and linked evidence sources.
 
-For every live/discovered product track:
+## Evidence-aware product state
 
-- last meaningful work date
-- last live scan date
-- days since attention
-- current status
-- unresolved blockers
-- next review date
+Every product may carry evidence-backed state such as:
 
-Flag `NEEDS ATTENTION` when a live product has gone more than 7 days without meaningful attention, when its scan is stale, or when a significant blocker remains unresolved.
+- last production observation
+- last repository activity observed
+- last deployment observed
+- last external market/engagement observation
+- unresolved findings/work packages
+- current lifecycle disposition
+- verification state
+- source freshness
+- confidence and missing evidence
 
-Possible states:
+These timestamps answer different questions and must not be silently collapsed into one `last activity` field.
 
-`ACTIVE` · `NEEDS ATTENTION` · `STALE` · `BLOCKED` · `HEALTHY` · `NEEDS ASSESSMENT` · `PAUSED`
+Examples:
 
-Important: paused products must remain visible. The system should recommend **revive, schedule review, or archive** rather than silently dropping them.
+- production quiet + repository active → **active build**
+- repository changed + no matching production release → **deployment drift / pending release**
+- deployment ready + original finding not rescanned → **external change / verification pending**
+- production regressed after a release → **production regression**
+- repository/spec direction differs from production → **spec / implementation drift**
+- production, repository, deployment, and engagement all remain quiet across repeated observations → **dormancy review may be warranted**, but retirement still requires an explicit decision
 
-## Portfolio Intelligence boundary
+## Lifecycle and retirement
 
-ailhat owns:
+Active portfolio attention is finite, but inactivity alone is not failure.
 
-**Observe → Understand → Detect issues/opportunities → Prioritize → Recommend**
+- Retirement is reversible state, not deletion.
+- Never auto-retire a product.
+- A quiet production site is not evidence of abandonment when repository or deployment activity shows an active build.
+- A quiet repository is not evidence of failure when production engagement remains healthy.
+- Missing analytics, repository, or deployment integration means the corresponding state is unknown.
+- Retirement recommendations should use corroborating evidence appropriate to viability, not a fixed days-since-attention threshold.
+- Retired products should leave prime active prioritization while preserving historical observations, decisions, outcomes, and evidence for later review/reactivation.
 
-Agent Control owns:
+## Portfolio UI direction
 
-**Observe capacity → Match work → Reserve window → Route authorized execution → Report completion**
+The portfolio surface should help the user understand state across products without turning ailhat into a generic project-management dashboard.
 
-ailhat should not reproduce Agent Control's account-capacity dashboard. Agent Control should receive ailhat work items and add execution-capacity and authorization context.
+Useful fields/surfaces include:
 
-## Shared work item
+- current lifecycle state
+- production status
+- source freshness/provenance
+- last meaningful external or internal evidence
+- unresolved verified findings
+- work that is active / externally changed / awaiting verification
+- next evidence-backed recommendation
+- repository/deployment connection state when available
+- confidence and important unknowns
 
-ailhat should be capable of producing a normalized work item containing:
+The UI should distinguish labels such as:
 
-- product/workspace
-- title
-- problem/opportunity
-- evidence
-- priority
-- estimated effort
-- suggested execution mode
-- expected product impact
-- source
-- created_at
-- context snapshot reference
+- **Observed in production**
+- **Supported by repository**
+- **Confirmed by deployment**
+- **Observed in execution evidence**
+- **User supplied**
+- **Inferred**
+- **Unknown / source unavailable**
 
-Agent Control can then answer:
+## Work and Agent Direct
 
-> Which available AI capacity should execute this, under what authorization, and when?
+ailhat may prepare a portable work item containing the product intent and supporting evidence. The current runtime work-item contract should remain smaller than a workflow definition.
 
-## Ecosystem handoff
+A work item may include:
 
-The desired loop is:
+- product/workspace reference
+- title and observed problem/opportunity
+- evidence and provenance
+- reasoning / confidence / unknowns
+- disposition
+- proposed outcome
+- acceptance / verification criteria
+- context requirements by reference/category
+- source observations
+- lifecycle state
 
-**ailhat finding → normalized work item → Agent Control capacity/authorization match → execution → result/evidence → ailhat rescan → updated context**
+A work item does **not** reserve capacity, select a final executor, or grant execution authority.
 
-This should be implemented as data contracts, not by tightly coupling the UIs.
+Agent Direct should expose the handoff honestly:
 
-## First UI pass
+**ailhat signal → evidence-backed work item → governed Agent OS task → authorization/policy as required → minimum workforce → harness/host → execution → outcome evidence → ailhat verification**
 
-On the dashboard, add a compact portfolio strip or command-center layer:
+## External completion
 
-**PORTFOLIO**
+ailhat must not interpret absence of ailhat-local completion as proof that nothing happened.
 
-ailhat · 65% · P0
-LEDGATo · Needs assessment
-ALVIRA · Needs assessment
-ALVIRA Bridge · Needs assessment
-PolicyGuard · Needs assessment
-WEBSITEHERO · Needs assessment
-TrendVault · Needs assessment
-AdScale Pro · Needs assessment
+When outside evidence exists:
 
-Clicking a product opens its product-specific context.
+- GitHub merge/commit → evidence that implementation work occurred
+- Vercel production Ready → evidence that a revision shipped
+- Agent OS/harness outcome event → evidence about bounded execution and verification
+- manual/user assertion → directional evidence until independently verifiable where verification is possible
 
-ailhat remains the default selected product; the others must be visible and monitored.
+External change should normally move relevant work to **verification pending**, not directly to **verified done**.
+
+## Authorization and governance boundary
+
+When accepted work requires authorization intelligence, ailhat/Agent Direct should produce or route the appropriate authorization request to the Agent OS control-plane authorization layer.
+
+Agent Control may satisfy that internal authorization-intelligence role where integrated, but ailhat must not recreate it locally or present it as a separate public ailhat product.
+
+LEDGATo is conditional: route to it only when the work materially intersects LEDGATo's governance/enforcement scope.
 
 ## Provenance rule
 
-Conversation-derived strategy and user-provided portfolio facts are **seed context**, not verified product truth. Persist source and timestamp so later live scans can validate, update, or invalidate them.
+Conversation-derived strategy, user-supplied portfolio facts, repository content, production observations, deployment events, market evidence, and execution evidence retain distinct epistemic status.
+
+Do not silently promote:
+
+- intent in a repository → deployed capability
+- merged code → verified resolution
+- deployment Ready → user-validated outcome
+- user assertion → observed fact
+- missing source → zero activity
+
+Conflicts between sources are themselves Portfolio Intelligence and should be surfaced for reconciliation.
