@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from "~/lib/useAuth";
 import { StoreProvider, useStore } from "~/lib/useStore";
 import AppShell from "~/components/AppShell";
 import PublicGitHubEvidenceConnector from "~/components/PublicGitHubEvidenceConnector";
+import VercelDeploymentEvidenceConnector from "~/components/VercelDeploymentEvidenceConnector";
 
 export const Route = createFileRoute("/connections")({
   component: () => (
@@ -218,6 +219,7 @@ function ConnectionsPage() {
       </section>
 
       <PublicGitHubEvidenceConnector products={state.products} />
+      <VercelDeploymentEvidenceConnector products={state.products} />
 
       {showForm && (
         <section className="silhat-panel border-[#7fb0ff]/25 p-5">
@@ -226,7 +228,7 @@ function ConnectionsPage() {
             Define what this adapter should be allowed to do
           </h2>
           <p className="mt-2 text-sm text-gray-500">
-            Declaring intent does not create OAuth, API credentials, or a live data exchange. The public GitHub evidence connector above is a separate read-only observation path.
+            Declaring intent does not create OAuth, API credentials, or a live data exchange. The GitHub and Vercel evidence connectors above are bounded read-only observation paths and report unavailable state when their real access requirements are not satisfied.
           </p>
 
           <div className="mt-5 grid gap-4 md:grid-cols-3">
@@ -385,7 +387,7 @@ function ConnectionsPage() {
           Connection honesty
         </span>
         <p className="mt-1">
-          “Declared” means ailhat knows the intended provider and permission boundary. “Observed” means an adapter successfully read evidence in the stated scope. Neither means ailhat has write authority, and repository evidence never overrides production reality.
+          “Declared” means ailhat knows the intended provider and permission boundary. “Observed” means an adapter successfully read evidence in the stated scope. Neither means ailhat has write authority. Repository evidence never overrides production reality; deployment evidence never replaces verification of the original condition.
         </p>
       </section>
     </div>
