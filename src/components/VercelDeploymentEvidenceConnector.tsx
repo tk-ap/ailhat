@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ExternalObservation, ProductDeploymentIdentity } from "~/lib/external-evidence";
+import EvidenceReconciliationPanel from "~/components/EvidenceReconciliationPanel";
 
 type ProductOption = { id: string; name: string; url: string };
 
@@ -135,103 +136,107 @@ export default function VercelDeploymentEvidenceConnector({
   const readyDeployments = latest?.observations?.filter((row) => row.state === "ready").length ?? 0;
 
   return (
-    <section className="silhat-panel p-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="silhat-eyebrow">Deployment context · read only</p>
-          <h2 className="mt-1 text-xl font-semibold text-gray-100">Vercel deployment evidence</h2>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-400">
-            Observe production deployment state only after the Vercel project's production domains match the product URL stored in ailhat. A Ready deployment proves a revision shipped; it does not verify that an original product finding is resolved.
-          </p>
-        </div>
-        <span
-          className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${
-            connected
-              ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
-              : "border-amber-400/25 bg-amber-400/[0.05] text-amber-300"
-          }`}
-        >
-          {connected ? "Observed" : latest ? "Unavailable / unknown" : "Not linked"}
-        </span>
-      </div>
-
-      {products.length === 0 ? (
-        <p className="mt-4 text-sm text-gray-500">Add a product before linking deployment evidence.</p>
-      ) : (
-        <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,0.7fr)_minmax(0,1.3fr)_auto] lg:items-end">
-          <label className="text-sm text-gray-400">
-            Product
-            <select
-              value={productId}
-              onChange={(event) => {
-                setProductId(event.target.value);
-                setProjectRef("");
-                setMessage("");
-              }}
-              className="mt-1 w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-gray-200"
-            >
-              {products.map((product) => (
-                <option key={product.id} value={product.id}>{product.name}</option>
-              ))}
-            </select>
-          </label>
-          <label className="text-sm text-gray-400">
-            Vercel project ID or name
-            <input
-              value={projectRef}
-              onChange={(event) => setProjectRef(event.target.value)}
-              placeholder="ailhat or prj_..."
-              className="mt-1 w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-gray-200 outline-none focus:border-[#7fb0ff]"
-            />
-          </label>
-          <button
-            type="button"
-            disabled={!productId || !projectRef.trim() || loading || !selectedProduct?.url}
-            onClick={() => void observe()}
-            className="silhat-btn silhat-btn-primary disabled:cursor-not-allowed disabled:opacity-50"
+    <>
+      <section className="silhat-panel p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="silhat-eyebrow">Deployment context · read only</p>
+            <h2 className="mt-1 text-xl font-semibold text-gray-100">Vercel deployment evidence</h2>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-400">
+              Observe production deployment state only after the Vercel project's production domains match the product URL stored in ailhat. A Ready deployment proves a revision shipped; it does not verify that an original product finding is resolved.
+            </p>
+          </div>
+          <span
+            className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${
+              connected
+                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                : "border-amber-400/25 bg-amber-400/[0.05] text-amber-300"
+            }`}
           >
-            {loading ? "Observing…" : latest ? "Refresh evidence" : "Link & observe"}
-          </button>
+            {connected ? "Observed" : latest ? "Unavailable / unknown" : "Not linked"}
+          </span>
         </div>
-      )}
 
-      {selectedProduct && !selectedProduct.url && (
-        <p className="mt-3 text-xs text-amber-200/80">
-          Add a production URL to this product before linking Vercel; ailhat needs the live hostname to validate the project boundary.
-        </p>
-      )}
+        {products.length === 0 ? (
+          <p className="mt-4 text-sm text-gray-500">Add a product before linking deployment evidence.</p>
+        ) : (
+          <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,0.7fr)_minmax(0,1.3fr)_auto] lg:items-end">
+            <label className="text-sm text-gray-400">
+              Product
+              <select
+                value={productId}
+                onChange={(event) => {
+                  setProductId(event.target.value);
+                  setProjectRef("");
+                  setMessage("");
+                }}
+                className="mt-1 w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-gray-200"
+              >
+                {products.map((product) => (
+                  <option key={product.id} value={product.id}>{product.name}</option>
+                ))}
+              </select>
+            </label>
+            <label className="text-sm text-gray-400">
+              Vercel project ID or name
+              <input
+                value={projectRef}
+                onChange={(event) => setProjectRef(event.target.value)}
+                placeholder="ailhat or prj_..."
+                className="mt-1 w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-gray-200 outline-none focus:border-[#7fb0ff]"
+              />
+            </label>
+            <button
+              type="button"
+              disabled={!productId || !projectRef.trim() || loading || !selectedProduct?.url}
+              onClick={() => void observe()}
+              className="silhat-btn silhat-btn-primary disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {loading ? "Observing…" : latest ? "Refresh evidence" : "Link & observe"}
+            </button>
+          </div>
+        )}
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-3">
-        <div className="rounded-lg border border-gray-800 bg-gray-900/50 p-3">
-          <p className="text-xs text-gray-500">Project</p>
-          <p className="mt-1 truncate text-sm font-semibold text-gray-200">
-            {latest?.identity?.projectRef ?? "Not observed"}
+        {selectedProduct && !selectedProduct.url && (
+          <p className="mt-3 text-xs text-amber-200/80">
+            Add a production URL to this product before linking Vercel; ailhat needs the live hostname to validate the project boundary.
           </p>
+        )}
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <div className="rounded-lg border border-gray-800 bg-gray-900/50 p-3">
+            <p className="text-xs text-gray-500">Project</p>
+            <p className="mt-1 truncate text-sm font-semibold text-gray-200">
+              {latest?.identity?.projectRef ?? "Not observed"}
+            </p>
+          </div>
+          <div className="rounded-lg border border-gray-800 bg-gray-900/50 p-3">
+            <p className="text-xs text-gray-500">Ready deployments</p>
+            <p className="mt-1 text-sm font-semibold text-gray-200">{readyDeployments}</p>
+          </div>
+          <div className="rounded-lg border border-gray-800 bg-gray-900/50 p-3">
+            <p className="text-xs text-gray-500">Latest deployment evidence</p>
+            <p className="mt-1 text-sm font-semibold text-gray-200">
+              {ageLabel(latestObservation?.observedAt ?? latest?.fetchedAt)}
+            </p>
+          </div>
         </div>
-        <div className="rounded-lg border border-gray-800 bg-gray-900/50 p-3">
-          <p className="text-xs text-gray-500">Ready deployments</p>
-          <p className="mt-1 text-sm font-semibold text-gray-200">{readyDeployments}</p>
-        </div>
-        <div className="rounded-lg border border-gray-800 bg-gray-900/50 p-3">
-          <p className="text-xs text-gray-500">Latest deployment evidence</p>
-          <p className="mt-1 text-sm font-semibold text-gray-200">
-            {ageLabel(latestObservation?.observedAt ?? latest?.fetchedAt)}
+
+        {latest?.source?.reason && (
+          <p className="mt-3 text-xs leading-5 text-amber-200/80">{latest.source.reason}</p>
+        )}
+        {message && (
+          <p className="mt-3 rounded-lg border border-gray-800 bg-gray-950/60 px-3 py-2 text-xs leading-5 text-gray-300">
+            {message}
           </p>
-        </div>
-      </div>
+        )}
 
-      {latest?.source?.reason && (
-        <p className="mt-3 text-xs leading-5 text-amber-200/80">{latest.source.reason}</p>
-      )}
-      {message && (
-        <p className="mt-3 rounded-lg border border-gray-800 bg-gray-950/60 px-3 py-2 text-xs leading-5 text-gray-300">
-          {message}
+        <p className="mt-4 text-xs leading-5 text-gray-600">
+          Current scope: read-only production deployments through a server-side Vercel credential when configured. Project/domain validation is mandatory. User OAuth and webhook monitoring are not connected yet.
         </p>
-      )}
+      </section>
 
-      <p className="mt-4 text-xs leading-5 text-gray-600">
-        Current scope: read-only production deployments through a server-side Vercel credential when configured. Project/domain validation is mandatory. User OAuth and webhook monitoring are not connected yet.
-      </p>
-    </section>
+      <EvidenceReconciliationPanel products={products} />
+    </>
   );
 }
