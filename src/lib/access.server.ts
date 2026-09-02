@@ -3,6 +3,7 @@ import { sql } from "~/db";
 import { migrateAuth, type AuthUser } from "./auth";
 import { migrateIntent } from "./db-intent";
 import { migratePortfolio } from "./db-portfolio";
+import { activeFoundingBeta, productAccessAllowed } from "./access-policy";
 
 export const DEFAULT_BETA_ACCESS_DAYS = 45;
 export const DEFAULT_INVITE_DAYS = 7;
@@ -61,7 +62,6 @@ const normalizeEmail = (email: string) => email.trim().toLowerCase();
 export async function migrateAccess(): Promise<void> {
   await migrateAuth();
   const q = sql() as unknown as { query: (text: string) => Promise<unknown> };
-  // Neon HTTP accepts one statement per query; keep these deliberately separate.
   await q.query(PLAN_SCHEMA);
   await q.query(INVITE_SCHEMA);
   await q.query(BETA_SCHEMA);
@@ -87,19 +87,22 @@ async function ensurePlan(userId: number): Promise<void> {
 export async function getAccountAccess(user: AuthUser): Promise<AccountAccess> {
   await ensurePlan(user.id);
   const owner = await isPlatformOwner(user);
+  const role = owner ? "owner" as const : "customer" as const;
   const planRows = await sql()`select plan_key, status from account_plans where user_id = ${user.id} limit 1`;
-  const betaRows = await sql()`select expires_at from founding_beta_access
-    where user_id = ${user.id} and revoked_at is null and expires_at > now() limit 1`;
+  const betaRows = await sql()`select expires_at, revoked_at from founding_beta_access where user_id = ${user.id} limit 1`;
   const plan = planRows[0] as { plan_key: string; status: string } | undefined;
-  const beta = betaRows[0] as { expires_at: unknown } | undefined;
-  const foundingBeta = !!beta;
+  const beta = betaRows[0] as { expires_at: unknown; revoked_at: unknown } | undefined;
+  const betaExpiresAt = beta?.expires_at ? new Date(String(beta.expires_at)).toISOString() : null;
+  const betaRevokedAt = beta?.revoked_at ? new Date(String(beta.revoked_at)).toISOString() : null;
+  const foundingBeta = activeFoundingBeta({ role, betaExpiresAt, betaRevokedAt });
+  const productAccess = productAccessAllowed({ role, betaExpiresAt, betaRevokedAt });
   return {
-    role: owner ? "owner" : "customer",
+    role,
     planKey: plan?.plan_key ?? "free",
     planStatus: plan?.status ?? "active",
     foundingBeta,
-    betaExpiresAt: beta ? new Date(String(beta.expires_at)).toISOString() : null,
-    productAccess: owner || foundingBeta,
+    betaExpiresAt,
+    productAccess,
     accessReason: owner ? "owner" : foundingBeta ? "founding_beta" : "beta_expired_or_not_granted",
   };
 }
@@ -204,15 +207,8 @@ export async function getOwnerOverview(owner: AuthUser) {
   const invites = await sql()`select id, email, access_days, expires_at, redeemed_at, revoked_at
     from founding_beta_invites order by created_at desc limit 30`;
   return {
-    users: Number(c.users ?? 0),
-    activeFoundingBeta: Number(c.active_beta ?? 0),
-    openInvites: Number(c.open_invites ?? 0),
-    feedbackCount: Number(c.feedback_count ?? 0),
-    waitlistCount: Number(c.waitlist_count ?? 0),
-    activePortfolioProducts: Number(c.active_products ?? 0),
-    invitesEnabled: betaInvitesEnabled(),
-    members,
-    recentFeedback: feedback,
-    invites,
+    users: Number(c.users ?? 0), activeFoundingBeta: Number(c.active_beta ?? 0), openInvites: Number(c.open_invites ?? 0),
+    feedbackCount: Number(c.feedback_count ?? 0), waitlistCount: Number(c.waitlist_count ?? 0), activePortfolioProducts: Number(c.active_products ?? 0),
+    invitesEnabled: betaInvitesEnabled(), members, recentFeedback: feedback, invites,
   };
 }
