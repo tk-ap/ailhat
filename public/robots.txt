@@ -1,0 +1,14 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /dashboard
+Disallow: /owner
+Disallow: /control
+Disallow: /connections
+Disallow: /portfolio
+Disallow: /product/
+Disallow: /decisions/
+Disallow: /login
+Disallow: /import/
+
+Sitemap: https://ailhat.vercel.app/sitemap.xml

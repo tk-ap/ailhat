@@ -1,4 +1,4 @@
-// Intent-capture (waitlist) form for the landing page. Client-side interactive
+// Intent-capture (access request) form for the landing page. Client-side interactive
 // component — SSR-safe: only React hooks (no browser globals at import), and
 // network I/O happens via submitIntent() at submit time. Sits contextually on
 // the landing page, below the hero, so it doesn't clutter the main CTA.
@@ -60,12 +60,12 @@ export default function IntentForm() {
   if (status.kind === "success") {
     return (
       <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-8 text-center dark:border-emerald-800 dark:bg-emerald-950/40">
-        <div className="text-3xl">🎉</div>
+        <div className="text-3xl" aria-hidden>✓</div>
         <h3 className="mt-2 text-xl font-bold text-emerald-800 dark:text-emerald-300">
-          You're on the list
+          Request received
         </h3>
         <p className="mt-2 text-emerald-700 dark:text-emerald-400">
-          We'll be in touch as ailhat grows. Thanks for helping shape it.
+          We'll be in touch as access expands. Thanks for helping shape ailhat.
         </p>
       </div>
     );
@@ -80,10 +80,16 @@ export default function IntentForm() {
       className="grid gap-5 rounded-2xl border border-gray-200 bg-white p-6 text-left shadow-lg dark:border-gray-800 dark:bg-gray-900"
     >
       <div>
-        <h3 className="text-lg font-semibold">Help shape what ailhat builds</h3>
+        <h3 className="text-lg font-semibold">Request ailhat access</h3>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          A few quick questions so we build for the right problem. No spam —
-          ever.
+          Tell us what you're shipping so we can route you into the right portfolio-intelligence experience. No spam.
+        </p>
+        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+          Already have access?{" "}
+          <a href="/dashboard" className="font-semibold text-[#7fb0ff] hover:underline">
+            Get started in your dashboard
+          </a>
+          .
         </p>
       </div>
 
@@ -92,6 +98,7 @@ export default function IntentForm() {
           How many products are you running?
         </span>
         <select
+          aria-label="Number of products"
           value={productCount}
           onChange={(e) => setProductCount(Number(e.target.value))}
           className={inputCls}
@@ -118,6 +125,7 @@ export default function IntentForm() {
                 type="button"
                 key={p}
                 onClick={() => togglePlatform(p)}
+                aria-label={p}
                 aria-pressed={active}
                 className={
                   "rounded-full border px-3.5 py-1.5 text-sm font-medium transition " +
@@ -133,6 +141,7 @@ export default function IntentForm() {
         </div>
         {platforms.includes("Other") && (
           <input
+            aria-label="Other platform"
             value={otherPlatform}
             onChange={(e) => setOtherPlatform(e.target.value)}
             placeholder="Which other platform(s)?"
@@ -156,6 +165,7 @@ export default function IntentForm() {
 
       <label className="flex items-start gap-3 text-sm">
         <input
+          aria-label="Keeping track of my products is a pain point"
           type="checkbox"
           checked={painWaitlist}
           onChange={(e) => setPainWaitlist(e.target.checked)}
@@ -173,11 +183,12 @@ export default function IntentForm() {
       )}
 
       <button
+        aria-label="Request access"
         type="submit"
         disabled={status.kind === "saving"}
         className="rounded-xl bg-cyan-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {status.kind === "saving" ? "Saving…" : "Join the waitlist"}
+        {status.kind === "saving" ? "Sending…" : "Request access"}
       </button>
     </form>
   );
