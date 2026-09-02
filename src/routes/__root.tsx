@@ -6,24 +6,36 @@ import ProductWorkspaceContinuityPortal from "~/components/ProductWorkspaceConti
 import { WhyAilhatEducation } from "~/components/WhyAilhatEducation";
 import appCss from "~/styles/app.css?url";
 
+const SITE_URL = "https://ailhat.vercel.app";
+const SITE_TITLE = "ailhat · Portfolio Intelligence";
+const SITE_DESCRIPTION =
+  "ailhat is Portfolio Intelligence for builders shipping multiple products. Signals condensed into clarity: what changed, why it matters, and what to do next.";
+
 export const Route = createRootRoute({
   head: () => ({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { name: "theme-color", content: "#0B0F17" },
-      { title: "ailhat · Portfolio Intelligence" },
-      {
-        name: "description",
-        content:
-          "ailhat is Portfolio Intelligence for builders shipping multiple products. Signals condensed into clarity: what changed, why it matters, and what to do next.",
-      },
+      { title: SITE_TITLE },
+      { name: "description", content: SITE_DESCRIPTION },
+      { property: "og:type", content: "website" },
+      { property: "og:site_name", content: "ailhat" },
+      { property: "og:title", content: SITE_TITLE },
+      { property: "og:description", content: SITE_DESCRIPTION },
+      { property: "og:url", content: SITE_URL },
+      { property: "og:image", content: `${SITE_URL}/og-image.svg` },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: SITE_TITLE },
+      { name: "twitter:description", content: SITE_DESCRIPTION },
+      { name: "twitter:image", content: `${SITE_URL}/og-image.svg` },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
       { rel: "stylesheet", href: "/brand/ailhat-motion.css" },
       { rel: "stylesheet", href: "/brand/landing-brand.css" },
       { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
+      { rel: "canonical", href: SITE_URL },
       {
         rel: "preconnect",
         href: "https://fonts.googleapis.com",
