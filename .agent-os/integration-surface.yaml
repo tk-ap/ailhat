@@ -32,11 +32,12 @@ conditional_routes:
     trigger: work materially intersects LEDGATo governance or enforcement scope
     rule: do not route generic authorization or portfolio work to LEDGATo
 
-planned_evidence_sources:
+evidence_sources:
   - provider: github
     mode: repository and workflow evidence
-    adapter_status: planned
-    authority_scope: implementation activity and source-control state
+    adapter_status: implemented-public-read-only
+    authority_scope: implementation activity, pull-request merge state, and issue state
+    limitations: [public-repositories-only, manual-refresh, no-private-repo-oauth, no-webhook-monitoring, repository-evidence-does-not-prove-deployment-or-resolution]
   - provider: vercel
     mode: preview and production deployment evidence
     adapter_status: planned
