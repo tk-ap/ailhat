@@ -1,19 +1,15 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import {
-  StoreProvider,
-  useStore,
-} from "~/lib/useStore";
 import { AuthProvider } from "~/lib/useAuth";
+import { StoreProvider } from "~/lib/useStore";
 import AppShell from "~/components/AppShell";
-import ControlLegend from "~/components/ControlLegend";
+import GuidedOnboarding from "~/components/GuidedOnboarding";
 import { getAgentControl } from "~/lib/control-query";
 import { leaderReason } from "~/lib/control-scoring";
 import type { ModeledWorkspace } from "~/lib/control-scoring";
-import { ageLabelObs, isKnownScanHost, type LiveOverlay } from "~/lib/observations";
+import { ageLabelObs } from "~/lib/observations";
 import { buildWorkItem, compileDirectives } from "~/lib/directives";
 import type { CompiledDirectives, WorkItem } from "~/lib/directives";
-import GuidedOnboarding from "~/components/GuidedOnboarding";
 
 export const Route = createFileRoute("/control")({
   loader: async () => getAgentControl(),
@@ -28,428 +24,27 @@ export const Route = createFileRoute("/control")({
   ),
 });
 
-/* ---------- tone maps (restrained command-center accents) ---------- */
-
 const portfolioTone: Record<string, string> = {
-  ACTIVE: "bg-sky-500/10 text-sky-300 ring-sky-500/30",
-  "NEEDS ATTENTION": "bg-amber-500/10 text-amber-300 ring-amber-500/30",
-  STALE: "bg-rose-500/10 text-rose-300 ring-rose-500/30",
-  BLOCKED: "bg-rose-500/10 text-rose-300 ring-rose-500/30",
-  HEALTHY: "bg-emerald-500/10 text-emerald-300 ring-emerald-500/30",
-  "NEEDS ASSESSMENT": "bg-gray-700/40 text-gray-300 ring-gray-600/40",
-  PAUSED: "bg-gray-700/40 text-gray-400 ring-gray-600/40",
+  ACTIVE: "border-sky-500/25 bg-sky-500/10 text-sky-300",
+  "NEEDS ATTENTION": "border-amber-500/25 bg-amber-500/10 text-amber-300",
+  STALE: "border-rose-500/25 bg-rose-500/10 text-rose-300",
+  BLOCKED: "border-rose-500/25 bg-rose-500/10 text-rose-300",
+  HEALTHY: "border-emerald-500/25 bg-emerald-500/10 text-emerald-300",
+  "NEEDS ASSESSMENT": "border-gray-700 bg-gray-900 text-gray-400",
+  PAUSED: "border-gray-700 bg-gray-900 text-gray-500",
 };
 
-const attentionTone: Record<string, string> = {
-  "ACT NOW": "bg-rose-500/10 text-rose-300 ring-rose-500/30",
-  REVIEW: "bg-amber-500/10 text-amber-300 ring-amber-500/30",
-  OPPORTUNITY: "bg-emerald-500/10 text-emerald-300 ring-emerald-500/30",
-  HEALTHY: "bg-gray-700/40 text-gray-400 ring-gray-600/40",
-  "NEEDS ASSESSMENT": "bg-gray-700/40 text-gray-300 ring-gray-600/40",
-};
-
-const severityTone: Record<string, string> = {
-  high: "bg-rose-500/10 text-rose-300 ring-rose-500/30",
-  medium: "bg-amber-500/10 text-amber-300 ring-amber-500/30",
-  low: "bg-gray-700/40 text-gray-300 ring-gray-600/40",
-};
-
-const confTone: Record<string, string> = {
-  High: "text-emerald-300",
-  Medium: "text-amber-300",
-  Low: "text-rose-300",
-};
-
-function Chip({ className, children }: { className: string; children: React.ReactNode }) {
-  return (
-    <span
-      className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider ring-1 ring-inset ${className}`}
-    >
-      {children}
-    </span>
-  );
+function Chip({ children, className = "border-gray-700 bg-gray-900 text-gray-400" }: { children: React.ReactNode; className?: string }) {
+  return <span className={`rounded-full border px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider ${className}`}>{children}</span>;
 }
 
-function Bar({ value, tone }: { value: number; tone?: string }) {
-  const fill = tone ?? "bg-[#7fb0ff]";
-  return (
-    <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-800">
-      <div
-        className={`h-full rounded-full ${fill}`}
-        style={{ width: `${Math.max(2, Math.min(100, value))}%` }}
-      />
-    </div>
-  );
-}
-
-/* ---------- shared Builder bucket ---------- */
-
-function SharedBucketCallout({ bucket }: { bucket: LiveOverlay | null }) {
-  return (
-    <section className="silhat-panel p-5">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-[#7fb0ff]">
-          Shared capacity
-        </span>
-        <span className="rounded border border-gray-700 bg-gray-800/70 px-1.5 py-px font-mono text-[9px] font-semibold uppercase tracking-wider text-gray-400">
-          cto.new builder
-        </span>
-      </div>
-      <h2 className="mt-2 text-sm font-semibold text-gray-100">
-        One shared cto.new Builder execution bucket
-      </h2>
-      <p className="mt-1 max-w-3xl text-sm text-gray-400">
-        The shared <strong className="text-gray-200">cto.new Builder</strong> bucket serves the
-        products that draw from it: work on one consumer depletes the capacity available to the
-        other. They cannot both be worked at once — reserve a window for one at a time.
-      </p>
-      {bucket ? (
-        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-gray-800 bg-gray-950/70 px-4 py-3 text-sm">
-          <span className="font-mono text-xs font-semibold text-[#7fb0ff]">
-            {bucket.cap != null ? `${bucket.cap}%` : "not detected"}
-          </span>
-          <span className="text-gray-400">
-            shared Builder availability{" "}
-            <span className="italic text-gray-500">
-              (observed {bucket.provider ?? "provider"} · {ageLabelObs(Date.now(), bucket.observedAt)} ·{" "}
-            </span>
-            <span className={confTone[bucket.tier]}>
-              {bucket.tier.toLowerCase()} confidence
-            </span>
-            <span className="italic text-gray-500"> · {bucket.staleness})</span>
-          </span>
-        </div>
-      ) : (
-        <p className="mt-3 text-xs font-medium text-gray-500">
-          no live observation for cto.new yet — reference baseline only. Sync an authenticated
-          cto.new page to see the shared Builder bucket's real availability here.
-        </p>
-      )}
-    </section>
-  );
-}
-
-/* ---------- card pieces ---------- */
-
-function StatusBadges({ m }: { m: ModeledWorkspace }) {
-  const ws = m.ws;
-  const attentionKey =
-    ws.attention ?? (ws.readinessPct === null ? "NEEDS ASSESSMENT" : "HEALTHY");
-  return (
-    <div className="flex flex-wrap items-center gap-1.5">
-      <Chip className={portfolioTone[ws.portfolioState]}>{ws.portfolioState}</Chip>
-      <Chip className={attentionTone[attentionKey]}>{attentionKey}</Chip>
-      {ws.sharedBucket && (
-        <Chip className="bg-[#7fb0ff]/10 text-[#7fb0ff] ring-[#7fb0ff]/30">
-          shared {ws.sharedBucket}
-        </Chip>
-      )}
-      {m.priorityFactors.neglect >= 0.5 && (
-        <Chip className="bg-amber-500/10 text-amber-300 ring-amber-500/30">
-          neglected {ws.daysSinceAttention}d
-        </Chip>
-      )}
-    </div>
-  );
-}
-
-function ReadinessPanel({ m }: { m: ModeledWorkspace }) {
-  const live = m.live;
-  return (
-    <div className="rounded-lg border border-gray-800 bg-gray-950/60 p-3">
-      <div className="flex items-center justify-between">
-        <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-500">
-          Launch readiness
-        </span>
-        {m.readiness != null ? (
-          <span className="font-display text-sm font-bold text-[#7fb0ff]">{m.readiness}%</span>
-        ) : (
-          <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-gray-400">
-            needs assessment
-          </span>
-        )}
-      </div>
-      {m.readiness != null ? (
-        <div className="mt-2"><Bar value={m.readiness} /></div>
-      ) : (
-        <div className="mt-2 rounded-md border border-dashed border-gray-700 px-2 py-1.5 text-[11px] text-gray-500">
-          No percentage — run assessment/scan first. A score is never invented without evidence.
-        </div>
-      )}
-      {/* Site scan evidence — a scan of the workspace's URL reports on site
-          health only. It is never harness availability (never invented; if no
-          scan has run, we say so and point at the Sync button). */}
-      <div className="mt-2 rounded-md border border-[#7fb0ff]/15 bg-[#7fb0ff]/[0.04] px-2.5 py-2">
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-[11px] font-medium text-gray-300">
-            {live
-              ? live.cap != null
-                ? `Site scan: ${live.cap}%`
-                : "Site scan: not detected"
-              : "No scan yet — run a scan"}
-          </span>
-          {live ? (
-            <Chip className={live.tier === "High" ? "bg-emerald-500/10 text-emerald-300 ring-emerald-500/30" : live.tier === "Medium" ? "bg-amber-500/10 text-amber-300 ring-amber-500/30" : "bg-rose-500/10 text-rose-300 ring-rose-500/30"}>
-              {live.tier.toLowerCase()} conf · {live.staleness}
-            </Chip>
-          ) : (
-            <Chip className="bg-gray-700/40 text-gray-400 ring-gray-600/40">
-              no scan yet
-            </Chip>
-          )}
-        </div>
-        {live && live.cap != null && (
-          <div className="mt-1.5"><Bar value={live.cap} tone="bg-emerald-400" /></div>
-        )}
-        <p className="mt-1.5 text-[10px] text-gray-600">
-          Site health scan from the workspace's URL — not harness availability.
-        </p>
-      </div>
-      <div className="mt-2 flex items-center justify-between gap-2 text-[11px] text-gray-500">
-        <span className="min-w-0 break-words">{m.distanceLabel}</span>
-        {m.confidence && !live && m.readiness != null && (
-          <Chip
-            className={
-              m.evidenceBasis === "computed-live"
-                ? m.confidence === "High"
-                  ? "bg-emerald-500/10 text-emerald-300 ring-emerald-500/30"
-                  : m.confidence === "Medium"
-                    ? "bg-amber-500/10 text-amber-300 ring-amber-500/30"
-                    : "bg-rose-500/10 text-rose-300 ring-rose-500/30"
-                : "bg-amber-500/10 text-amber-300 ring-amber-500/30"
-            }
-          >
-            {m.confidence} confidence
-          </Chip>
-        )}
-      </div>
-      {m.readiness != null && (
-        <div className="mt-2 flex items-center gap-1.5 border-t border-gray-800 pt-2">
-          <Chip
-            className={
-              m.evidenceBasis === "computed-live"
-                ? "bg-emerald-500/10 text-emerald-300 ring-emerald-500/30"
-                : "bg-gray-700/40 text-gray-400 ring-gray-600/40"
-            }
-          >
-            {m.evidenceBasis === "computed-live"
-              ? "computed · live"
-              : "anchored · seed baseline"}
-          </Chip>
-          <span className="text-[10px] text-gray-600">how this % was derived</span>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ImpactPanel({ m }: { m: ModeledWorkspace }) {
-  const launch = typeof m.launchImpact === "number" ? m.launchImpact : null;
-  const customer = typeof m.customerImpact === "number" ? m.customerImpact : null;
-  const label = (v: string | number) =>
-    typeof v === "number" ? `${v}/100` : `${v} (qualitative)`;
-  return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center justify-between">
-        <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-500">
-          Launch impact
-        </span>
-        <span className="font-mono text-[11px] font-semibold text-[#7fb0ff]">
-          {label(m.launchImpact)}
-        </span>
-      </div>
-      {launch != null && <Bar value={launch} />}
-      <div className="flex items-center justify-between">
-        <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-500">
-          Customer impact
-        </span>
-        <span className="font-mono text-[11px] font-semibold text-emerald-300">
-          {label(m.customerImpact)}
-        </span>
-      </div>
-      {customer != null && <Bar value={customer} tone="bg-emerald-400" />}
-      <div className="mt-1 flex items-center justify-between text-[11px] text-gray-500">
-        <span>Priority rank</span>
-        <span className="font-display font-semibold text-gray-200">#{m.priority} pts</span>
-      </div>
-    </div>
-  );
-}
-
-function ProductCard({ m, now }: { m: ModeledWorkspace; now: number }) {
-  return (
-    <article className="silhat-panel flex flex-col overflow-hidden">
-      <div className="flex items-center justify-between gap-3 border-b border-gray-800 px-4 py-2.5">
-        <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-gray-500">
-          <span className="h-1.5 w-1.5 rounded-full bg-[#7fb0ff]" />
-          {m.live || m.scan ? "site scan" : "no scan yet"}
-          <span className="text-gray-600">·</span>
-          <span className="text-gray-500">priority #{m.priority} pts</span>
-        </div>
-        <StatusBadges m={m} />
-      </div>
-
-      <div className="flex flex-1 flex-col gap-4 p-4">
-        {/* Header */}
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-500">
-              {m.ws.stage}
-              {m.ws.url && (
-                <a href={m.ws.url} target="_blank" rel="noreferrer" className="ml-1 text-[#7fb0ff] hover:underline">
-                  ↗
-                </a>
-              )}
-            </div>
-            <h2 className="mt-1 text-lg font-semibold text-gray-50">{m.ws.name}</h2>
-            <p className="mt-1 text-sm text-gray-400">{m.ws.summary}</p>
-          </div>
-        </div>
-
-        {/* Readiness + impact */}
-        <div className="grid grid-cols-2 gap-3">
-          <ReadinessPanel m={m} />
-          <ImpactPanel m={m} />
-        </div>
-
-        {/* Readiness dimensions (ailhat) */}
-        {m.ws.dimensions && (
-          <div>
-            <div className="mb-2 font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-500">
-              Readiness dimensions
-            </div>
-            <div className="space-y-1.5">
-              {m.ws.dimensions.map((d) => (
-                <div key={d.label} className="flex items-center gap-2">
-                  <span className="w-44 shrink-0 text-xs text-gray-400">{d.label}</span>
-                  <div className="flex-1"><Bar value={d.value} /></div>
-                  <span className="w-8 text-right text-xs font-semibold text-gray-300">{d.value}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Blockers + risks */}
-        <div>
-          <div className="mb-2 font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-500">
-            Primary blockers · risks
-          </div>
-          <ul className="space-y-1">
-            {m.blockers.map((b) => (
-              <li key={b.id ?? b.title} className="flex items-start justify-between gap-2 text-sm">
-                <span className="text-gray-300">{b.title}</span>
-                <Chip className={severityTone[b.severity]}>{b.severity}</Chip>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        {/* Next actions */}
-        <div>
-          <div className="mb-2 font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-500">
-            Next actions
-          </div>
-          <ol className="space-y-2">
-            {m.nextActions.map((a, i) => (
-              <li key={a.id} className="flex items-start gap-2 rounded-lg border border-gray-800 bg-gray-950/50 p-2.5">
-                <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-md bg-[#7fb0ff]/15 font-mono text-[10px] font-bold text-[#7fb0ff]">
-                  {i + 1}
-                </span>
-                <div className="flex-1">
-                  <div className="text-sm font-medium text-gray-200">{a.title}</div>
-                  <div className="mt-1 flex flex-wrap items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-gray-500">
-                    <Chip className="bg-gray-700/40 text-gray-300 ring-gray-600/40">{a.role}</Chip>
-                    <span>{a.effort}</span>
-                    <span>· {a.window}</span>
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ol>
-        </div>
-
-        {/* Allocation footer */}
-        <div className="mt-auto grid grid-cols-2 gap-3 rounded-lg border border-gray-800 bg-gray-950/60 p-3">
-          <div>
-            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-gray-500">
-              Recommended agent
-            </div>
-            <div className="mt-1 text-sm font-medium text-gray-200">{m.recommendedAgent}</div>
-          </div>
-          <div>
-            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-gray-500">
-              Capacity window
-            </div>
-            <div className="mt-1 text-sm font-medium text-gray-200">{m.recommendedWindow}</div>
-          </div>
-          <div>
-            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-gray-500">
-              Estimated effort
-            </div>
-            <div className="mt-1 text-sm font-medium text-gray-200">{m.estimatedEffort}</div>
-          </div>
-          <div>
-            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-gray-500">
-              Evidence · site scan
-            </div>
-            {m.scan ? (
-              <>
-                <div className="mt-1 text-sm font-medium text-[#7fb0ff]">
-                  site scan · {ageLabelObs(now, m.scan.scannedAt)}
-                </div>
-                <div className="font-mono text-[10px] text-gray-500">
-                  {m.scan.url?.replace(/^https?:\/\//, "")} ·{" "}
-                  {m.scan.ok
-                    ? `${m.scan.totalFailures} open finding${m.scan.totalFailures === 1 ? "" : "s"} (${m.scan.findings.CRITICAL}C / ${m.scan.findings.HIGH}H / ${m.scan.findings.MEDIUM}M)`
-                    : "site unreachable"} · {m.scan.staleness}
-                </div>
-              </>
-            ) : m.live ? (
-              <>
-                <div className="mt-1 text-sm font-medium text-[#7fb0ff]">
-                  site scan · {ageLabelObs(now, m.live.observedAt)}
-                </div>
-                <div className="font-mono text-[10px] text-gray-500">
-                  {m.live.provider} · {m.live.url?.replace(/^https?:\/\//, "")} · observed{" "}
-                  {new Date(m.live.observedAt).toISOString().slice(0, 19)}Z · {m.live.staleness}
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="mt-1 text-sm font-medium text-gray-200">No scan yet — run a scan</div>
-                <div className="font-mono text-[10px] text-gray-500">
-                  site health scan, not harness availability
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-        <SyncScanButton url={m.ws.url ?? null} />
-      </div>
-    </article>
-  );
-}
-
-/* ---------- per-workspace scan control ---------- */
-
-/** "Sync scan" per workspace. Only functional for URLs that map to a known,
- *  scan-ingestible host (the scan endpoint only persists evidence for those);
- *  everything else shows a clearly-labeled disabled state and never claims a
- *  scan will be saved. Site scan only — never presented as harness availability. */
 function SyncScanButton({ url }: { url: string | null }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
-  const canScan = !!url && isKnownScanHost(url);
+  const [message, setMessage] = useState("");
 
-  if (!canScan) {
-    return (
-      <div className="mt-3 rounded-lg border border-dashed border-gray-800 bg-gray-950/40 px-3 py-2 text-[11px] text-gray-600">
-        Sync scan not available for this workspace yet — its URL isn't a mapped,
-        scan-ingestible host, so a scan would not be persisted.
-      </div>
-    );
+  if (!url) {
+    return <p className="mt-3 text-xs text-gray-600">Add a production URL to this product before running production verification.</p>;
   }
 
   return (
@@ -459,430 +54,141 @@ function SyncScanButton({ url }: { url: string | null }) {
         disabled={busy}
         onClick={async () => {
           setBusy(true);
-          setMsg(null);
+          setMessage("");
           try {
-            const res = await fetch(`/api/scan-site?url=${encodeURIComponent(url)}`);
-            const j = (await res.json()) as { ok?: boolean };
-            setMsg(
-              j && j.ok !== false
-                ? "Scan complete — readiness re-evaluated"
-                : "Scan ran — site unreachable",
-            );
+            const response = await fetch(`/api/scan-site?url=${encodeURIComponent(url)}`);
+            const result = (await response.json()) as { ok?: boolean };
+            setMessage(result.ok === false ? "Scan completed; production could not be fully verified." : "Production evidence refreshed.");
             await router.invalidate();
           } catch {
-            setMsg("Scan failed");
+            setMessage("Production scan unavailable. Existing evidence was preserved.");
           } finally {
             setBusy(false);
           }
         }}
-        className="silhat-btn silhat-btn-primary inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold"
+        className="silhat-btn silhat-btn-primary disabled:opacity-50"
       >
-        {busy ? "Scanning…" : "⇣ Sync scan"}
+        {busy ? "Scanning…" : "Verify production"}
       </button>
-      <span className="font-mono text-[10px] uppercase tracking-wider text-gray-500">
-        site health scan · not harness availability
-      </span>
-      {msg && <span className="text-[11px] text-[#7fb0ff]">{msg}</span>}
+      <span className="text-[10px] uppercase tracking-wider text-gray-600">saved only to the signed-in account when this URL belongs to its portfolio</span>
+      {message && <span className="text-xs text-[#9cc8ff]">{message}</span>}
     </div>
   );
 }
 
-/* ---------- directive output (Agent Direct seam) ---------- */
+function ProductCard({ modeled, now }: { modeled: ModeledWorkspace; now: number }) {
+  const ws = modeled.ws;
+  return (
+    <article className="silhat-panel p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="silhat-eyebrow">{ws.stage}</p>
+          <h2 className="mt-1 text-lg font-semibold text-gray-100">{ws.name}</h2>
+          <p className="mt-1 text-sm leading-6 text-gray-500">{ws.summary}</p>
+          {ws.url && <a href={ws.url} target="_blank" rel="noreferrer" className="mt-1 block truncate text-xs font-semibold text-[#7fb0ff] hover:underline">{ws.url}</a>}
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          <Chip className={portfolioTone[ws.portfolioState] ?? portfolioTone.ACTIVE}>{ws.portfolioState}</Chip>
+          <Chip>priority {modeled.priority}</Chip>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        <div className="rounded-lg border border-gray-800 bg-gray-950/55 p-3">
+          <p className="text-[10px] uppercase tracking-wider text-gray-600">Readiness</p>
+          <p className="mt-1 font-semibold text-gray-200">{modeled.readiness == null ? "Needs assessment" : `${modeled.readiness}%`}</p>
+          <p className="mt-1 text-[11px] text-gray-600">No percentage is invented from account age or activity.</p>
+        </div>
+        <div className="rounded-lg border border-gray-800 bg-gray-950/55 p-3">
+          <p className="text-[10px] uppercase tracking-wider text-gray-600">Production evidence</p>
+          <p className="mt-1 font-semibold text-gray-200">{modeled.scan ? ageLabelObs(now, modeled.scan.scannedAt) : "Not observed"}</p>
+          <p className="mt-1 text-[11px] text-gray-600">{modeled.scan ? `${modeled.scan.totalFailures} current scan finding${modeled.scan.totalFailures === 1 ? "" : "s"}` : "Run verification to establish current site evidence."}</p>
+        </div>
+        <div className="rounded-lg border border-gray-800 bg-gray-950/55 p-3">
+          <p className="text-[10px] uppercase tracking-wider text-gray-600">Capacity evidence</p>
+          <p className="mt-1 font-semibold text-gray-200">{modeled.live?.cap != null ? `${modeled.live.cap}% observed` : modeled.live ? "Observed; no % detected" : "Unknown"}</p>
+          <p className="mt-1 text-[11px] text-gray-600">No observation means unknown; it never means available or reserved.</p>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-600">Open evidence-backed work</p>
+          {modeled.blockers.length === 0 ? <p className="mt-2 text-sm text-gray-500">No unresolved product work is recorded.</p> : <ul className="mt-2 space-y-2">{modeled.blockers.slice(0, 8).map((blocker) => <li key={blocker.id} className="rounded-lg border border-gray-800 bg-gray-950/55 px-3 py-2 text-sm text-gray-300"><span className="mr-2 text-[10px] uppercase tracking-wider text-gray-600">{blocker.severity}</span>{blocker.title}</li>)}</ul>}
+        </div>
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-600">Suggested next actions</p>
+          {modeled.nextActions.length === 0 ? <p className="mt-2 text-sm text-gray-500">Nothing is auto-scheduled. Create or approve work before handoff.</p> : <ol className="mt-2 space-y-2">{modeled.nextActions.slice(0, 6).map((action, index) => <li key={action.id} className="rounded-lg border border-gray-800 bg-gray-950/55 px-3 py-2"><p className="text-sm font-medium text-gray-200">{index + 1}. {action.title}</p><p className="mt-1 text-[11px] text-gray-600">{action.role} · {action.window}</p></li>)}</ol>}
+        </div>
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-gray-800 pt-4">
+        <Link to="/product/$productId" params={{ productId: ws.id }} className="silhat-btn silhat-btn-ghost">Open Product Cockpit</Link>
+        <SyncScanButton url={ws.url} />
+      </div>
+    </article>
+  );
+}
 
 type DirectTab = "markdown" | "json" | "tools" | "toon";
 
-const DIRECT_TABS: { id: DirectTab; label: string; mime: string; ext: string }[] = [
-  { id: "markdown", label: "Markdown brief", mime: "text/markdown", ext: "md" },
-  { id: "json", label: "JSON payload", mime: "application/json", ext: "json" },
-  { id: "tools", label: "Tool schema", mime: "application/json", ext: "tool.json" },
-  { id: "toon", label: "TOON directive", mime: "text/plain", ext: "toon.txt" },
-];
-
-async function copyText(text: string): Promise<boolean> {
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch {
-    // Clipboard API unavailable (http/older browser) — hidden-textarea fallback.
-    const ta = document.createElement("textarea");
-    ta.value = text;
-    ta.style.position = "fixed";
-    ta.style.opacity = "0";
-    document.body.appendChild(ta);
-    ta.select();
-    let ok = false;
-    try {
-      ok = document.execCommand("copy");
-    } catch {
-      ok = false;
-    }
-    document.body.removeChild(ta);
-    return ok;
-  }
-}
-
-function downloadDirective(item: WorkItem, tab: DirectTab, text: string) {
-  const meta = DIRECT_TABS.find((t) => t.id === tab);
-  if (!meta) return;
-  const blob = new Blob([text], { type: meta.mime });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `agent-directive-${item.workspace.id}-${
-    (item.id.split(":").pop() ?? "action").replace(/[^a-z0-9._-]/gi, "_")
-  }.${meta.ext}`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-
-/** Copy/export UI for the compiled directive — tabs per format + copy/download. */
-function DirectivePanel({
-  item,
-  compiled,
-}: {
-  item: WorkItem;
-  compiled: CompiledDirectives;
-}) {
+function DirectivePanel({ item, compiled }: { item: WorkItem; compiled: CompiledDirectives }) {
   const [tab, setTab] = useState<DirectTab>("markdown");
   const [copied, setCopied] = useState(false);
-  const text = compiled[tab];
-  const basisLabel =
-    item.evidenceBasis === "computed-live"
-      ? "computed · live"
-      : item.evidenceBasis === "anchored-seed"
-        ? "anchored · seed baseline"
-        : "unassessed";
-
-  const onCopy = async () => {
-    const ok = await copyText(text);
-    if (ok) {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1600);
-    }
-  };
-
+  const tabs: Array<{ id: DirectTab; label: string }> = [
+    { id: "markdown", label: "Markdown" },
+    { id: "json", label: "JSON" },
+    { id: "tools", label: "Tool schema" },
+    { id: "toon", label: "TOON" },
+  ];
   return (
-    <section className="rounded-xl border border-[#7fb0ff]/20 bg-gray-950/70 p-4">
+    <section className="mt-4 rounded-xl border border-[#7fb0ff]/20 bg-gray-950/70 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="min-w-0">
-          <div className="silhat-eyebrow">Directive · injectable artifact</div>
-          <h3 className="mt-0.5 text-sm font-semibold text-gray-100">{item.title}</h3>
-        </div>
-        <Chip
-          className={
-            item.evidenceBasis === "computed-live"
-              ? "bg-emerald-500/10 text-emerald-300 ring-emerald-500/30"
-              : "bg-amber-500/10 text-amber-300 ring-amber-500/30"
-          }
-        >
-          evidence · {basisLabel}
-        </Chip>
+        <div><p className="silhat-eyebrow">Prepared direction · not execution</p><h3 className="mt-1 text-sm font-semibold text-gray-100">{item.title}</h3></div>
+        <Chip>{item.evidenceBasis}</Chip>
       </div>
-
-      {/* Honest capacity framing — always visible, never buried in a payload. */}
-      <div className="mt-3 rounded-lg border border-amber-400/20 bg-amber-400/[0.04] px-3 py-2 text-xs text-amber-100/90">
-        <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-amber-300">
-          capacity context — disclosed, not a promise
-        </span>
-        <p className="mt-1">{item.capacity.framing}</p>
-        <p className="mt-1 text-amber-200/70">{item.capacity.allocationNote}</p>
-      </div>
-
-      {/* Tabs */}
-      <div className="mt-3 flex flex-wrap gap-1.5">
-        {DIRECT_TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => setTab(t.id)}
-            className={`rounded-md px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider transition-colors ${
-              tab === t.id
-                ? "bg-[#7fb0ff]/15 text-[#7fb0ff] ring-1 ring-inset ring-[#7fb0ff]/30"
-                : "bg-gray-800/70 text-gray-400 hover:text-gray-200"
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Payload */}
-      <pre className="silhat-terminal mt-2 max-h-72 overflow-auto whitespace-pre-wrap p-3 text-xs leading-relaxed">
-        {text}
-      </pre>
-
-      {/* Optional skills */}
-      {item.recommendedSkills && item.recommendedSkills.length > 0 && (
-        <div className="mt-2 rounded-lg border border-gray-800 bg-gray-900/60 p-2.5 text-xs">
-          <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-[#7fb0ff]">
-            optional skills to install
-          </span>
-          <ul className="mt-1 space-y-1 text-gray-400">
-            {item.recommendedSkills.map((s) => (
-              <li key={s.id}>
-                <a
-                  href={s.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="font-medium text-[#7fb0ff] hover:underline"
-                >
-                  {s.name}
-                </a>{" "}
-                — {s.why}
-              </li>
-            ))}
-          </ul>
-          <p className="mt-1 text-[10px] text-gray-600">
-            Example recommendations from the public antigravityskills.directory index —
-            verify the linked SKILL.md before installing. Never required to execute.
-          </p>
-        </div>
-      )}
-
-      {/* Actions */}
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={() => void onCopy()}
-          className="silhat-btn silhat-btn-primary inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-semibold"
-        >
-          {copied ? "Copied ✓" : "Copy"}
-        </button>
-        <button
-          type="button"
-          onClick={() => downloadDirective(item, tab, text)}
-          className="inline-flex items-center rounded-lg border border-gray-700 bg-gray-800/70 px-3 py-1.5 text-xs font-semibold text-gray-200 hover:bg-gray-800"
-        >
-          Download .{DIRECT_TABS.find((t) => t.id === tab)?.ext}
-        </button>
-        <span className="ml-auto font-mono text-[10px] uppercase tracking-wider text-gray-600">
-          copy / export — load into your target harness
-        </span>
-      </div>
+      <p className="mt-3 rounded-lg border border-amber-400/20 bg-amber-400/[0.04] px-3 py-2 text-xs leading-5 text-amber-100/90">{item.capacity.framing}</p>
+      <div className="mt-3 flex flex-wrap gap-1.5">{tabs.map((entry) => <button key={entry.id} type="button" onClick={() => setTab(entry.id)} className={`rounded-md px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider ${tab === entry.id ? "bg-[#7fb0ff]/15 text-[#9cc8ff]" : "bg-gray-900 text-gray-500"}`}>{entry.label}</button>)}</div>
+      <pre className="silhat-terminal mt-2 max-h-72 overflow-auto whitespace-pre-wrap p-3 text-xs leading-relaxed">{compiled[tab]}</pre>
+      <button type="button" className="silhat-btn silhat-btn-primary mt-3" onClick={async () => { try { await navigator.clipboard.writeText(compiled[tab]); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { setCopied(false); } }}>{copied ? "Copied" : "Copy directive"}</button>
     </section>
   );
 }
 
-/* ---------- page ---------- */
-
 function ControlLoginRequired() {
-  return (
-    <div className="mx-auto max-w-md silhat-panel border-dashed px-6 py-16 text-center">
-      <div className="silhat-eyebrow">Agent Direct</div>
-      <h1 className="mt-2 text-xl font-bold tracking-tight text-gray-50">
-        Log in to see your portfolio
-      </h1>
-      <p className="mt-2 text-sm text-gray-400">
-        Your Agent Direct workspace — readiness, blockers, and next actions
-        across your projects — is private to your account. Sign in to view it.
-      </p>
-      <Link
-        to="/login"
-        className="silhat-btn silhat-btn-primary mt-6 inline-flex items-center rounded-xl px-5 py-2.5"
-      >
-        Log in
-      </Link>
-    </div>
-  );
+  return <section className="silhat-panel mx-auto max-w-xl p-8 text-center"><p className="silhat-eyebrow">Agent Direct</p><h1 className="mt-2 text-2xl font-bold text-gray-50">Log in to open your governed-action handoff</h1><p className="mt-2 text-sm leading-6 text-gray-400">Authenticated Direct is built only from that account's saved portfolio and tenant-scoped evidence.</p><Link to="/login" className="silhat-btn silhat-btn-primary mt-5 inline-flex">Log in</Link></section>;
 }
 
 function Control() {
-  const { state } = useStore();
   const data = Route.useLoaderData();
   const now = data?.modeledAt ?? Date.now();
-
-  // Account-scoped gate: the portfolio (readiness, blockers, actions, agent
-  // capacity) is the owner's private data. Never render it to an unauthenticated
-  // client — the loader returns `authenticated: false` and serves the CLEARLY-
-  // LABELED sample (demo) portfolio when `demo` is true; otherwise (loader gap)
-  // fall back to a "log in to see your portfolio" prompt.
   const demo = !data?.authenticated && !!data?.demo;
-  if (!demo && !data?.authenticated) {
-    return <ControlLoginRequired />;
-  }
+  if (!demo && !data?.authenticated) return <ControlLoginRequired />;
 
   const portfolio = useMemo(() => data?.portfolio ?? [], [data]);
   const top = portfolio[0];
-  const sharedNote =
-    top && top.ws.sharedBucket
-      ? `Note: ${top.ws.name} draws from the shared ${top.ws.sharedBucket} bucket — its window must not overlap the other consumer.`
-      : undefined;
-
-  // Directive output for the top action — compiled deterministically from the
-  // modeled workspace (evidence + provenance + honest capacity framing). Pure
-  // and cheap; only rendered when the panel is opened.
-  const modeledAt = data?.modeledAt ?? now;
-  const directItem = useMemo(
-    () => (top ? buildWorkItem(top, modeledAt, { bucket: data?.bucket ?? null }) : null),
-    [top, modeledAt, data?.bucket],
-  );
-  const compiled = useMemo(
-    () => (directItem ? compileDirectives(directItem) : null),
-    [directItem],
-  );
+  const directItem = useMemo(() => top ? buildWorkItem(top, now, { bucket: null }) : null, [top, now]);
+  const compiled = useMemo(() => directItem ? compileDirectives(directItem) : null, [directItem]);
   const [directOpen, setDirectOpen] = useState(false);
-
-  const origin =
-    typeof window !== "undefined" ? window.location.origin : "";
 
   return (
     <div className="space-y-6">
-      {/* Anonymous demo banner — the sample portfolio is clearly labeled so no one
-          mistakes it for their own projects. */}
-      {demo && (
-        <section className="rounded-xl border border-amber-400/40 bg-amber-400/10 px-5 py-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="rounded-full bg-amber-400 px-3 py-1 text-xs font-bold uppercase tracking-wider text-amber-950">
-              Demo · sample data
-            </span>
-            <p className="text-sm text-amber-100">
-              This is a <strong>fictional demo portfolio</strong> showing how Ailhat ranks
-              launch readiness and next actions. It is not your projects.{" "}
-              <Link to="/login" className="font-semibold underline underline-offset-2">
-                Log in or sign up
-              </Link>{" "}
-              to see your real portfolio.
-            </p>
-          </div>
-        </section>
-      )}
+      {demo && <section className="rounded-xl border border-amber-400/30 bg-amber-400/[0.06] p-4 text-sm text-amber-100"><strong>Demo · synthetic data.</strong> This portfolio is fictional and contains no signed-in user's products.</section>}
 
-      {/* Header */}
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <div className="silhat-eyebrow">Agent Direct</div>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight text-gray-50">
-            What should I do next, and why does it matter for launch?
-          </h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Execution capacity &amp; allocation across the portfolio — product state from ailhat,
-            capacity context on top.
-          </p>
-        </div>
-        <div className="text-right font-mono text-[11px] uppercase tracking-wider text-gray-500">
-          <div>{portfolio.length} workspaces</div>
-          <div>ranked · impact × urgency × availability</div>
-        </div>
-      </div>
-
-      {/* Guided onboarding — first complete operating pass for a first-time owner
-          (authenticated only; never on the anonymous demo). */}
-      {!demo && <GuidedOnboarding top={top} />}
-
-      {/* Do-this-next callout */}
-      {top && (
-        <section className="relative overflow-hidden rounded-xl border border-[#7fb0ff]/25 bg-gradient-to-br from-[#7fb0ff]/[0.08] to-transparent p-5">
-          <div className="silhat-eyebrow">Do this next</div>
-          <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-            <span className="text-xl font-bold text-gray-50">{top.ws.name}</span>
-            <span className="text-gray-500">—</span>
-            <span className="text-lg font-semibold text-gray-200">{top.nextActions[0].title}</span>
-          </div>
-          <p className="mt-2 max-w-3xl text-sm text-gray-400">
-            Reason: <span className="text-gray-200">{leaderReason(top)}</span>. Completing it moves{" "}
-            {top.ws.name} closest to landing the first paid client.
-          </p>
-          {sharedNote && (
-            <p className="mt-1.5 text-xs font-medium text-[#7fb0ff]">{sharedNote}</p>
-          )}
-          <p className="mt-1.5 text-xs text-gray-500">
-            New to Agent Direct?{" "}
-            <Link to="/learn" className="font-semibold text-[#7fb0ff] hover:underline">
-              Open the Playbook
-            </Link>{" "}
-            to see worked directive examples and skill-selection guidance.
-          </p>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setDirectOpen((v) => !v)}
-              className="silhat-btn silhat-btn-primary inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold"
-            >
-              <span className="text-sm leading-none">⇣</span>
-              {directOpen ? "Close directive" : "Direct — compile injectable artifact"}
-            </button>
-            {directItem && (
-              <span className="font-mono text-[10px] uppercase tracking-wider text-gray-500">
-                markdown · json · tool schema · toon
-              </span>
-            )}
-          </div>
-          {directOpen && directItem && compiled && (
-            <div className="mt-3">
-              <DirectivePanel item={directItem} compiled={compiled} />
-            </div>
-          )}
-        </section>
-      )}
-
-      <SharedBucketCallout bucket={data?.bucket ?? null} />
-
-      {/* Portfolio cards */}
-      <div className="grid gap-5 lg:grid-cols-2">
-        {portfolio.map((m) => (
-          <ProductCard key={m.ws.id} m={m} now={now} />
-        ))}
-      </div>
-
-      {/* Provenance summary strip (owner-only: live-sync instructions + a real
-          product curl example — NOT shown on the anonymous demo) */}
-      {!demo && (
-      <section className="silhat-panel p-5">
-        <div className="flex flex-wrap items-center gap-2">
-          <h2 className="text-sm font-semibold text-gray-100">Sources — live availability</h2>
-          <span className="rounded border border-gray-700 bg-gray-800/70 px-1.5 py-px font-mono text-[9px] font-semibold uppercase tracking-wider text-gray-400">
-            provenance preserved
-          </span>
-        </div>
-        <p className="mt-2 max-w-3xl text-sm text-gray-400">
-          Availability shown comes from the owner's <strong className="text-gray-200">live-sync</strong> Chrome
-          extension (reads only the visible text of an authenticated cto.new / ChatGPT page — never
-          tokens or private state). Source + timestamp are kept on every row. No observation =
-          <em> reference baseline</em> — never invented.
-        </p>
-        <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-sm text-gray-400">
-          <li>
-            In the extension popup, set the <strong className="text-gray-200">Dashboard URL</strong> to this site's
-            origin <code className="rounded bg-gray-900 px-1.5 py-0.5 font-mono text-xs text-[#7fb0ff]">{origin}</code>{" "}
-            (the extension posts to <code className="font-mono text-gray-300">/api/sync</code> under it).
-          </li>
-          <li>
-            Open an <strong className="text-gray-200">authenticated cto.new page</strong> (or a project's own page)
-            and click <strong className="text-gray-200">Sync visible availability</strong> in the popup.
-          </li>
-          <li>
-            The row is stored and Agent Direct reflects it as{" "}
-            <em className="text-gray-300">live observation</em> with staleness-driven confidence.
-          </li>
-        </ol>
-        <div className="mt-4 rounded-lg border border-gray-800 bg-gray-950/70 p-4">
-          <div className="silhat-eyebrow">Direct ingestion (no extension)</div>
-          <pre className="silhat-terminal mt-2 overflow-x-auto">{`curl -s -X POST ${origin}/api/availability \\
-  -H 'Content-Type: application/json' \\
-  -d '{"provider":"cto.new","cap":72,"url":"https://product.example.com/","observedAt":'"$(date +%s000)"',"method":"curl","confidence":"medium"}'`}</pre>
-          <p className="mt-2 font-mono text-[10px] uppercase tracking-wider text-gray-500">
-            Endpoints: <span className="text-gray-300">POST/GET /api/availability</span> (canonical) and{" "}
-            <span className="text-gray-300">POST/GET /api/sync</span> (extension path). Both accept the
-            extension payload: provider, cap, next, url, title, observedAt, method, confidence
-            (required: provider, url, observedAt).
-          </p>
-        </div>
+      <section className="flex flex-wrap items-start justify-between gap-4">
+        <div><p className="silhat-eyebrow">Agent Direct · governed handoff</p><h1 className="mt-1 text-2xl font-bold tracking-tight text-gray-50">What deserves action next?</h1><p className="mt-2 max-w-3xl text-sm leading-6 text-gray-400">Direct ranks the current account's products and packages approved work for the external Agent OS / Workforce. It does not grant authorization, reserve capacity, or execute work itself.</p></div>
+        <div className="text-right text-xs text-gray-500"><p>{portfolio.length} account workspace{portfolio.length === 1 ? "" : "s"}</p><p>tenant-scoped evidence only</p></div>
       </section>
-      )}
 
-      {/* How to read this view — de-emphasized, collapsed-by-default secondary
-          education affordance (content preserved, one click to expand) */}
-      <ControlLegend />
+      {!demo && top && <GuidedOnboarding top={top} />}
 
-      <p className="pb-4 text-center font-mono text-[10px] uppercase tracking-[0.18em] text-gray-600">
-        {demo
-          ? "demo portfolio · sample data · not your real projects · readiness from evidence"
-          : `real portfolio baseline · readiness from evidence · unassessed = needs assessment · ${state.products.length} products in ailhat store`}
-      </p>
+      {!demo && portfolio.length === 0 && <section className="silhat-panel border-dashed p-8 text-center"><h2 className="font-semibold text-gray-200">Your Direct workspace is empty</h2><p className="mt-1 text-sm text-gray-500">Add a product to this account first. No owner seed or another account's portfolio is substituted.</p><Link to="/portfolio" className="silhat-btn silhat-btn-primary mt-4 inline-flex">Open Portfolio</Link></section>}
+
+      {top && <section className="rounded-xl border border-[#7fb0ff]/25 bg-[#7fb0ff]/[0.05] p-5"><p className="silhat-eyebrow">Highest current priority</p><h2 className="mt-1 text-lg font-semibold text-gray-100">{top.ws.name}{top.nextActions[0]?.title ? ` · ${top.nextActions[0].title}` : ""}</h2><p className="mt-2 text-sm leading-6 text-gray-400">{leaderReason(top)}</p><div className="mt-3 flex flex-wrap gap-2">{directItem && compiled && <button type="button" onClick={() => setDirectOpen((value) => !value)} className="silhat-btn silhat-btn-primary">{directOpen ? "Close prepared direction" : "Prepare direction"}</button>}<Link to="/product/$productId" params={{ productId: top.ws.id }} className="silhat-btn silhat-btn-ghost">Review evidence</Link></div>{directOpen && directItem && compiled && <DirectivePanel item={directItem} compiled={compiled} />}</section>}
+
+      <div className="grid gap-5 xl:grid-cols-2">{portfolio.map((modeled) => <ProductCard key={modeled.ws.id} modeled={modeled} now={now} />)}</div>
+
+      {!demo && <section className="silhat-panel p-5"><p className="silhat-eyebrow">Tenant boundary</p><h2 className="mt-1 text-lg font-semibold text-gray-100">Evidence belongs to the account that supplied it</h2><p className="mt-2 max-w-4xl text-sm leading-6 text-gray-400">Production scans are persisted only when the scanned hostname belongs to a product in this signed-in portfolio. Availability sync is authenticated and tenant-scoped. No capacity observation is interpreted as availability, and no static founder portfolio is used as a fallback.</p></section>}
     </div>
   );
 }
-
-export default Control;
