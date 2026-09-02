@@ -1,6 +1,3 @@
-// Client-side auth state for Ailhat. Talks to the plain REST auth endpoints in
-// serve.ts using fetch() (same-origin), reading the httpOnly session cookie that
-// the browser sends automatically. SSR-safe: no browser globals at import time.
 import {
   createContext,
   useCallback,
@@ -16,18 +13,26 @@ export interface AuthUser {
   email: string;
 }
 
+export interface ClientAccountAccess {
+  role: "owner" | "customer";
+  planKey: string;
+  planStatus: string;
+  foundingBeta: boolean;
+  betaExpiresAt: string | null;
+  productAccess: boolean;
+  accessReason: "owner" | "founding_beta" | "beta_expired_or_not_granted";
+}
+
 interface AuthStatus {
   authed: boolean;
   user: AuthUser | null;
-  signupOpen: boolean; // users table empty -> first-run signup allowed
+  signupOpen: boolean;
+  access: ClientAccountAccess | null;
 }
 
-type AuthResult =
-  | { ok: true }
-  | { ok: false; error: string };
+type AuthResult = { ok: true } | { ok: false; error: string };
 
 interface AuthCtx extends AuthStatus {
-  /** True until the initial /api/auth/status check has resolved. */
   loading: boolean;
   refresh: () => Promise<void>;
   login: (email: string, password: string) => Promise<AuthResult>;
@@ -36,97 +41,83 @@ interface AuthCtx extends AuthStatus {
 }
 
 const AuthContext = createContext<AuthCtx | null>(null);
+const EMPTY: AuthStatus = { authed: false, user: null, signupOpen: false, access: null };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [status, setStatus] = useState<AuthStatus>({
-    authed: false,
-    user: null,
-    signupOpen: false,
-  });
+  const [status, setStatus] = useState<AuthStatus>(EMPTY);
   const [loading, setLoading] = useState(true);
   const alive = useRef(true);
 
   useEffect(() => {
     alive.current = true;
-    return () => {
-      alive.current = false;
-    };
+    return () => { alive.current = false; };
   }, []);
 
   const refresh = useCallback(async () => {
+    setLoading(true);
     try {
       const res = await fetch("/api/auth/status", { cache: "no-store" });
       if (!res.ok) {
-        if (alive.current) setStatus({ authed: false, user: null, signupOpen: false });
+        if (alive.current) setStatus(EMPTY);
         return;
       }
-      const data = (await res.json()) as AuthStatus;
-      if (alive.current) setStatus(data);
+      const data = (await res.json()) as Omit<AuthStatus, "access">;
+      let access: ClientAccountAccess | null = null;
+      if (data.authed && data.user) {
+        try {
+          const accessResponse = await fetch("/api/access", { cache: "no-store" });
+          if (accessResponse.ok) {
+            const accessData = (await accessResponse.json()) as { access?: ClientAccountAccess };
+            access = accessData.access ?? null;
+          }
+        } catch {
+          access = null;
+        }
+      }
+      if (alive.current) setStatus({ ...data, access });
     } catch {
-      if (alive.current) setStatus({ authed: false, user: null, signupOpen: false });
+      if (alive.current) setStatus(EMPTY);
     } finally {
       if (alive.current) setLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    void refresh();
+  useEffect(() => { void refresh(); }, [refresh]);
+
+  const login = useCallback(async (email: string, password: string): Promise<AuthResult> => {
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+    if (res.ok) {
+      await refresh();
+      return { ok: true };
+    }
+    return { ok: false, error: data.error ?? "Login failed. Please try again." };
   }, [refresh]);
 
-  const login = useCallback(
-    async (email: string, password: string): Promise<AuthResult> => {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-      const data = (await res.json().catch(() => ({}))) as {
-        ok?: boolean;
-        error?: string;
-      };
-      if (res.ok) {
-        await refresh();
-        return { ok: true };
-      }
-      return { ok: false, error: data.error ?? "Login failed. Please try again." };
-    },
-    [refresh],
-  );
-
-  const signup = useCallback(
-    async (email: string, password: string): Promise<AuthResult> => {
-      const res = await fetch("/api/auth/signup", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-      const data = (await res.json().catch(() => ({}))) as {
-        ok?: boolean;
-        error?: string;
-      };
-      if (res.ok) {
-        await refresh();
-        return { ok: true };
-      }
-      return { ok: false, error: data.error ?? "Signup failed. Please try again." };
-    },
-    [refresh],
-  );
+  const signup = useCallback(async (email: string, password: string): Promise<AuthResult> => {
+    const res = await fetch("/api/auth/signup", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+    if (res.ok) {
+      await refresh();
+      return { ok: true };
+    }
+    return { ok: false, error: data.error ?? "Signup failed. Please try again." };
+  }, [refresh]);
 
   const logout = useCallback(async () => {
-    try {
-      await fetch("/api/auth/logout", { method: "POST" });
-    } catch {
-      // Even if the network call fails, clear client state.
-    }
+    try { await fetch("/api/auth/logout", { method: "POST" }); } catch { /* clear locally anyway */ }
     await refresh();
   }, [refresh]);
 
-  return (
-    <AuthContext.Provider value={{ ...status, loading, refresh, login, signup, logout }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={{ ...status, loading, refresh, login, signup, logout }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth(): AuthCtx {

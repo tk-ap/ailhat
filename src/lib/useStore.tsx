@@ -7,6 +7,7 @@ import {
   useState,
 } from "react";
 import type { ReactNode } from "react";
+import ProductAccessBlocked from "~/components/ProductAccessBlocked";
 import {
   type AppState,
   type FeedbackKind,
@@ -65,26 +66,12 @@ export interface Actions {
   resetData: () => void;
 }
 
-interface Ctx {
-  state: AppState;
-  ready: boolean;
-  actions: Actions;
-}
-
+interface Ctx { state: AppState; ready: boolean; actions: Actions; }
 const StoreContext = createContext<Ctx | null>(null);
 
 export const EMPTY_APP_STATE: AppState = {
-  products: [],
-  retiredProducts: [],
-  items: [],
-  decisions: {},
-  scans: {},
-  scanHistory: {},
-  productActivity: {},
-  engagement: {},
-  feedback: {},
-  opportunities: [],
-  opportunityFeedback: {},
+  products: [], retiredProducts: [], items: [], decisions: {}, scans: {}, scanHistory: {},
+  productActivity: {}, engagement: {}, feedback: {}, opportunities: [], opportunityFeedback: {},
 };
 
 export function normalizeState(raw: AppState | null | undefined): AppState | null {
@@ -96,104 +83,66 @@ export function normalizeState(raw: AppState | null | undefined): AppState | nul
     retiredProducts: Array.isArray(r.retiredProducts) ? (r.retiredProducts as RetiredProductArchive[]) : [],
     items: Array.isArray(r.items) ? r.items : [],
     decisions: r.decisions && typeof r.decisions === "object" && !Array.isArray(r.decisions) ? (r.decisions as Record<string, ProductDecision[]>) : {},
-    scans: r.scans ?? {},
-    scanHistory: r.scanHistory ?? {},
-    productActivity: r.productActivity ?? {},
-    engagement: r.engagement ?? {},
-    feedback: r.feedback ?? {},
-    opportunities: Array.isArray(r.opportunities) ? r.opportunities : [],
-    opportunityFeedback: r.opportunityFeedback ?? {},
+    scans: r.scans ?? {}, scanHistory: r.scanHistory ?? {}, productActivity: r.productActivity ?? {},
+    engagement: r.engagement ?? {}, feedback: r.feedback ?? {},
+    opportunities: Array.isArray(r.opportunities) ? r.opportunities : [], opportunityFeedback: r.opportunityFeedback ?? {},
   };
 }
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [state, setState] = useState<AppState>(EMPTY_APP_STATE);
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, access, logout } = useAuth();
   const stateRef = useRef(state);
   const hydratedFor = useRef<string | null>(null);
-
   useEffect(() => { stateRef.current = state; }, [state]);
 
   const saveToServer = useCallback(async (value?: AppState) => {
-    try {
-      await fetch("/api/portfolio", {
-        method: "PUT",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(value ?? stateRef.current),
-      });
-    } catch {
-      // Server remains authoritative; retry on the next authenticated state change.
-    }
+    try { await fetch("/api/portfolio", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(value ?? stateRef.current) }); }
+    catch { /* retry later */ }
   }, []);
 
-  // Authentication is the tenant boundary. Do not load account-private local data
-  // before /api/auth/status has resolved, and clear all known private continuity
-  // caches whenever the tenant changes or logs out.
   useEffect(() => {
-    if (authLoading) {
-      setReady(false);
-      return;
-    }
-
+    if (authLoading) { setReady(false); return; }
     const uid = user ? String(user.id) : null;
     if (uid === null) {
       if (hydratedFor.current !== "anon") clearTenantPrivateStorage();
-      hydratedFor.current = "anon";
-      setState(EMPTY_APP_STATE);
-      setReady(true);
-      return;
+      hydratedFor.current = "anon"; setState(EMPTY_APP_STATE); setReady(true); return;
     }
-
-    if (hydratedFor.current === uid) {
-      setReady(true);
-      return;
+    if (access?.productAccess !== true) {
+      if (hydratedFor.current !== `blocked:${uid}`) clearTenantPrivateStorage();
+      hydratedFor.current = `blocked:${uid}`; setState(EMPTY_APP_STATE); setReady(true); return;
     }
-
-    if (hydratedFor.current !== null && hydratedFor.current !== uid) {
-      clearTenantPrivateStorage();
-    }
-
+    if (hydratedFor.current === uid) { setReady(true); return; }
+    if (hydratedFor.current !== null && hydratedFor.current !== uid) clearTenantPrivateStorage();
     let cancelled = false;
-    setReady(false);
-    setState(EMPTY_APP_STATE);
-
+    setReady(false); setState(EMPTY_APP_STATE);
     (async () => {
       let serverState: AppState | null = null;
       try {
-        const res = await fetch("/api/portfolio", { cache: "no-store" });
-        if (res.ok) {
-          const data = (await res.json()) as { state: AppState | null };
-          serverState = normalizeState(data.state);
-        }
-      } catch {
-        serverState = null;
-      }
+        const response = await fetch("/api/portfolio", { cache: "no-store" });
+        if (response.ok) { const data = (await response.json()) as { state: AppState | null }; serverState = normalizeState(data.state); }
+      } catch { serverState = null; }
       if (cancelled) return;
-
       hydratedFor.current = uid;
       const next = serverState ?? EMPTY_APP_STATE;
-      setState(next);
-      saveState(next); // cache only after tenant identity is known
+      setState(next); saveState(next);
       if (!serverState) void saveToServer(EMPTY_APP_STATE);
       setReady(true);
     })();
-
     return () => { cancelled = true; };
-  }, [authLoading, user?.id, saveToServer]);
+  }, [authLoading, user?.id, access?.productAccess, saveToServer]);
 
   useEffect(() => {
-    if (!user || !ready) return;
-    if (hydratedFor.current !== String(user.id)) return;
+    if (!user || !ready || access?.productAccess !== true || hydratedFor.current !== String(user.id)) return;
     const timer = setTimeout(() => { void saveToServer(); }, 800);
     return () => clearTimeout(timer);
-  }, [state, user, ready, saveToServer]);
+  }, [state, user, ready, access?.productAccess, saveToServer]);
 
   const commit = useCallback((next: AppState) => {
-    if (!user || hydratedFor.current !== String(user.id)) return;
-    setState(next);
-    saveState(next);
-  }, [user]);
+    if (!user || access?.productAccess !== true || hydratedFor.current !== String(user.id)) return;
+    setState(next); saveState(next);
+  }, [user, access?.productAccess]);
 
   const actions: Actions = {
     addProduct: (p) => commit(addProduct(state, p)),
@@ -216,6 +165,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     resetData: () => commit(resetData(state, !user)),
   };
 
+  if (!authLoading && user && access?.productAccess !== true) {
+    return <ProductAccessBlocked access={access} onLogout={() => void logout()} />;
+  }
   return <StoreContext.Provider value={{ state, ready, actions }}>{children}</StoreContext.Provider>;
 }
 
@@ -225,13 +177,4 @@ export function useStore(): Ctx {
   return ctx;
 }
 
-export type {
-  ItemStatus,
-  ItemType,
-  Platform,
-  Product,
-  Item,
-  AppState,
-  ProductEngagementEvidence,
-  RetiredProductArchive,
-};
+export type { ItemStatus, ItemType, Platform, Product, Item, AppState, ProductEngagementEvidence, RetiredProductArchive };
