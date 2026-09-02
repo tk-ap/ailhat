@@ -1,6 +1,6 @@
 # Product Expansion closeout
 
-This lane is complete when the following are merged to `main`:
+This lane is complete on `main` with:
 
 - RADAR account-scoped market-signal intelligence;
 - tenant isolation for portfolio, Direct, observations, external evidence, and browser continuity;
@@ -8,7 +8,15 @@ This lane is complete when the following are merged to `main`:
 - explicit expiry/revocation access policy;
 - Neon-safe one-statement migrations for new account-scoped stores.
 
+## Release gate
+
+Product Expansion was merged through PR #53. This post-merge marker intentionally triggers the Git-linked production release containing the full lane.
+
 Preview build quota is not a merge criterion for this closeout. Production deployment and second-account isolation verification are the post-merge release gates.
+
+Founding Beta invite issuance remains an explicit operational switch: `AILHAT_BETA_INVITES_ENABLED=true`. Do not enable it until the disposable second-account isolation test passes.
+
+## Next lane
 
 The next product lane is **First-user activation and validation**, centered on the end-to-end journey:
 
