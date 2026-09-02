@@ -69,12 +69,34 @@ function sourceObservationIds(signal: Signal): string[] {
   return scanKeys.length > 0 ? [...new Set(scanKeys)] : [signal.id];
 }
 
+/**
+ * Inference-backed signals must describe the observed evidence, not promote an
+ * inference into an authoritative statement about execution elsewhere.
+ */
+function scopedProblem(signal: Signal): string {
+  if (!signal.inference) return signal.summary;
+
+  const basis = signal.inference.basis.filter(Boolean).join(" ");
+  return (
+    `Observed by ailhat: ${basis || signal.summary} ` +
+    "This is limited to ailhat-visible evidence. It does not establish that no related work was completed through GitHub, Vercel, another harness, another connected environment, or manual work outside ailhat."
+  );
+}
+
 function fixAcceptanceCriteria(signal: Signal): string[] {
   const criteria = [
     `The condition described by “${signal.title}” is no longer reproducible.`,
     "The relevant user path works without introducing a new blocking regression.",
     "Re-run the supporting observation/scan when one exists and record the result.",
   ];
+
+  if (signal.inference) {
+    criteria.push(
+      "Reconcile available external execution/completion evidence before concluding that work is still outstanding.",
+      "If external completion evidence is unavailable, preserve that uncertainty instead of asserting that no work occurred outside ailhat.",
+    );
+  }
+
   if (signal.recItems.length > 0) {
     criteria.push(
       ...signal.recItems.slice(0, 3).map((item) => `Resolve and verify: ${item.title}.`),
@@ -115,7 +137,7 @@ export function buildSignalWorkItem(
     lifecycle,
     product: target,
     title: mode === "fix" ? `Fix: ${signal.title}` : `Investigate: ${signal.title}`,
-    problem: signal.summary,
+    problem: scopedProblem(signal),
     desiredOutcome:
       mode === "fix"
         ? signal.recommendation
@@ -130,13 +152,14 @@ export function buildSignalWorkItem(
         : [
             "Separate confirmed facts from assumptions.",
             "Collect enough evidence to support or reject the signal premise.",
+            "Check for relevant execution/completion evidence outside ailhat when the connected environment can provide it.",
             "Return a recommended next decision with cited evidence and remaining uncertainty.",
           ],
     recommendedSkills: recommendSkillsFor(skillText),
     execution: {
       state: "prepared",
       note:
-        "Prepared by ailhat for Direct / an agentic harness. This does not mean work has started, capacity is reserved, or the outcome has been completed.",
+        "Prepared by ailhat for Direct / an agentic harness. This does not mean work has started, capacity is reserved, or the outcome has been completed. It also does not establish that no work has occurred outside ailhat; external execution must be observed or reconciled before ailhat makes that claim.",
     },
   };
 
@@ -146,6 +169,7 @@ export function buildSignalWorkItem(
       known: signal.evidence,
       unknowns: [
         "Whether the observed condition still reproduces now.",
+        "Whether related execution or completion occurred outside ailhat's currently observed surfaces.",
         "Whether the condition materially affects the intended user or business outcome.",
         "Whether a lower-risk or higher-leverage response exists than the current recommendation.",
       ],
