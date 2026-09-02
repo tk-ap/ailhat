@@ -1,10 +1,58 @@
-version: 0.1.0
-product: ailhat
+version: 0.2.0
+product_key: ailhat
 category: portfolio-intelligence
-ecosystem_source: tk-ap/agent-os
-ecosystem_contract: ecosystem/ECOSYSTEM.md
-product_directive: products/ailhat.md
-owns: [portfolio-observation, signal-classification, prioritization, initiative-creation, facilitation, capability-development, outcome-measurement]
-produces: [portfolio-signal, work-item, objective, facilitation-record, capability-signal, outcome-assessment]
-consumes: [product-evidence, workforce-status, authority-status, outcome-event]
-must_not_own: [canonical-agent-identity, skill-resolution, runtime-authorization, harness-specific-execution, canonical-workforce-registry]
+repository: tk-ap/ailhat
+agent_os_repository: tk-ap/agent-os
+routing_source: registry/product-routing.yaml
+
+local:
+  owns:
+    - portfolio-observation
+    - signal-classification
+    - portfolio-prioritization
+    - initiative-creation
+    - facilitation
+    - reversible-product-lifecycle-state
+    - evidence-reconciliation
+    - outcome-measurement
+  produces:
+    - portfolio-signal
+    - work-item
+    - objective
+    - facilitation-record
+    - capability-signal
+    - outcome-assessment
+    - verification-request
+  consumes:
+    - production-observation
+    - repository-context
+    - deployment-observation
+    - external-market-signal
+    - approved-context-reference
+    - outcome-event
+    - governance-evidence
+  must_not_own:
+    - canonical-agent-identity
+    - canonical-workforce-routing
+    - generic-authorization-intelligence
+    - harness-specific-execution
+    - canonical-context-store
+  constraints:
+    - portfolio-intelligence-proposes-work-but-does-not-authorize-it
+    - agent-direct-is-a-user-facing-handoff-surface-not-the-execution-engine
+    - production-is-primary-for-current-user-facing-reality
+    - repository-context-is-secondary-evidence-and-does-not-prove-deployment
+    - deployment-evidence-does-not-prove-resolution-without-verification
+    - missing-external-evidence-means-unknown-not-zero
+    - simulated-findings-must-be-labeled
+    - retirement-is-reversible-and-never-automatic
+    - inactivity-alone-is-not-retirement-evidence
+    - facilitation-must-remain-attached-to-live-portfolio-work
+
+rules:
+  canonical_product_role_from_routing_source: true
+  local_metadata_may_narrow_or_add_implementation_detail: true
+  local_metadata_must_not_redefine_canonical_role: true
+  portable_work_item_does_not_grant_execution_authority: true
+  cross_product_writes_require_explicit_task_authorization: true
+  preserve_evidence_provenance_and_epistemic_status: true
