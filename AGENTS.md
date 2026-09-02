@@ -7,6 +7,7 @@ ailhat is the Portfolio Intelligence and management plane. It observes products,
 ailhat should not stop at recommendation. When useful, it should help the user understand the issue, learn the relevant operating pattern, build the capability required to act, and prepare work for governed delegation.
 
 See `docs/FACILITATION.md` for the facilitation product direction.
+See `docs/PORTFOLIO_EVIDENCE_ARCHITECTURE.md` for the canonical evidence hierarchy, repository-context role, external observations, and reconciliation rules.
 
 ### Boundaries
 
@@ -31,6 +32,30 @@ Active portfolio attention is finite. ailhat should preserve historical product 
 - If analytics or engagement evidence is unavailable or stale, recommend a lifecycle review or evidence refresh rather than retirement.
 - Healthy current engagement is evidence to keep a quiet product active even when development activity is low.
 
+## Evidence behavior
+
+Portfolio Intelligence should reason across sources without pretending any one source is complete.
+
+Canonical source order:
+
+1. production / live product — current user-facing reality
+2. linked repository — implementation intent and activity
+3. deployment provider — what source revision actually shipped
+4. ailhat history — longitudinal observation, decision, work, and verification state
+5. external market / engagement signals — viability and demand evidence
+
+Rules:
+
+- Production is primary for what users can experience now.
+- Repository context is optional but recommended secondary evidence. Code or documentation in a repo does not prove a capability is live.
+- A merged PR is evidence that work occurred. A successful deployment is evidence that a revision shipped. Neither should be silently promoted into verified resolution when the original condition can still be checked in production.
+- Absence of ailhat-local completion is not proof that no work happened through GitHub, Vercel, Agent Direct, Agent OS, another harness/environment, or manually.
+- If an external source is not connected or cannot be read, represent the outside state as unknown rather than zero/inactive/incomplete.
+- Conflicts between production, repository, deployment, execution, history, and market evidence are themselves intelligence. Reconcile them; do not silently let one source overwrite another.
+- Product viability and retirement conclusions require evidence appropriate to viability. Repository activity alone is not demand, and a quiet repository alone is not failure.
+
+Useful reconciliation concepts include deployment drift, active build, external change / verification pending, production regression, spec/implementation drift, and corroborated dormancy review.
+
 ## Facilitation behavior
 
 When a finding or recommendation exposes a capability gap, ailhat should be able to support four modes without changing products:
@@ -49,6 +74,8 @@ Facilitation should develop user judgment and execution capability over time whi
 ## Shared Agent OS and ecosystem awareness
 
 Before material work, read `tk-ap/agent-os` `BOOTSTRAP.md`, `ecosystem/ECOSYSTEM.md`, `ecosystem/products.yaml`, `products/ailhat.md`, this repository's `.agent-os/` manifests, and `docs/FACILITATION.md` when the task touches recommendations, learning, guidance, workforce design, or execution preparation.
+
+When the task touches product viability, scanning, external completion, repositories, deployments, drift, lifecycle state, retirement, verification, or provenance, also read `docs/PORTFOLIO_EVIDENCE_ARCHITECTURE.md` and `docs/SHARED_CONTEXT_CONTRACT.md`.
 
 Use shared contracts for cross-product handoffs. An approved actionable finding should produce a portable work item for Agent OS. Completed execution should return an outcome event that ailhat can measure against the original objective.
 
