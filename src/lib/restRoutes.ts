@@ -33,7 +33,7 @@ import {
   validateIntentInput,
 } from "./db-intent.ts";
 import { checkAvailability } from "./availability.ts";
-import { runScan } from "./scanSite.ts";
+import { runCorrectedScan } from "./scan-correctness.ts";
 import {
   readObservations,
   upsertObservation,
@@ -108,7 +108,7 @@ export async function handleRestRoute(
   if (pathname === "/api/scan-site") {
     const url = searchParams.get("url") ?? "";
     try {
-      const result = await runScan(url);
+      const result = await runCorrectedScan(url);
       // R1: when a completed scan has live evidence for a known workspace, persist
       // it (as a site-scan observation) so the next Control read recomputes that
       // workspace's readiness/confidence/lastScan from it. Persistence is gated
