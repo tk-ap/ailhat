@@ -1,5 +1,15 @@
 import type { Workspace, Harness, InterfaceSlot, Severity } from "./agent-control";
 import type { AppState, Item, Product } from "./store";
+import {
+  SCAN_PROVIDER,
+  buildScanEvidenceForObs,
+  hostFromUrl,
+  stalenessConfidence,
+  stalenessLabel,
+  type AvailabilityObservation,
+  type LiveOverlay,
+  type ScanEvidence,
+} from "./observations";
 
 const NONE_INTERFACES: Record<Harness, InterfaceSlot> = {
   CLI: { state: "none" },
@@ -70,4 +80,48 @@ export function tenantPortfolioToWorkspaces(state: AppState, now = Date.now()): 
       actions,
     };
   });
+}
+
+function newest(rows: AvailabilityObservation[]): AvailabilityObservation | null {
+  return rows.reduce<AvailabilityObservation | null>((best, row) => {
+    if (typeof row.observedAt !== "number") return best;
+    if (!best || typeof best.observedAt !== "number" || row.observedAt > best.observedAt) return row;
+    return best;
+  }, null);
+}
+
+export function buildTenantObservationEvidence(
+  products: Product[],
+  observations: AvailabilityObservation[],
+  now = Date.now(),
+): { liveByWorkspace: Map<string, LiveOverlay>; scanByWorkspace: Map<string, ScanEvidence> } {
+  const liveByWorkspace = new Map<string, LiveOverlay>();
+  const scanByWorkspace = new Map<string, ScanEvidence>();
+
+  for (const product of products) {
+    const productHost = hostFromUrl(product.url);
+    if (!productHost) continue;
+    const matching = observations.filter((row) => hostFromUrl(row.url) === productHost);
+    const scan = newest(matching.filter((row) => row.provider === SCAN_PROVIDER));
+    const live = newest(matching.filter((row) => row.provider !== SCAN_PROVIDER));
+
+    const scanEvidence = buildScanEvidenceForObs(scan, now);
+    if (scanEvidence) scanByWorkspace.set(product.id, scanEvidence);
+
+    if (live && typeof live.observedAt === "number") {
+      const ageHours = Math.max(0, (now - live.observedAt) / 3_600_000);
+      liveByWorkspace.set(product.id, {
+        hasLive: true,
+        cap: typeof live.cap === "number" ? live.cap : null,
+        provider: live.provider ?? null,
+        url: live.url ?? null,
+        observedAt: live.observedAt,
+        ageHours,
+        tier: stalenessConfidence(ageHours),
+        staleness: stalenessLabel(ageHours),
+      });
+    }
+  }
+
+  return { liveByWorkspace, scanByWorkspace };
 }
