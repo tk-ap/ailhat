@@ -1,17 +1,6 @@
-// Server-only persistence for live availability observations (Agent Direct feed).
-//
-// PRIMARY store is Postgres (Neon). A plain JSON file under data/ was the old
-// store — but Vercel's serverless filesystem is ephemeral, so observations
-// written by POST /api/availability were lost between invocations (GET returned
-// []). Moving to Postgres makes the feed durable across cold starts.
-//
-// The JSON file is kept ONLY as a fallback for the common cases where a database
-// isn't reachable: local dev without DATABASE_URL, and the SSR build step. When
-// the DB is available it is authoritative; reads/writes fall back to the file
-// defensively so a DB hiccup never crashes a request.
-//
-// This module uses Node/Bun server APIs and runs only server-side (imported from
-// the REST router, which only runs in serve.ts / vercel-entry.ts).
+// Server-only persistence for Agent Direct availability / site-scan observations.
+// Every durable read/write is scoped by authenticated user id. The legacy shared
+// availability_observations table is intentionally not used by this module.
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -19,51 +8,62 @@ import { sql } from "~/db";
 import type { AvailabilityObservation } from "./observations";
 
 export const DATA_DIR = join(process.cwd(), "data");
-export const DATA_FILE = join(DATA_DIR, "availability.json");
-
-/** Keep at most this many observations per provider+url key (file fallback only). */
 const MAX_PER_KEY = 5;
 
 function dbAvailable(): boolean {
   return !!process.env.DATABASE_URL;
 }
 
-// ---- File fallback (used only when the DB is unavailable / a query fails) ----
+function tenantFile(userId: number): string {
+  return join(DATA_DIR, `availability.user-${Math.max(0, Math.trunc(userId))}.json`);
+}
 
-function load(): AvailabilityObservation[] {
+function loadFile(userId: number): AvailabilityObservation[] {
   try {
-    const raw = readFileSync(DATA_FILE, "utf8");
-    const parsed = JSON.parse(raw);
+    const parsed = JSON.parse(readFileSync(tenantFile(userId), "utf8"));
     return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
   }
 }
 
-function save(obs: AvailabilityObservation[]): void {
+function saveFile(userId: number, observations: AvailabilityObservation[]): void {
   mkdirSync(DATA_DIR, { recursive: true });
-  writeFileSync(DATA_FILE, JSON.stringify(obs, null, 2), "utf8");
+  writeFileSync(tenantFile(userId), JSON.stringify(observations, null, 2), "utf8");
 }
 
-function fileUpsert(obs: AvailabilityObservation): void {
-  const all = load();
+function fileUpsert(userId: number, obs: AvailabilityObservation): void {
+  const all = loadFile(userId);
   const key = `${obs.provider}:${obs.url}`;
-  const rest = all.filter((o) => `${o.provider}:${o.url}` !== key);
-  const keyed = load()
-    .filter((o) => `${o.provider}:${o.url}` === key)
-    .concat(obs)
-    .slice(-MAX_PER_KEY);
-  save([...rest, ...keyed]);
+  const rest = all.filter((row) => `${row.provider}:${row.url}` !== key);
+  const keyed = all.filter((row) => `${row.provider}:${row.url}` === key).concat(obs).slice(-MAX_PER_KEY);
+  saveFile(userId, [...rest, ...keyed]);
 }
 
-function fileRead({ sinceMs }: { sinceMs: number }): AvailabilityObservation[] {
-  const all = load();
-  return sinceMs > 0
-    ? all.filter((o) => typeof o.observedAt === "number" && o.observedAt >= sinceMs)
-    : all;
+async function ensureSchema(): Promise<void> {
+  const q = sql() as unknown as { query: (text: string) => Promise<unknown> };
+  await q.query(`
+    CREATE TABLE IF NOT EXISTS tenant_availability_observations (
+      user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      provider TEXT NOT NULL,
+      url TEXT NOT NULL,
+      cap NUMERIC,
+      next NUMERIC,
+      title TEXT,
+      method TEXT,
+      confidence TEXT,
+      account TEXT,
+      iface TEXT,
+      id_field TEXT,
+      use_note TEXT,
+      observed_at TIMESTAMPTZ NOT NULL,
+      received_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (user_id, provider, url)
+    );
+    CREATE INDEX IF NOT EXISTS tenant_availability_user_observed_idx
+      ON tenant_availability_observations(user_id, observed_at DESC);
+  `);
 }
-
-// ---- Postgres mapping ----
 
 interface ObservationRow {
   provider: string | null;
@@ -80,25 +80,18 @@ interface ObservationRow {
   observed_at: Date | string | number | null;
 }
 
-/**
- * Normalize a DB row into the extension payload shape the UI expects. The Neon
- * driver may return `numeric` columns as strings, and `timestamptz` as a Date;
- * coerce both back to the original number-shape payload (`cap`/`next` as numbers,
- * `observedAt` as an epoch-ms number) the way the old file store did.
- */
 function rowToObservation(row: unknown): AvailabilityObservation {
   const r = (row ?? {}) as ObservationRow;
-  const observedAt =
-    r.observed_at instanceof Date
-      ? r.observed_at.getTime()
-      : typeof r.observed_at === "number"
-        ? r.observed_at
-        : typeof r.observed_at === "string"
-          ? Date.parse(r.observed_at)
-          : NaN;
-  const num = (v: string | number | null): number | null | undefined => {
-    if (v == null || v === "") return null;
-    const n = Number(v);
+  const observedAt = r.observed_at instanceof Date
+    ? r.observed_at.getTime()
+    : typeof r.observed_at === "number"
+      ? r.observed_at
+      : typeof r.observed_at === "string"
+        ? Date.parse(r.observed_at)
+        : NaN;
+  const num = (value: string | number | null): number | null => {
+    if (value == null || value === "") return null;
+    const n = Number(value);
     return Number.isFinite(n) ? n : null;
   };
   return {
@@ -117,56 +110,50 @@ function rowToObservation(row: unknown): AvailabilityObservation {
   };
 }
 
-/**
- * Read stored observations (oldest-first, matching the previous file store).
- * `sinceMs` filters to rows observed at/after that epoch-ms timestamp. Never
- * throws — falls back to the JSON file when the DB is unavailable or a query fails.
- */
-export async function readObservations(opts?: {
-  sinceMs?: number;
-}): Promise<AvailabilityObservation[]> {
+export async function readObservations(
+  userId: number,
+  opts?: { sinceMs?: number },
+): Promise<AvailabilityObservation[]> {
   const sinceMs = opts?.sinceMs ?? 0;
-  if (!dbAvailable()) return fileRead({ sinceMs });
+  if (!Number.isFinite(userId) || userId <= 0) return [];
+  if (!dbAvailable()) {
+    const rows = loadFile(userId);
+    return sinceMs > 0 ? rows.filter((row) => (row.observedAt ?? 0) >= sinceMs) : rows;
+  }
   try {
+    await ensureSchema();
     const rows = sinceMs > 0
-      ? await sql()`select provider, url, cap, next, title, method, confidence, account, iface, id_field, use_note, observed_at from availability_observations where observed_at >= to_timestamp(${sinceMs / 1000}) order by observed_at asc`
-      : await sql()`select provider, url, cap, next, title, method, confidence, account, iface, id_field, use_note, observed_at from availability_observations order by observed_at asc`;
+      ? await sql()`select provider, url, cap, next, title, method, confidence, account, iface, id_field, use_note, observed_at from tenant_availability_observations where user_id = ${userId} and observed_at >= to_timestamp(${sinceMs / 1000}) order by observed_at asc`
+      : await sql()`select provider, url, cap, next, title, method, confidence, account, iface, id_field, use_note, observed_at from tenant_availability_observations where user_id = ${userId} order by observed_at asc`;
     return (rows as unknown[]).map(rowToObservation);
-  } catch (err) {
-    console.error("[observations] DB read failed, falling back to file:", err);
-    return fileRead({ sinceMs });
+  } catch (error) {
+    console.error("[observations] tenant DB read failed, falling back to tenant file:", error);
+    const rows = loadFile(userId);
+    return sinceMs > 0 ? rows.filter((row) => (row.observedAt ?? 0) >= sinceMs) : rows;
   }
 }
 
-/**
- * Upsert an observation by (provider, url), keeping the newest row per key. Never
- * throws — falls back to the JSON file when the DB is unavailable or a query fails.
- */
-export async function upsertObservation(
-  obs: AvailabilityObservation,
-): Promise<void> {
+export async function upsertObservation(userId: number, obs: AvailabilityObservation): Promise<void> {
+  if (!Number.isFinite(userId) || userId <= 0) return;
+  const scoped: AvailabilityObservation = { ...obs, account: String(userId) };
   if (!dbAvailable()) {
-    try {
-      fileUpsert(obs);
-    } catch {
-      // Never crash the request on a storage failure.
-    }
+    try { fileUpsert(userId, scoped); } catch { /* best effort */ }
     return;
   }
   try {
+    await ensureSchema();
     await sql()`
-      insert into availability_observations (
-        provider, url, cap, next, title, method, confidence,
+      insert into tenant_availability_observations (
+        user_id, provider, url, cap, next, title, method, confidence,
         account, iface, id_field, use_note, observed_at, received_at
       ) values (
-        ${obs.provider ?? null}, ${obs.url ?? null}, ${obs.cap ?? null},
-        ${obs.next ?? null}, ${obs.title ?? null}, ${obs.method ?? null},
-        ${obs.confidence ?? null}, ${obs.account ?? null}, ${obs.iface ?? null},
-        ${obs.id ?? null}, ${obs.use ?? null},
-        ${obs.observedAt != null ? new Date(obs.observedAt) : new Date()}, now()
+        ${userId}, ${scoped.provider ?? "unknown"}, ${scoped.url ?? ""}, ${scoped.cap ?? null},
+        ${scoped.next ?? null}, ${scoped.title ?? null}, ${scoped.method ?? null},
+        ${scoped.confidence ?? null}, ${String(userId)}, ${scoped.iface ?? null},
+        ${scoped.id ?? null}, ${scoped.use ?? null},
+        ${scoped.observedAt != null ? new Date(scoped.observedAt) : new Date()}, now()
       )
-      on conflict (provider, url)
-      do update set
+      on conflict (user_id, provider, url) do update set
         cap = excluded.cap,
         next = excluded.next,
         title = excluded.title,
@@ -179,12 +166,8 @@ export async function upsertObservation(
         observed_at = excluded.observed_at,
         received_at = excluded.received_at
     `;
-  } catch (err) {
-    console.error("[observations] DB upsert failed, falling back to file:", err);
-    try {
-      fileUpsert(obs);
-    } catch {
-      // Never crash the request on a storage failure.
-    }
+  } catch (error) {
+    console.error("[observations] tenant DB upsert failed, falling back to tenant file:", error);
+    try { fileUpsert(userId, scoped); } catch { /* best effort */ }
   }
 }
