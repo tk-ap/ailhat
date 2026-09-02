@@ -39,9 +39,10 @@ evidence_sources:
     authority_scope: implementation activity, pull-request merge state, and issue state
     limitations: [public-repositories-only, manual-refresh, no-private-repo-oauth, no-webhook-monitoring, repository-evidence-does-not-prove-deployment-or-resolution]
   - provider: vercel
-    mode: preview and production deployment evidence
-    adapter_status: planned
-    authority_scope: deployment and release state
+    mode: production deployment evidence
+    adapter_status: implemented-server-credential-gated-read-only
+    authority_scope: production-domain mapping and deployment/release state
+    limitations: [requires-server-read-credential, manual-refresh, product-domain-validation-required, no-user-oauth, no-webhook-monitoring, deployment-evidence-does-not-prove-resolution]
 
 cross_market:
   - trigger: an accepted initiative requires shared workforce composition or execution
