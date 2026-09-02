@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">ailhat — Portfolio Intelligence</title>
+  <desc id="desc">Portfolio Intelligence for builders shipping multiple products.</desc>
+  <rect width="1200" height="630" fill="#0a0a0a"/>
+  <circle cx="1030" cy="-40" r="420" fill="#7fb0ff" opacity="0.12"/>
+  <path d="M0 520H1200" stroke="#7fb0ff" opacity="0.22"/>
+  <rect x="80" y="78" width="72" height="72" rx="14" fill="#7fb0ff"/>
+  <text x="116" y="128" text-anchor="middle" font-family="Arial, sans-serif" font-size="38" font-weight="700" fill="#0a0a0a">A</text>
+  <text x="80" y="245" font-family="Arial, sans-serif" font-size="82" font-weight="700" fill="#ffffff">ailhat</text>
+  <text x="80" y="315" font-family="Arial, sans-serif" font-size="34" font-weight="600" fill="#7fb0ff">Portfolio Intelligence</text>
+  <text x="80" y="385" font-family="Arial, sans-serif" font-size="28" fill="#c7c7c7">What changed. Why it matters. What deserves attention next.</text>
+  <text x="80" y="558" font-family="monospace" font-size="18" letter-spacing="3" fill="#858585">OBSERVE → DECIDE → DIRECT → VERIFY</text>
+</svg>
