@@ -84,6 +84,13 @@ export default function IntentForm() {
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
           Tell us what you're shipping so we can route you into the right portfolio-intelligence experience. No spam.
         </p>
+        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+          Already have access?{" "}
+          <a href="/dashboard" className="font-semibold text-[#7fb0ff] hover:underline">
+            Get started in your dashboard
+          </a>
+          .
+        </p>
       </div>
 
       <label className="block">
