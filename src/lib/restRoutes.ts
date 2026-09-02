@@ -1,5 +1,6 @@
 // Shared plain-REST router for ailhat's server-side API.
-// Tenant-sensitive routes resolve the session before any account data is read or written.
+// Authentication proves identity; AccountAccess decides whether private product
+// data may be read or written.
 import {
   type AuthUser,
   SESSION_COOKIE,
@@ -15,6 +16,7 @@ import {
   verifyPassword,
   hashPassword,
 } from "./auth.ts";
+import { getAccountAccess } from "./access.server.ts";
 import { getPortfolioState, putPortfolioState } from "./db-portfolio.ts";
 import { saveIntentSignup, validateIntentInput } from "./db-intent.ts";
 import { checkAvailability } from "./availability.ts";
@@ -28,24 +30,26 @@ function jsonResponse(body: unknown, status = 200, setCookie?: string): Response
   if (setCookie) headers["set-cookie"] = setCookie;
   return new Response(JSON.stringify(body), { status, headers });
 }
-
 function sessionCookie(token: string, secure: boolean): string {
   const maxAge = 30 * 24 * 60 * 60;
   return `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}` + (secure ? "; Secure" : "");
 }
-
 function clearSessionCookie(secure: boolean): string {
   return `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0` + (secure ? "; Secure" : "");
 }
-
 async function requestUser(token: string): Promise<AuthUser | null> {
+  try { return token ? await findUserByToken(token) : null; } catch { return null; }
+}
+async function requestAccessUser(token: string): Promise<AuthUser | null> {
+  const user = await requestUser(token);
+  if (!user) return null;
   try {
-    return token ? await findUserByToken(token) : null;
+    const access = await getAccountAccess(user);
+    return access.productAccess ? user : null;
   } catch {
     return null;
   }
 }
-
 function portfolioOwnsHost(state: unknown, url: string): boolean {
   const host = hostFromUrl(url);
   if (!host || !state || typeof state !== "object") return false;
@@ -55,27 +59,20 @@ function portfolioOwnsHost(state: unknown, url: string): boolean {
 
 export async function handleRestRoute(req: Request, secure: boolean): Promise<Response | null> {
   const { pathname, searchParams } = new URL(req.url);
-  const cookies = parseCookies(req.headers.get("cookie"));
-  const token = cookies[SESSION_COOKIE] ?? "";
+  const token = parseCookies(req.headers.get("cookie"))[SESSION_COOKIE] ?? "";
 
   if (pathname === "/api/check-availability") {
     const name = searchParams.get("name") ?? "";
-    try {
-      const result = await checkAvailability(name);
-      return jsonResponse(result);
-    } catch {
-      return jsonResponse({ name, results: [], checkedAt: Date.now() }, 500);
-    }
+    try { return jsonResponse(await checkAvailability(name)); }
+    catch { return jsonResponse({ name, results: [], checkedAt: Date.now() }, 500); }
   }
 
-  // Public scanning remains available, but persistence is account-scoped and only
-  // occurs when the scanned host belongs to the authenticated user's portfolio.
   if (pathname === "/api/scan-site") {
     const url = searchParams.get("url") ?? "";
     try {
       const result = await runCorrectedScan(url);
       try {
-        const user = await requestUser(token);
+        const user = await requestAccessUser(token);
         if (user) {
           const state = await getPortfolioState(user.id);
           if (portfolioOwnsHost(state, result.url || result.requestedUrl || url)) {
@@ -83,7 +80,7 @@ export async function handleRestRoute(req: Request, secure: boolean): Promise<Re
           }
         }
       } catch (error) {
-        console.error("[scan-site] failed to persist tenant scan evidence:", error);
+        console.error("[scan-site] failed to persist entitled tenant evidence:", error);
       }
       return jsonResponse(result);
     } catch {
@@ -91,22 +88,15 @@ export async function handleRestRoute(req: Request, secure: boolean): Promise<Re
     }
   }
 
-  // Agent Direct availability/live-sync is private tenant evidence. Reads and
-  // writes fail closed without an authenticated session. The old shared feed is
-  // not reachable from these routes.
   const isAvailPath = pathname === "/api/availability";
   const isSyncPath = pathname === "/api/sync";
   if (isAvailPath || isSyncPath) {
-    const user = await requestUser(token);
-    if (!user) return jsonResponse({ ok: false, error: "Not authenticated." }, 401);
-
+    const user = await requestAccessUser(token);
+    if (!user) return jsonResponse({ ok: false, error: "Active product access required." }, 403);
     if (req.method === "POST") {
       let parsed: unknown = null;
-      try {
-        parsed = req.body ? JSON.parse(await req.text()) : null;
-      } catch {
-        return jsonResponse({ ok: false, error: "invalid JSON body" }, 400);
-      }
+      try { parsed = req.body ? JSON.parse(await req.text()) : null; }
+      catch { return jsonResponse({ ok: false, error: "invalid JSON body" }, 400); }
       const rows = Array.isArray(parsed) ? parsed : [parsed];
       let stored = 0;
       let last: AvailabilityObservation | null = null;
@@ -117,30 +107,20 @@ export async function handleRestRoute(req: Request, secure: boolean): Promise<Re
         stored += 1;
         last = { ...clean, account: String(user.id) };
       }
-      if (stored === 0) {
-        return jsonResponse({ ok: false, error: "no usable observation (need provider, url, observedAt)" }, 400);
-      }
+      if (stored === 0) return jsonResponse({ ok: false, error: "no usable observation (need provider, url, observedAt)" }, 400);
       return jsonResponse({ ok: true, stored, last, receivedAt: Date.now() });
     }
-
     if (req.method === "GET") {
-      const sinceRaw = searchParams.get("since");
-      const parsedSince = sinceRaw ? Number(sinceRaw) : 0;
+      const parsedSince = Number(searchParams.get("since") ?? 0);
       const since = Number.isFinite(parsedSince) ? parsedSince : 0;
-      const rows = await readObservations(user.id, since > 0 ? { sinceMs: since } : {});
-      return jsonResponse(rows);
+      return jsonResponse(await readObservations(user.id, since > 0 ? { sinceMs: since } : {}));
     }
-
     return jsonResponse({ ok: false, error: `method ${req.method} not supported` }, 405);
   }
 
   if (pathname === "/api/intent" && req.method === "POST") {
     let body: unknown;
-    try {
-      body = await req.json();
-    } catch {
-      return jsonResponse({ ok: false, error: "Invalid JSON body." }, 400);
-    }
+    try { body = await req.json(); } catch { return jsonResponse({ ok: false, error: "Invalid JSON body." }, 400); }
     const parsed = validateIntentInput(body);
     if (!parsed.ok) return jsonResponse({ ok: false, error: parsed.error }, parsed.status);
     try {
@@ -163,15 +143,15 @@ export async function handleRestRoute(req: Request, secure: boolean): Promise<Re
     }
   }
 
+  // General signup stays owner-first only. Founding Beta uses /api/beta/signup.
   if (pathname === "/api/auth/signup" && req.method === "POST") {
     let body: unknown;
     try { body = await req.json(); } catch { return jsonResponse({ ok: false, error: "Invalid JSON body." }, 400); }
     const parsed = validateAuthInput(body);
     if (!parsed.ok) return jsonResponse({ ok: false, error: parsed.error }, 400);
     try {
-      if ((await countUsers()) !== 0) return jsonResponse({ ok: false, error: "An owner account already exists. Please log in." }, 403);
-      const existing = await findUserByEmail(parsed.email);
-      if (existing) return jsonResponse({ ok: false, error: "That email is already registered." }, 409);
+      if ((await countUsers()) !== 0) return jsonResponse({ ok: false, error: "Public signup is closed. Use a Founding Beta invite or log in." }, 403);
+      if (await findUserByEmail(parsed.email)) return jsonResponse({ ok: false, error: "That email is already registered." }, 409);
       const user = await createUser(parsed.email, await hashPassword(parsed.password));
       const sessionToken = await createSession(user.id);
       return jsonResponse({ ok: true, user: { id: user.id, email: user.email } }, 200, sessionCookie(sessionToken, secure));
@@ -209,21 +189,16 @@ export async function handleRestRoute(req: Request, secure: boolean): Promise<Re
       const user = token ? await findUserByToken(token) : null;
       if (!user) return jsonResponse({ error: "Not authenticated." }, 401);
       return jsonResponse({ user: { id: user.id, email: user.email } });
-    } catch {
-      return jsonResponse({ error: "Database unavailable." }, 503);
-    }
+    } catch { return jsonResponse({ error: "Database unavailable." }, 503); }
   }
 
   if (pathname === "/api/portfolio") {
-    let authUser: AuthUser | null = null;
-    try { authUser = token ? await findUserByToken(token) : null; } catch { return jsonResponse({ error: "Database unavailable." }, 503); }
-    if (!authUser) return jsonResponse({ error: "Not authenticated." }, 401);
-
+    const authUser = await requestAccessUser(token);
+    if (!authUser) return jsonResponse({ error: "Active product access required." }, 403);
     if (req.method === "GET") {
       try { return jsonResponse({ state: (await getPortfolioState(authUser.id)) ?? null }); }
       catch { return jsonResponse({ error: "Database unavailable." }, 503); }
     }
-
     if (req.method === "PUT") {
       let body: unknown;
       try { body = await req.json(); } catch { return jsonResponse({ ok: false, error: "Invalid JSON body." }, 400); }
@@ -231,11 +206,8 @@ export async function handleRestRoute(req: Request, secure: boolean): Promise<Re
       try {
         await putPortfolioState(authUser.id, body);
         return jsonResponse({ ok: true });
-      } catch {
-        return jsonResponse({ ok: false, error: "Database unavailable." }, 503);
-      }
+      } catch { return jsonResponse({ ok: false, error: "Database unavailable." }, 503); }
     }
-
     return jsonResponse({ error: "Method not allowed." }, 405);
   }
 
