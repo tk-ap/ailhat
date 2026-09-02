@@ -1,20 +1,59 @@
-version: 0.1.0
-product: ailhat
+version: 0.2.0
+product_key: ailhat
+agent_os_repository: tk-ap/agent-os
+routing_source: registry/product-routing.yaml
+
+local_interfaces:
+  agent_direct:
+    role: user-facing handoff from portfolio intelligence into governed action
+    grants_execution_authority: false
+    execution_owner: agent-os-workforce
+
 inbound:
-  - from: agentic-harness-layer
+  - from: agent-os-workforce
     contract: contracts/outcome-event.schema.json
-    purpose: measure-initiative-outcome
-  - from: ledgato
-    contract: authority-status
-    purpose: explain-execution-readiness
+    purpose: measure whether governed work improved the originating portfolio objective
+  - from: alvira-meos
+    contract: contracts/context-envelope.schema.json
+    purpose: consume minimum relevant approved context when it materially improves portfolio interpretation
+
 outbound:
-  - to: agent-os
+  - to: agent-os-workforce
     contract: contracts/work-item.schema.json
-    trigger: finding-approved-for-action
+    trigger: an evidence-backed finding or initiative is approved for governed action
+    purpose: transfer portfolio intent and evidence without granting execution authority
+  - to: agent-control
+    contract: contracts/authorization-request.schema.json
+    trigger: accepted work requires authorization intelligence before governed execution
+    purpose: request authorization without making Agent Control a separate public ailhat offering
+
+conditional_routes:
+  - to: ledgato
+    trigger: work materially intersects LEDGATo governance or enforcement scope
+    rule: do not route generic authorization or portfolio work to LEDGATo
+
+planned_evidence_sources:
+  - provider: github
+    mode: repository and workflow evidence
+    adapter_status: planned
+    authority_scope: implementation activity and source-control state
+  - provider: vercel
+    mode: preview and production deployment evidence
+    adapter_status: planned
+    authority_scope: deployment and release state
+
 cross_market:
-  - trigger: p1-initiative-approved
-    destination: agent-os
-    message: Assemble a workforce and execution plan.
-  - trigger: initiative-requires-human-or-organizational-context
-    destination: alvira-bridge
-    message: Attach approved context to improve execution quality.
+  - trigger: an accepted initiative requires shared workforce composition or execution
+    destination: agent-os-workforce
+    message: Convert the accepted portfolio intent into a governed task and minimum-sufficient workforce.
+  - trigger: an initiative requires approved human or operating context
+    destination: alvira-meos
+    message: Request only the minimum relevant ALVIRA context through the shared context contract.
+
+rules:
+  use_portable_contracts_for_cross_product_handoffs: true
+  cross_market_policy: policies/CROSS_MARKET_POLICY.md
+  integration_claims_require_verified_implementation: true
+  findings_and_work_items_do_not_grant_execution_authority: true
+  missing_external_source_state_is_unknown_not_negative: true
+  external_change_requires_verification_before_verified_done: true
