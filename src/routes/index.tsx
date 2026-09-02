@@ -23,9 +23,6 @@ export const Route = createFileRoute("/")({
    No purple/violet anywhere. SSR/hydration-safe (Reveal runs in useEffect).
 --------------------------------------------------------------------------- */
 
-// SSR/hydration-safe scroll reveal: IntersectionObserver only runs in the
-// browser after mount, initial state is identical on server and client so the
-// HTML never mismatches.
 function Reveal({
   children,
   delay = 0,
@@ -76,19 +73,19 @@ function Reveal({
 const FEATURES = [
   {
     title: "One view, every product",
-    desc: "Continuously understand the state of all your AI-built products — across Vercel, cto.new, and madethis — in a single intelligence layer.",
+    desc: "Bring the products you ship across Vercel, cto.new, madethis, and other hosts into one portfolio-intelligence layer.",
   },
   {
-    title: "Auto-generated checklists",
-    desc: "Every product gets a live checklist of outstanding updates, bugs, and in-progress work. No spreadsheet, ever.",
+    title: "Evidence-backed attention",
+    desc: "Saved product URLs can be observed and rescanned so findings stay tied to evidence instead of becoming an ungrounded task list.",
   },
   {
     title: "Signal-driven prioritization",
-    desc: "ailhat surfaces what matters and tells you the highest-leverage thing to do next across your whole portfolio — automatically.",
+    desc: "ailhat surfaces what matters and tells you the highest-leverage thing to do next across your portfolio — with confidence and reasoning.",
   },
   {
     title: "Manual capture",
-    desc: "Drop in issues, features, and bugs by hand whenever they come up. Keep everything in one place.",
+    desc: "Drop in issues, features, and bugs by hand whenever they come up. Keep product context and observed evidence together.",
   },
 ];
 
@@ -113,23 +110,21 @@ const PLATFORMS = [
 const PLATFORM_MARQUEE = [...PLATFORMS, ...PLATFORMS];
 
 const STATS = [
-  { k: "15+", v: "hosting platforms observed" },
-  { k: "Observe → Act", v: "a live intelligence pipeline, not a scan" },
-  { k: "0", v: "spreadsheets, ever" },
+  { k: "15+", v: "platform labels supported" },
+  { k: "Observe → Act", v: "evidence before recommendation" },
+  { k: "1", v: "portfolio view across products" },
 ];
 
-// The intelligence pipeline rendered as numbered "loop" steps (Ledgato's
-// 01 Connect … 06 Prove, adapted to ailhat's strategic loop).
 const LOOP = [
   {
     n: "01",
-    t: "Connect",
-    d: "Wire up the platforms you already ship on. If it hosts your AI-built product, ailhat can see it.",
+    t: "Add",
+    d: "Add the products and public URLs you want ailhat to understand. Connected-source automation can enrich that evidence as integrations become available.",
   },
   {
     n: "02",
     t: "Observe",
-    d: "Your live products are scanned automatically on refresh. No Scan button, no upkeep.",
+    d: "ailhat can scan saved public product URLs and retain observation history so a finding has evidence behind it.",
   },
   {
     n: "03",
@@ -139,7 +134,7 @@ const LOOP = [
   {
     n: "04",
     t: "Prioritize",
-    d: "Everything is ranked by impact so the highest-leverage fix always surfaces first.",
+    d: "Signals are ranked by impact so the highest-leverage work can surface without turning every observation into a task.",
   },
   {
     n: "05",
@@ -149,11 +144,10 @@ const LOOP = [
   {
     n: "06",
     t: "Act",
-    d: "Fix, dismiss, snooze, or mark it wrong. ailhat learns what deserves your attention.",
+    d: "Act, defer, dismiss, or investigate. When execution happens, the evidence should be observed again before the work is treated as resolved.",
   },
 ];
 
-// -- status/severity chips (no purple; accent stays light-blue #7fb0ff) ------
 const CHIP = {
   observed: "border-emerald-500/40 bg-emerald-500/10 text-emerald-400",
   broken: "border-rose-500/40 bg-rose-500/10 text-rose-400",
@@ -201,19 +195,19 @@ const SCAN_LINES = [
 const FAQ = [
   {
     q: "Is this another analytics dashboard?",
-    a: "No. ailhat tells you what deserves your attention across your whole portfolio. It's intelligence, not charts — every finding carries evidence, reasoning, and a recommendation.",
+    a: "No. ailhat tells you what deserves your attention across your whole portfolio. It's intelligence, not charts — findings carry evidence, reasoning, and a recommendation.",
   },
   {
-    q: "Is an AI chatbot?",
-    a: "No. ailhat surfaces signals with a confidence level and lets you act on them. The product is attention, not conversation.",
+    q: "Is ailhat an AI chatbot?",
+    a: "No. ailhat surfaces signals with a confidence level and helps you decide what deserves action. The product is portfolio intelligence, not conversation.",
   },
   {
     q: "Do I have to keep it updated?",
-    a: "No. Connect once and ailhat observes automatically — it watches your products on refresh and tells you what changed and what matters next. Zero upkeep.",
+    a: "ailhat can rescan saved public product URLs and retain what changed. Broader connected-source automation will expand as integrations become available; the site does not pretend an unavailable connection is already live.",
   },
   {
     q: "Will it work with my platform?",
-    a: "If it hosts your AI-built product — Vercel, cto.new, madethis, Netlify, and 15+ more — ailhat can observe it.",
+    a: "ailhat is designed for portfolios spread across hosts such as Vercel, cto.new, madethis, Netlify, and others. Public URL observation works independently of a deep platform integration.",
   },
 ];
 
@@ -239,7 +233,7 @@ function Terminal({
   return (
     <div className="rounded-lg border border-white/10 bg-[#0d0d0f] shadow-2xl shadow-black/60">
       <div className="flex items-center justify-between border-b border-white/10 px-4 py-2.5">
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5" aria-hidden>
           <span className="h-2 w-2 rounded-full bg-white/20" />
           <span className="h-2 w-2 rounded-full bg-white/20" />
           <span className="h-2 w-2 rounded-full bg-white/20" />
@@ -260,11 +254,9 @@ function Terminal({
   );
 }
 
-/* The live scan console — the product mental model rendered as a control
-   surface: ✓ OBSERVED / ✕ BROKEN / ▲ OPPORTUNITY with attention levels. */
 function ScanTerminal() {
   return (
-    <Terminal title="live · observing your portfolio" cmd="ailhat scan --watch --portfolio">
+    <Terminal title="example · portfolio observation" cmd="ailhat scan --portfolio">
       {SCAN_LINES.map((l) => (
         <div
           key={l.name}
@@ -286,7 +278,7 @@ function ScanTerminal() {
         <Chip label="✓ OBSERVED" cls={CHIP.observed} />
         <Chip label="✕ BROKEN" cls={CHIP.broken} />
         <Chip label="▲ OPPORTUNITY" cls={CHIP.opportunity} />
-        <span className="text-white/35">— attention, ranked</span>
+        <span className="text-white/35">— example attention, ranked</span>
       </div>
     </Terminal>
   );
@@ -295,7 +287,6 @@ function ScanTerminal() {
 function Landing() {
   return (
     <div className="relative min-h-dvh overflow-x-hidden bg-[#0a0a0a] text-white">
-      {/* subtle light-blue ambience + grain, matching the control-plane vibe */}
       <div
         aria-hidden
         className="pointer-events-none absolute -top-48 left-1/2 h-[520px] w-[980px] -translate-x-1/2 rounded-full bg-[radial-gradient(50%_50%_at_50%_50%,rgba(127,176,255,0.12),transparent_70%)] blur-2xl"
@@ -311,10 +302,9 @@ function Landing() {
       <div aria-hidden className="grid-layer pointer-events-none absolute inset-0 opacity-70" />
       <div aria-hidden className="grain pointer-events-none absolute inset-0 opacity-[0.03] mix-blend-overlay" />
 
-      {/* ===== nav ===== */}
       <header className="sticky top-0 z-30 border-b border-white/10 bg-[#0a0a0a]/75 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <a href="#top" className="flex items-center gap-2.5">
+          <a href="#top" className="flex items-center gap-2.5" aria-label="ailhat home">
             <div className="grid h-8 w-8 place-items-center rounded-md bg-accent font-display text-sm font-bold text-[#0a0a0a]">
               A
             </div>
@@ -322,26 +312,25 @@ function Landing() {
               ailhat
             </span>
           </a>
-          <nav className="flex items-center gap-3">
+          <nav className="flex items-center gap-3" aria-label="Primary navigation">
             <Link to="/brief" className="silhat-btn silhat-btn-ghost">
               Daily brief
             </Link>
-            <Link to="/dashboard" className="silhat-btn silhat-btn-primary px-4 py-2">
-              Open dashboard
-            </Link>
+            <a href="#request-access" className="silhat-btn silhat-btn-primary px-4 py-2">
+              Request access
+            </a>
             <AuthNav />
           </nav>
         </div>
       </header>
 
       <main id="top" className="relative z-10 mx-auto max-w-6xl px-6">
-        {/* ===== hero — big statement (Ledgato language) ===== */}
         <section className="py-20 text-center md:py-28">
           <Reveal>
             <div className="flex flex-col items-center gap-5">
               <span className="l-status">
-                <span className="ping-dot ping-dot--blue h-2 w-2 rounded-full bg-accent" />
-                Live · Observing your portfolio
+                <span className="ping-dot ping-dot--blue h-2 w-2 rounded-full bg-accent" aria-hidden />
+                Portfolio signal preview
               </span>
               <span className="l-eyebrow">Portfolio Intelligence Layer</span>
             </div>
@@ -351,18 +340,17 @@ function Landing() {
             </h1>
             <p className="mx-auto mt-8 max-w-2xl font-code text-base leading-relaxed text-[#7fb0ff]/80">
               ailhat is the portfolio intelligence layer for builders shipping
-              multiple AI-built products across every platform. It continuously
-              understands the state of everything you've shipped, surfaces what
-              matters, and directs your attention to the highest-leverage action
-              — with evidence, reasoning, and a clear recommendation.
+              multiple AI-built products across platforms. It brings product
+              context and observed evidence together, surfaces what matters, and
+              helps direct attention to the highest-leverage next action.
             </p>
             <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
-              <Link
-                to="/dashboard"
+              <a
+                href="#request-access"
                 className="inline-flex items-center gap-1.5 rounded-md bg-accent px-6 py-3 font-display text-sm font-semibold text-[#0a0a0a] transition hover:bg-[#8fc0ff]"
               >
-                Explore your portfolio →
-              </Link>
+                Request access →
+              </a>
               <a
                 href="#loop"
                 className="inline-flex items-center gap-1.5 rounded-md border border-white/20 px-6 py-3 font-code text-sm text-white/70 transition hover:border-white/40 hover:text-white"
@@ -371,7 +359,7 @@ function Landing() {
               </a>
             </div>
             <p className="mt-5 font-code text-xs text-white/40">
-              No account. No install. Works in your browser.
+              Request access in your browser. Existing users can log in to open their saved portfolio.
             </p>
           </Reveal>
 
@@ -380,7 +368,6 @@ function Landing() {
           </Reveal>
         </section>
 
-        {/* ===== stats strip ===== */}
         <Reveal>
           <div className="grid gap-px overflow-hidden rounded-lg border border-white/10 bg-white/10 sm:grid-cols-3">
             {STATS.map((s) => (
@@ -394,7 +381,6 @@ function Landing() {
           </div>
         </Reveal>
 
-        {/* ===== the loop ===== */}
         <section id="loop" className="py-24">
           <Reveal className="text-center">
             <span className="l-eyebrow">The Loop</span>
@@ -402,9 +388,9 @@ function Landing() {
               Six moves between your portfolio and the right next step.
             </h2>
             <p className="mx-auto mt-4 max-w-2xl font-code text-sm text-white/50">
-              Observe → Understand → Detect → Prioritize → Recommend → Act. The
-              pipeline runs automatically; you only ever see what deserves
-              attention.
+              Add → Observe → Classify → Prioritize → Recommend → Act. ailhat
+              should show what deserves attention without pretending every
+              observed condition is already verified or executable.
             </p>
           </Reveal>
           <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -431,7 +417,6 @@ function Landing() {
           </div>
         </section>
 
-        {/* ===== intelligence / attention (features + scan) ===== */}
         <section className="border-t border-white/10 py-24">
           <Reveal>
             <span className="l-eyebrow">Surface</span>
@@ -439,14 +424,14 @@ function Landing() {
               Everything a multi-shipping builder needs
             </h2>
             <p className="mt-3 max-w-2xl font-code text-sm text-white/50">
-              The signals that actually deserve your attention — detected,
+              The signals that actually deserve your attention — observed,
               explained, and ranked. Not another dashboard to babysit.
             </p>
           </Reveal>
           <div className="mt-12 grid gap-5 sm:grid-cols-2">
             {FEATURES.map((f, i) => (
               <Reveal key={f.title} delay={i * 80}>
-                <div className="group h-full rounded-lg border border-white/10 bg-[#0d0d0f] p-6 transition-colors hover:border-accent/40">
+                <div className="group relative h-full rounded-lg border border-white/10 bg-[#0d0d0f] p-6 transition-colors hover:border-accent/40">
                   <div
                     aria-hidden
                     className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent/50 to-transparent opacity-0 transition-opacity group-hover:opacity-100"
@@ -462,12 +447,11 @@ function Landing() {
             ))}
           </div>
 
-          {/* platforms marquee */}
           <div className="pt-20 text-center">
             <Reveal>
-              <span className="l-eyebrow">Observe</span>
+              <span className="l-eyebrow">Across Hosts</span>
               <h2 className="mt-3 font-display text-3xl font-bold tracking-tight">
-                Built for the platforms you already ship on
+                Built for products you ship across platforms
               </h2>
             </Reveal>
             <Reveal delay={100} className="mt-10">
@@ -487,7 +471,6 @@ function Landing() {
           </div>
         </section>
 
-        {/* ===== questions, answered ===== */}
         <section className="border-t border-white/10 py-24">
           <Reveal>
             <span className="l-eyebrow">Questions, Answered</span>
@@ -511,8 +494,7 @@ function Landing() {
           </div>
         </section>
 
-        {/* ===== request access (intent capture) ===== */}
-        <section className="border-t border-white/10 py-24">
+        <section id="request-access" className="scroll-mt-24 border-t border-white/10 py-24">
           <div className="grid items-start gap-12 md:grid-cols-2">
             <Reveal>
               <span className="l-eyebrow">Request Access</span>
@@ -520,18 +502,19 @@ function Landing() {
                 Put your portfolio behind a signal.
               </h2>
               <p className="mt-4 font-code text-sm leading-relaxed text-white/55">
-                If you ship 5+ products across platforms, managing your
-                portfolio's attention is a real job. Tell us about your setup —
-                it takes 20 seconds and shapes what ailhat becomes.
+                ailhat is opening access deliberately while the portfolio-intelligence
+                loop matures. Tell us what you're shipping and where; that gives
+                us a real next step without pretending public self-serve access is
+                already available to everyone.
               </p>
               <ul className="mt-6 space-y-3 font-code text-sm text-white/50">
                 <li className="flex items-start gap-2">
-                  <span className="mt-0.5 text-accent">✓</span>
-                  No account or install required to sign up.
+                  <span className="mt-0.5 text-accent" aria-hidden>✓</span>
+                  No install required to request access.
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="mt-0.5 text-accent">✓</span>
-                  Early builders get first access to the Daily Brief.
+                  <span className="mt-0.5 text-accent" aria-hidden>✓</span>
+                  Existing users can log in and continue from saved portfolio context.
                 </li>
               </ul>
             </Reveal>
@@ -543,7 +526,6 @@ function Landing() {
           </div>
         </section>
 
-        {/* ===== CTA ===== */}
         <Reveal>
           <section className="relative my-20 overflow-hidden rounded-xl border border-accent/25 bg-[#0d0d0f] p-10 text-center sm:p-14">
             <div
@@ -552,19 +534,19 @@ function Landing() {
             />
             <div className="relative">
               <h2 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
-                Stop juggling tabs.{" "}
-                <span className="text-accent">Start shipping.</span>
+                Stop juggling product context.{" "}
+                <span className="text-accent">Know what matters next.</span>
               </h2>
               <p className="mx-auto mt-3 max-w-xl font-code text-sm text-white/60">
-                Add your products, capture your checklist, and let ailhat
-                surface what needs your attention next.
+                Request access now. If you already have an ailhat account, log in
+                and continue from your saved portfolio.
               </p>
-              <Link
-                to="/dashboard"
+              <a
+                href="#request-access"
                 className="mt-7 inline-flex items-center gap-1.5 rounded-md bg-accent px-8 py-3 font-display text-sm font-semibold text-[#0a0a0a] transition hover:bg-[#8fc0ff] shadow-lg shadow-accent/20"
               >
-                Go to the dashboard
-              </Link>
+                Request access
+              </a>
             </div>
           </section>
         </Reveal>
@@ -573,7 +555,7 @@ function Landing() {
       <footer className="border-t border-white/10">
         <div className="mx-auto flex max-w-6xl flex-col items-center gap-3 px-6 py-8 text-center sm:flex-row sm:justify-between">
           <span className="font-code text-xs text-white/40">
-            ailhat — built for builders shipping AI products everywhere.
+            ailhat — Portfolio Intelligence for builders shipping across products and platforms.
           </span>
           <span className="flex items-center gap-4 font-code text-xs text-white/45">
             <Link to="/brief" className="transition-colors hover:text-accent">
@@ -588,7 +570,7 @@ function Landing() {
           </span>
         </div>
         <p className="pb-8 text-center font-code text-[10px] uppercase tracking-[0.22em] text-white/25">
-          © 2026 Ailhat.
+          © 2026 ailhat.
         </p>
       </footer>
     </div>
