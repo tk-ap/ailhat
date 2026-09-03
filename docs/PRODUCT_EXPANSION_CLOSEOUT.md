@@ -12,6 +12,8 @@ This lane is complete on `main` with:
 
 Product Expansion was merged through PR #53. This post-merge marker intentionally triggers the Git-linked production release containing the full lane.
 
+Release retry marker: 2026-09-03 after the prior Vercel Hobby-plan build-rate window elapsed.
+
 Preview build quota is not a merge criterion for this closeout. Production deployment and second-account isolation verification are the post-merge release gates.
 
 Founding Beta invite issuance remains an explicit operational switch: `AILHAT_BETA_INVITES_ENABLED=true`. Do not enable it until the disposable second-account isolation test passes.
