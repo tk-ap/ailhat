@@ -1,8 +1,8 @@
 const state = {
-  schema_version: "1.0",
+  schema_version: "1.1",
   product: {
     id: "ailhat",
-    name: "Ailhat",
+    name: "ailhat",
     state: "ACTIVE",
     launch_stage: "PRIVATE_BETA_PRE_LAUNCH",
     readiness_score: 65,
@@ -60,6 +60,28 @@ const state = {
       source: "portfolio_context_seed"
     }
   ],
+  workspace_evidence: {
+    contract_version: "1.0",
+    authoritative_domain: "portfolio_intelligence",
+    consumer: "ashwood_workspace",
+    evidence_state: "seed_until_scan_timestamped",
+    items: [
+      {
+        id: "ailhat:attention:top",
+        kind: "portfolio_attention",
+        product_id: "ailhat",
+        title: "production reliability/auth",
+        status: "NEEDS_ATTENTION",
+        priority: "P0",
+        occurred_at: null,
+        confidence: 0.55,
+        source: "portfolio_context_seed",
+        source_ref: "attention.top_issue",
+        suggested_goal_ids: ["ownership", "leadership"],
+        next_action: "Restore production reliability/auth and validate the complete live scan loop"
+      }
+    ]
+  },
   provenance: {
     source_type: "conversation_seed_plus_owner_dashboard_contract",
     source_ref: "tk-ap/ailhat/docs/PORTFOLIO_AND_AGENT_CONTROL.md"
