@@ -1,0 +1,111 @@
+{
+  "work_id": "alvira-model-fallback-2026-09-05",
+  "routing_source": "registry/product-routing.yaml",
+  "source_product": "ailhat",
+  "owning_product": "alvira-meos",
+  "workspace": "tk-ap/ALVIRA",
+  "problem_or_opportunity": {
+    "summary": "ALVIRA hardcodes the model literal \"gpt-4o\" in five server functions with no fallback provider. A single provider incident disables every AI capability in the product simultaneously, including the interview.",
+    "call_sites": [
+      "src/routes/-extractor.ts",
+      "src/routes/-questionGenerator.ts",
+      "src/routes/-meosCompiler.ts",
+      "src/routes/-buildBrief.ts",
+      "src/routes/-foundingBetaAIReview.ts"
+    ],
+    "why_it_matters": [
+      "The interview is the product. If the model call fails, a visitor cannot complete the core path at all.",
+      "Call sites have materially different requirements — question generation is conversational and latency-sensitive, compilation is structured and quality-sensitive — and all currently use one model with no way to differ.",
+      "Changing model requires editing five files, so the choice is a scattered literal rather than a recorded decision.",
+      "Agent OS and ailhat both hold that hosts and harnesses are replaceable and must not be hardcoded as the execution layer. Model providers are the same class of dependency and do not currently get the same treatment."
+    ],
+    "not_in_scope": [
+      "Adopting GooseAI. Declined on capability grounds; see docs/MARKET_SIGNAL_MODEL_ROUTING_2026-09-05.md.",
+      "Integrating Multi or any model-routing vendor.",
+      "Building a routing product, model comparison UI, or per-request model shopping.",
+      "Any Bridge integration work; Bridge has unresolved P1.1/P1.2 defects."
+    ]
+  },
+  "originating_signal": {
+    "type": "external market signal producing an internal repository observation",
+    "document": "docs/MARKET_SIGNAL_MODEL_ROUTING_2026-09-05.md",
+    "date": "2026-09-05",
+    "note": "Evaluating getmulti.ai surfaced the dependency. The finding stands independent of that vendor and requires no external dependency to act on."
+  },
+  "priority": {
+    "level": "p2",
+    "confidence": 0.7,
+    "rationale": "Resilience and maintainability, not a live defect. No outage has been observed. Ranks below the lifetime-checkout 502 and the Bridge authorization defect. Final priority is the owner's call."
+  },
+  "evidence": [
+    {
+      "kind": "repository",
+      "name": "hardcoded-model-literal",
+      "finding": "grep of src/ for 'model: \"' returns gpt-4o at five call sites and no other model value. No fallback, retry-with-alternate, or provider abstraction is present.",
+      "source_order_position": "2 — linked repository; implementation intent, not proof of production behaviour"
+    },
+    {
+      "kind": "market",
+      "name": "task-shaped-model-choice",
+      "finding": "getmulti.ai positions on 'no single model wins at everything' with 300+ models and four routing modes at $19/month or $399 lifetime. Directional support that task-shaped model choice has market traction; not evidence of ALVIRA user demand."
+    },
+    {
+      "kind": "owned-capability",
+      "name": "existing-fallback-tooling",
+      "finding": "Hermes ships `fallback` (manage fallback providers tried when the primary model fails) and `moa` (mixture-of-agents slots) subcommands, so the pattern already exists in owned tooling and does not require a vendor."
+    }
+  ],
+  "desired_outcome": {
+    "statement": "Model choice in ALVIRA is a single configurable decision with a declared fallback, so no one provider incident can disable every AI path and a model change edits one location.",
+    "observable_change": [
+      "A single model-selection helper is the only place a model literal appears.",
+      "Each of the five call sites requests a named role rather than a model string.",
+      "A declared fallback provider is attempted when the primary call fails.",
+      "A failed primary with a successful fallback is logged distinguishably from a total failure."
+    ]
+  },
+  "required_capabilities": ["backend-api-implementation", "llm-provider-integration", "end-to-end-verification", "quality-railguards"],
+  "required_tools": ["repository read/write on tk-ap/ALVIRA", "provider API credentials via the approved secret flow"],
+  "context_references": [
+    "docs/MARKET_SIGNAL_MODEL_ROUTING_2026-09-05.md",
+    "tk-ap/ALVIRA:docs/LAUNCH_READINESS_2026-09-05.md",
+    "tk-ap/ALVIRA:AGENTS.md",
+    "tk-ap/agent-os:policies/HANDOFF_POLICY.md",
+    "tk-ap/agent-os:policies/CROSS_MARKET_POLICY.md",
+    "tk-ap/agent-os:contracts/work-item.schema.json"
+  ],
+  "authority_class": "bounded-implementation-requires-authorization",
+  "constraints": {
+    "cross_product_write_rule": "ailhat proposes; it does not implement. This item requires explicit task authorization on tk-ap/ALVIRA before any code change, and must preserve that repository's local instructions and regression boundaries.",
+    "preserve_contract": [
+      "No change to prompts, extraction schema, interview behaviour, or output file structure. This is a plumbing change only.",
+      "The prompt-injection defence in -extractor.ts must be preserved exactly.",
+      "Any fallback model must support the structured output the call site depends on; -extractor.ts requires response_format json_object.",
+      "No user-facing copy or UI change."
+    ],
+    "repository_local_rules": [
+      "Branch from latest main as codex/<short-task-name>; never commit or push to main.",
+      "Open a draft pull request and satisfy the AGENTS.md Merge Gate.",
+      "Free-tier smoke account acceptance testing applies before owner-profile verification."
+    ],
+    "scope_discipline": "Introduce the seam and one fallback. Do not build routing heuristics, model scoring, or per-request selection logic in this item."
+  },
+  "human_oversight": {
+    "acceptance_gate": "required",
+    "basis": "Changes the provider path for every AI capability in the product. Owner ratifies which models fill each role.",
+    "gate_owner": "human product owner"
+  },
+  "acceptance_criteria": [
+    "The literal \"gpt-4o\" appears in exactly one module in src/.",
+    "All five call sites request a named role rather than a model string.",
+    "A declared fallback provider is attempted when the primary model call fails, and the interview completes end to end when the primary is forced to fail.",
+    "Fallback activation is logged distinguishably from total failure.",
+    "The prompt-injection defence and JSON re-validation in -extractor.ts are unchanged.",
+    "A guest interview still completes end to end and compiles, matching the behaviour recorded in the 2026-09-05 launch readiness audit.",
+    "No change to prompts, extraction schema, output files, or user-facing copy.",
+    "Owner has ratified which model fills each role."
+  ],
+  "evidence_destination": "contracts/outcome-event.schema.json",
+  "status": "proposed",
+  "created_at": "2026-09-05T10:30:00Z"
+}
