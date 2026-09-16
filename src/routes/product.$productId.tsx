@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import AppShell from "~/components/AppShell";
+import SandboxAccessPanel from "~/components/SandboxAccessPanel";
 import { AuthProvider, useAuth } from "~/lib/useAuth";
 import { StoreProvider, useStore } from "~/lib/useStore";
 import { computeBrief, type Signal } from "~/lib/brief";
@@ -190,6 +191,8 @@ function ProductCockpit() {
         <Metric label="Observation" value={lastGood ? timeAgo(lastGood.scannedAt) : "Not scanned"} detail={history?.consecutiveFailures ? `${history.consecutiveFailures} recent failed attempt${history.consecutiveFailures === 1 ? "" : "s"}` : "fresh evidence closes the loop"} />
         <Metric label="Tracked findings" value={String(trackedIssues.length)} detail={hiddenResolvedCount > 0 ? `${hiddenResolvedCount} resolved finding${hiddenResolvedCount === 1 ? "" : "s"} hidden from active view` : "resolved evidence is preserved"} />
       </section>
+
+      <SandboxAccessPanel productId={product.id} productName={product.name} />
 
       <section className="silhat-panel p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
