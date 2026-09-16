@@ -114,3 +114,20 @@ Credential material is **execution authority, not evidence**.
 The initial credential UI is for **sandbox/test credentials only**. Production credentials are out of scope. Test accounts should be dedicated/disposable where practical, limited to the minimum permissions required for the journey, and independently revocable.
 
 A configured credential must not by itself change Launch Readiness. Only observed journey results may update the corresponding evidence dimensions, and sandbox observations must remain labeled as sandbox evidence rather than being promoted to production proof.
+
+## Product Cockpit implementation status — 2026-09-15
+
+Sandbox test access is now surfaced directly in each Product Cockpit. The implemented panel supports:
+
+- HTTPS sandbox URL
+- test username/email
+- standard or admin test-account scope
+- password creation/replacement without ever returning the saved plaintext to the client
+- explicit credential revocation
+- visible configured / last-verification state
+
+The backing API is owner-only in the current single-owner release. Passwords are encrypted with AES-256-GCM before persistence. Ciphertext, IV, and authentication tag are stored in the existing database; plaintext is available only to the server-only execution resolver.
+
+The deployment requires one server-side master secret named `AILHAT_CREDENTIAL_ENCRYPTION_KEY`. It must be either a 32-byte value encoded as base64 or a 64-character hex value. Never commit this value to the repository or expose it to client code.
+
+`Verify access` remains intentionally disabled until the live browser-journey executor is connected. Saving a credential is configuration only: it must not set `last_verified_at`, close an unknown readiness dimension, or count as launch evidence.
