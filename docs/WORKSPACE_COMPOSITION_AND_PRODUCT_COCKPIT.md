@@ -90,6 +90,75 @@ An Investigate artifact should include the question, known evidence, unknowns, s
 
 Prepared work is never the same as executed work. Direct is the seam where accepted intelligence becomes governed work for a replaceable execution harness.
 
+## Action semantics: labels must match real state transitions
+
+Interactive controls must not imply an action that the system did not actually perform. A UI label may describe a future capability only when the control is disabled or visibly marked unavailable; an enabled control must perform the state transition its wording promises.
+
+### `Start — compile a directive →`
+
+The final Guided Onboarding action must do more than dismiss onboarding. It should:
+
+1. identify the current highest-priority work item used by Direct,
+2. create or resolve the corresponding prepared-work artifact,
+3. compile that artifact into the supported directive representation,
+4. navigate the user to Direct with that prepared item selected or otherwise make the compiled directive immediately visible, and
+5. only then record onboarding as completed.
+
+If no valid work item can be compiled, the action should explain why and leave onboarding incomplete rather than silently closing.
+
+### `Direction handed off / implementing`
+
+This control represents a real execution boundary and must not merely set a local workflow stage.
+
+A successful handoff should:
+
+- require a configured execution destination / Agent OS adapter,
+- preserve the current prepared artifact and evidence provenance,
+- enforce the current authorization and tenant boundary before dispatch,
+- record the attempted handoff, destination, timestamp, artifact/work-item id, and returned execution reference when available,
+- distinguish `accepted`, `rejected`, `unavailable`, and `unknown` handoff outcomes,
+- move the workflow to `implementation` only after the destination explicitly accepts the work.
+
+Missing adapter configuration, unavailable capacity, missing authorization, or transport failure must not be represented as implementation having started. Those states should remain inspectable and retryable.
+
+The execution destination may perform work; ailhat still does not independently verify that the intended product outcome occurred. Verification remains a separate fresh-evidence step.
+
+### `Investigate` on Opportunities and Market Gaps
+
+`Investigate` must initiate durable investigation work rather than only record preference feedback.
+
+Starting an investigation should create an inspectable investigation record/artifact containing:
+
+- stable investigation id,
+- source opportunity or market-gap id,
+- product / portfolio scope,
+- original evidence and provenance,
+- investigation question or hypothesis,
+- explicit knowns and unknowns,
+- relevant sources/surfaces to inspect,
+- constraints and non-destructive boundaries,
+- stop condition,
+- the decision the investigation is intended to unlock,
+- status and timestamps.
+
+The expected lifecycle is:
+
+**Investigate → evidence gathered → review → decision**
+
+An investigation may be prepared for Direct or another approved research harness, but the button itself must create the real investigation state first. Feedback such as “show me more like this” may be recorded separately and must not substitute for the investigation workflow.
+
+### Cross-cutting evidence rule
+
+For all three actions, the persisted record should separate:
+
+- **intent** — what the user asked ailhat to do,
+- **attempt** — what ailhat actually tried,
+- **acceptance** — whether a downstream system accepted the work,
+- **execution** — what the downstream system reports it performed,
+- **verification** — what fresh evidence confirms about the product outcome.
+
+No later state may be inferred merely from an earlier one. In particular, prepared ≠ handed off, handed off ≠ executed, executed ≠ verified, and investigated ≠ resolved.
+
 ## Feedback semantics
 
 - Snooze — defer until a defined time or evidence-change condition.
