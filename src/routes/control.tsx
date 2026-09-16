@@ -34,17 +34,23 @@ const portfolioTone: Record<string, string> = {
   PAUSED: "border-gray-700 bg-gray-900 text-gray-500",
 };
 
+const readinessTone: Record<string, string> = {
+  verified: "border-emerald-500/25 bg-emerald-500/10 text-emerald-300",
+  failing: "border-rose-500/25 bg-rose-500/10 text-rose-300",
+  unknown: "border-gray-700 bg-gray-900 text-gray-500",
+};
+
 function Chip({ children, className = "border-gray-700 bg-gray-900 text-gray-400" }: { children: React.ReactNode; className?: string }) {
   return <span className={`rounded-full border px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider ${className}`}>{children}</span>;
 }
 
-function SyncScanButton({ url }: { url: string | null }) {
+function SyncScanButton({ url, assessed }: { url: string | null; assessed: boolean }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
 
   if (!url) {
-    return <p className="mt-3 text-xs text-gray-600">Add a production URL to this product before running production verification.</p>;
+    return <p className="mt-3 text-xs text-gray-600">Add a production URL to this product before running a readiness assessment.</p>;
   }
 
   return (
@@ -58,17 +64,17 @@ function SyncScanButton({ url }: { url: string | null }) {
           try {
             const response = await fetch(`/api/scan-site?url=${encodeURIComponent(url)}`);
             const result = (await response.json()) as { ok?: boolean };
-            setMessage(result.ok === false ? "Scan completed; production could not be fully verified." : "Production evidence refreshed.");
+            setMessage(result.ok === false ? "Assessment evidence refreshed; production could not be fully verified." : "Readiness evidence refreshed.");
             await router.invalidate();
           } catch {
-            setMessage("Production scan unavailable. Existing evidence was preserved.");
+            setMessage("Readiness assessment unavailable. Existing evidence was preserved.");
           } finally {
             setBusy(false);
           }
         }}
         className="silhat-btn silhat-btn-primary disabled:opacity-50"
       >
-        {busy ? "Scanning…" : "Verify production"}
+        {busy ? "Assessing…" : assessed ? "Re-run readiness assessment" : "Run readiness assessment"}
       </button>
       <span className="text-[10px] uppercase tracking-wider text-gray-600">saved only to the signed-in account when this URL belongs to its portfolio</span>
       {message && <span className="text-xs text-[#9cc8ff]">{message}</span>}
@@ -78,6 +84,7 @@ function SyncScanButton({ url }: { url: string | null }) {
 
 function ProductCard({ modeled, now }: { modeled: ModeledWorkspace; now: number }) {
   const ws = modeled.ws;
+  const assessment = ws.readinessAssessment;
   return (
     <article className="silhat-panel p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -97,12 +104,16 @@ function ProductCard({ modeled, now }: { modeled: ModeledWorkspace; now: number 
         <div className="rounded-lg border border-gray-800 bg-gray-950/55 p-3">
           <p className="text-[10px] uppercase tracking-wider text-gray-600">Readiness</p>
           <p className="mt-1 font-semibold text-gray-200">{modeled.readiness == null ? "Needs assessment" : `${modeled.readiness}%`}</p>
-          <p className="mt-1 text-[11px] text-gray-600">No percentage is invented from account age or activity.</p>
+          <p className="mt-1 text-[11px] text-gray-600">
+            {assessment
+              ? `${assessment.coverage}% evidence coverage · ${assessment.confidence ?? "no"} confidence`
+              : "No percentage is invented from account age or activity."}
+          </p>
         </div>
         <div className="rounded-lg border border-gray-800 bg-gray-950/55 p-3">
           <p className="text-[10px] uppercase tracking-wider text-gray-600">Production evidence</p>
           <p className="mt-1 font-semibold text-gray-200">{modeled.scan ? ageLabelObs(now, modeled.scan.scannedAt) : "Not observed"}</p>
-          <p className="mt-1 text-[11px] text-gray-600">{modeled.scan ? `${modeled.scan.totalFailures} current scan finding${modeled.scan.totalFailures === 1 ? "" : "s"}` : "Run verification to establish current site evidence."}</p>
+          <p className="mt-1 text-[11px] text-gray-600">{modeled.scan ? `${modeled.scan.totalFailures} current scan finding${modeled.scan.totalFailures === 1 ? "" : "s"}` : "Run the readiness assessment to establish current site evidence."}</p>
         </div>
         <div className="rounded-lg border border-gray-800 bg-gray-950/55 p-3">
           <p className="text-[10px] uppercase tracking-wider text-gray-600">Capacity evidence</p>
@@ -110,6 +121,27 @@ function ProductCard({ modeled, now }: { modeled: ModeledWorkspace; now: number 
           <p className="mt-1 text-[11px] text-gray-600">No observation means unknown; it never means available or reserved.</p>
         </div>
       </div>
+
+      {assessment && (
+        <details className="mt-4 rounded-lg border border-gray-800 bg-gray-950/45 p-3">
+          <summary className="cursor-pointer text-xs font-semibold text-gray-300">
+            Readiness evidence · {assessment.verifiedCount} verified · {assessment.failingCount} failing · {assessment.unknownCount} unknown
+          </summary>
+          <p className="mt-2 text-xs leading-5 text-gray-500">{assessment.reason}</p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            {assessment.dimensions.map((dimension) => (
+              <div key={dimension.id} className="rounded-lg border border-gray-800 bg-gray-950/70 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-xs font-semibold text-gray-200">{dimension.label}</p>
+                  <Chip className={readinessTone[dimension.status]}>{dimension.status}</Chip>
+                </div>
+                <p className="mt-1 text-[11px] leading-5 text-gray-500">{dimension.detail}</p>
+                <p className="mt-1 font-mono text-[9px] uppercase tracking-wider text-gray-700">source · {dimension.source} · weight {dimension.weight}</p>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
 
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <div>
@@ -124,7 +156,7 @@ function ProductCard({ modeled, now }: { modeled: ModeledWorkspace; now: number 
 
       <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-gray-800 pt-4">
         <Link to="/product/$productId" params={{ productId: ws.id }} className="silhat-btn silhat-btn-ghost">Open Product Cockpit</Link>
-        <SyncScanButton url={ws.url} />
+        <SyncScanButton url={ws.url} assessed={modeled.readiness != null} />
       </div>
     </article>
   );

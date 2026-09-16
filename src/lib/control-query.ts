@@ -59,13 +59,32 @@ export const getAgentControl = createServerFn({ method: "GET" }).handler(async (
 
   const [rawState, observations] = await Promise.all([getPortfolioState(user.id), readObservations(user.id)]);
   const state = normalizeTenantState(rawState);
-  const workspaces = tenantPortfolioToWorkspaces(state, now);
   const evidence = buildTenantObservationEvidence(state.products, observations, now);
+  const workspaces = tenantPortfolioToWorkspaces(state, now, evidence.scanByWorkspace);
+
+  // Readiness is already computed from launch evidence in tenant-control. Do not
+  // pass capacity/scan overlays back through the legacy seeded-readiness reducer,
+  // which would apply a second penalty. Attach the overlays after modeling so
+  // Direct can display their provenance without changing the assessment score.
+  const portfolio = modelWorkspaces(workspaces, now).map((modeled) => {
+    const scan = evidence.scanByWorkspace.get(modeled.ws.id);
+    const live = evidence.liveByWorkspace.get(modeled.ws.id);
+    return {
+      ...modeled,
+      scan: scan ?? modeled.scan,
+      live: live ?? modeled.live,
+      evidenceBasis:
+        modeled.ws.readinessAssessment?.score != null
+          ? "computed-live" as const
+          : modeled.evidenceBasis,
+    };
+  });
+
   return {
     authenticated: true,
     observations,
     bucket: null,
-    portfolio: modelWorkspaces(workspaces, now, evidence),
+    portfolio,
     modeledAt: now,
   };
 });
