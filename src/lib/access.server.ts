@@ -71,9 +71,14 @@ export async function migrateAccess(): Promise<void> {
 }
 
 export async function isPlatformOwner(user: AuthUser): Promise<boolean> {
-  const configured = process.env.AILHAT_OWNER_EMAIL?.trim().toLowerCase();
-  if (configured) return normalizeEmail(user.email) === configured;
   await migrateAuth();
+  const configured = process.env.AILHAT_OWNER_EMAIL?.trim().toLowerCase();
+  if (configured) {
+    const configuredRows = await sql()`select id from users where lower(email) = lower(${configured}) limit 1`;
+    if (configuredRows.length > 0) {
+      return Number((configuredRows[0] as { id: number }).id) === user.id;
+    }
+  }
   const rows = await sql()`select id from users order by id asc limit 1`;
   return rows.length > 0 && Number((rows[0] as { id: number }).id) === user.id;
 }
