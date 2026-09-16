@@ -41,6 +41,12 @@ CREATE TABLE IF NOT EXISTS sessions (
 
 export type AuthUser = { id: number; email: string };
 
+function authUserFromRow(row: { id: unknown; email: string }): AuthUser {
+  const id = Number(row.id);
+  if (!Number.isSafeInteger(id) || id <= 0) throw new Error("invalid_user_id");
+  return { id, email: row.email };
+}
+
 /** Apply the auth schema. Safe to call repeatedly. */
 export async function migrateAuth(): Promise<void> {
   const q = sql() as unknown as { query: (text: string) => Promise<unknown> };
@@ -112,8 +118,7 @@ export async function createUser(
     values (${email}, ${passwordHash})
     returning id, email
   `;
-  const r = rows[0] as { id: number; email: string };
-  return { id: r.id, email: r.email };
+  return authUserFromRow(rows[0] as { id: unknown; email: string });
 }
 
 /** Look up a user by email (for login). Returns null if not found. */
@@ -122,8 +127,7 @@ export async function findUserByEmail(email: string): Promise<AuthUser | null> {
   const rows =
     await sql()`select id, email from users where lower(email) = lower(${email}) limit 1`;
   if (rows.length === 0) return null;
-  const r = rows[0] as { id: number; email: string };
-  return { id: r.id, email: r.email };
+  return authUserFromRow(rows[0] as { id: unknown; email: string });
 }
 
 /** Fetch the stored password hash for a user (login verification). */
@@ -160,7 +164,7 @@ export async function findUserByToken(token: string): Promise<AuthUser | null> {
     limit 1
   `;
   if (rows.length === 0) return null;
-  const r = rows[0] as { id: number; email: string; expires_at: unknown };
+  const r = rows[0] as { id: unknown; email: string; expires_at: unknown };
   try {
     const exp = new Date(String(r.expires_at)).getTime();
     if (!Number.isFinite(exp) || exp < Date.now()) {
@@ -171,7 +175,7 @@ export async function findUserByToken(token: string): Promise<AuthUser | null> {
   } catch {
     return null;
   }
-  return { id: r.id, email: r.email };
+  return authUserFromRow(r);
 }
 
 /** Delete a session (logout). */
