@@ -18,6 +18,8 @@
 //   - Prioritization = launch × customer × urgency × availability
 //     + neglected-time penalty (7-day threshold) + assessment bump.
 
+import type { LaunchReadinessAssessment } from "./launch-readiness";
+
 export type Severity = "high" | "medium" | "low";
 export type Role = "engineer" | "researcher" | "designer" | "ops";
 
@@ -86,6 +88,8 @@ export interface Workspace {
   stage: string;
   readinessPct: number | null;
   confidence: string | null;
+  /** Evidence-backed launch assessment for tenant workspaces when available. */
+  readinessAssessment?: LaunchReadinessAssessment;
   firstPaidClient: string;
   dimensions?: Dimension[];
   portfolioState: PortfolioState;
@@ -114,4 +118,3 @@ export function freshnessFromAge(hours: number): number {
 
 // The shared cto.new Builder execution bucket (consumed by Ledgato + Bridge).
 export const SHARED_BUCKET = "cto.new Builder";
-
