@@ -19,6 +19,8 @@ import {
 } from "~/lib/finding-visibility";
 import { buildSignalWorkItem, type SignalWorkMode } from "~/lib/signal-work-item";
 import { savePreparedWorkItem } from "~/lib/prepared-work";
+import { PLAYBOOK_LESSONS } from "~/lib/playbook";
+import { recommendSkillsFor } from "~/lib/directiveSkills";
 
 export const Route = createFileRoute("/product/$productId")({
   component: () => (
@@ -82,6 +84,23 @@ function ProductCockpit() {
     const display = effectiveFindingDisplay(findingVisibility, productId, issue);
     return display !== "hidden" || showHiddenFindings;
   });
+
+  const openSignal = signals.find((signal) => signal.level !== "HEALTHY");
+  const playbookAction =
+    openSignal?.action ??
+    openItems[0]?.title ??
+    (lastGood
+      ? "Re-scan after the next meaningful product change and verify what actually moved."
+      : "Run the first scan so ailhat has fresh product evidence before recommending work.");
+  const playbookSkills = recommendSkillsFor(playbookAction);
+  const playbookLessonIds = new Set<string>([
+    !lastGood ? "readiness-vs-confidence" : "rerun-the-loop",
+    openSignal ? "push-vs-wait-capacity" : "rerun-the-loop",
+    ...(playbookSkills.length > 0 ? ["skill-selection"] : []),
+  ]);
+  const productPlaybookLessons = PLAYBOOK_LESSONS.filter((lesson) =>
+    playbookLessonIds.has(lesson.id),
+  ).slice(0, 3);
 
   if (loading || !ready) {
     return <p className="py-20 text-center text-gray-500">Loading…</p>;
@@ -170,6 +189,67 @@ function ProductCockpit() {
         <Metric label="Open signals" value={String(signals.length)} detail={signals[0]?.title ?? "No product-specific signal"} />
         <Metric label="Observation" value={lastGood ? timeAgo(lastGood.scannedAt) : "Not scanned"} detail={history?.consecutiveFailures ? `${history.consecutiveFailures} recent failed attempt${history.consecutiveFailures === 1 ? "" : "s"}` : "fresh evidence closes the loop"} />
         <Metric label="Tracked findings" value={String(trackedIssues.length)} detail={hiddenResolvedCount > 0 ? `${hiddenResolvedCount} resolved finding${hiddenResolvedCount === 1 ? "" : "s"} hidden from active view` : "resolved evidence is preserved"} />
+      </section>
+
+      <section className="silhat-panel p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="silhat-eyebrow">Playbook · {product.name}</p>
+            <h2 className="mt-1 text-lg font-semibold text-gray-100">Use the evidence on this product to decide how to work it</h2>
+            <p className="mt-1 max-w-3xl text-sm leading-6 text-gray-500">
+              This is the product-scoped view of the same Playbook used in Learn. It points at the current move, the guidance that applies, and optional agent skills without turning guidance into authority or pretending work is complete.
+            </p>
+          </div>
+          <Link to="/learn" className="text-xs font-semibold text-[#7fb0ff] hover:underline">Open full Playbook →</Link>
+        </div>
+
+        <div className="mt-4 grid gap-4 xl:grid-cols-[1.15fr_1fr_0.85fr]">
+          <article className="rounded-lg border border-[#7fb0ff]/20 bg-[#7fb0ff]/[0.04] p-4">
+            <p className="font-mono text-[10px] font-semibold uppercase tracking-wider text-[#7fb0ff]">Current move</p>
+            <h3 className="mt-2 text-sm font-semibold leading-6 text-gray-100">{playbookAction}</h3>
+            <p className="mt-3 text-xs leading-5 text-gray-500">
+              {openSignal
+                ? `Grounded in the current ${openSignal.level.replace("_", " ").toLowerCase()} signal: ${openSignal.title}.`
+                : lastGood
+                  ? `No non-healthy product signal is open. Latest verified observation: ${timeAgo(lastGood.scannedAt)}.`
+                  : "No verified product scan is available yet. Establish evidence before treating a recommendation as current truth."}
+            </p>
+          </article>
+
+          <article className="rounded-lg border border-gray-800 bg-gray-950/60 p-4">
+            <p className="font-mono text-[10px] font-semibold uppercase tracking-wider text-gray-500">Relevant Playbook guidance</p>
+            <div className="mt-2 space-y-3">
+              {productPlaybookLessons.map((lesson) => (
+                <div key={lesson.id}>
+                  <h3 className="text-sm font-semibold text-gray-200">{lesson.title}</h3>
+                  <p className="mt-1 text-xs leading-5 text-gray-500">{lesson.summary}</p>
+                  {lesson.tip && <p className="mt-1 text-[11px] leading-5 text-gray-600">{lesson.tip}</p>}
+                </div>
+              ))}
+            </div>
+          </article>
+
+          <article className="rounded-lg border border-gray-800 bg-gray-950/60 p-4">
+            <p className="font-mono text-[10px] font-semibold uppercase tracking-wider text-gray-500">Optional skills</p>
+            {playbookSkills.length === 0 ? (
+              <p className="mt-2 text-xs leading-5 text-gray-500">No curated skill matches this move. That does not block Direct or execution.</p>
+            ) : (
+              <ul className="mt-2 space-y-2">
+                {playbookSkills.map((skill) => (
+                  <li key={skill.id} className="text-xs leading-5 text-gray-400">
+                    <a href={skill.url} target="_blank" rel="noreferrer" className="font-semibold text-[#7fb0ff] hover:underline">{skill.name}</a>
+                    <span className="block text-gray-600">{skill.why}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className="mt-3 border-t border-gray-800 pt-2 text-[10px] leading-4 text-gray-600">Curated example links only. Verify the current SKILL.md before installing.</p>
+          </article>
+        </div>
+
+        <p className="mt-4 border-t border-gray-800 pt-3 text-[11px] leading-5 text-gray-600">
+          Playbook guidance does not reserve capacity, grant execution authority, or mark an outcome verified. Direct prepares work; fresh evidence closes the loop.
+        </p>
       </section>
 
       <section className="silhat-panel p-5">
