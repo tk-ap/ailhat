@@ -74,3 +74,43 @@ Until a canonical sandbox exists:
 **ALVIRA is the intended first live sandbox target**, but no existing ALVIRA deployment should be connected until its backend, authentication, analytics, and Stripe/payment configuration are verified to be genuinely non-production. A Vercel preview that still points at production services does not qualify as a sandbox.
 
 This decision is a product/safety boundary, not a blocker for completing the browser-execution implementation or its local tests.
+
+## Sandbox test-access UI direction — 2026-09-15
+
+ailhat should let a user configure sandbox/test-account access at the product UI level rather than requiring manual environment-variable setup for each product.
+
+Suggested surface:
+
+`Product → Environments → Sandbox → Test access`
+
+The UI should accept:
+
+- sandbox URL
+- dedicated test username/email
+- test-account password/secret
+- optional account scope or role, such as standard test user vs. admin test user
+- a `Verify access` action
+
+After save, the UI must never reveal the stored secret again. It should show only state such as `Credential configured`, last verification time, and actions to replace or revoke the credential.
+
+### Storage and runtime boundary
+
+ailhat should not behave like a password notebook. The product database may store the sandbox URL, username, account scope, verification metadata, and a secret reference, but not a readable plaintext password.
+
+For an initial low-cost implementation, the submitted password may be encrypted server-side and stored as ciphertext in the existing backend/database. The master encryption key must live only in a server-side environment secret and must not be stored alongside the ciphertext. This design should preserve a later migration path to a dedicated secrets manager or vault.
+
+At runtime:
+
+1. an authorized browser journey requests the test credential;
+2. the server resolves/decrypts it only for that execution;
+3. the secret is supplied to the browser runner;
+4. the secret must not be included in prompts, screenshots, evidence, logs, analytics, portfolio-intelligence context, or persisted execution artifacts;
+5. execution discards the usable secret after the journey completes.
+
+Credential material is **execution authority, not evidence**.
+
+### Scope boundary
+
+The initial credential UI is for **sandbox/test credentials only**. Production credentials are out of scope. Test accounts should be dedicated/disposable where practical, limited to the minimum permissions required for the journey, and independently revocable.
+
+A configured credential must not by itself change Launch Readiness. Only observed journey results may update the corresponding evidence dimensions, and sandbox observations must remain labeled as sandbox evidence rather than being promoted to production proof.
