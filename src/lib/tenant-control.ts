@@ -1,5 +1,6 @@
 import type { Workspace, Harness, InterfaceSlot, Severity } from "./agent-control";
 import type { AppState, Item, Product } from "./store";
+import { assessLaunchReadiness } from "./launch-readiness";
 import {
   SCAN_PROVIDER,
   buildScanEvidenceForObs,
@@ -35,12 +36,48 @@ function productAgeDays(product: Product, state: AppState, now: number): number 
   return Math.max(0, Math.floor((now - at) / 86_400_000));
 }
 
-export function tenantPortfolioToWorkspaces(state: AppState, now = Date.now()): Workspace[] {
+function scanFromPortfolioHistory(state: AppState, productId: string, now: number): ScanEvidence | null {
+  const result = state.scanHistory?.[productId]?.lastGood;
+  if (!result || typeof result.scannedAt !== "number") return null;
+  const findings = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 } as ScanEvidence["findings"];
+  let totalFailures = 0;
+  for (const finding of result.findings ?? []) {
+    if (finding.status !== "fail") continue;
+    findings[finding.severity] += 1;
+    totalFailures += 1;
+  }
+  const ageHours = Math.max(0, (now - result.scannedAt) / 3_600_000);
+  return {
+    hasScan: true,
+    url: result.url || result.requestedUrl || null,
+    scannedAt: result.scannedAt,
+    ok: result.ok,
+    findings,
+    totalFailures,
+    ageHours,
+    tier: stalenessConfidence(ageHours),
+    staleness: stalenessLabel(ageHours),
+  };
+}
+
+function freshestScan(a: ScanEvidence | null, b: ScanEvidence | null): ScanEvidence | null {
+  if (!a) return b;
+  if (!b) return a;
+  return a.scannedAt >= b.scannedAt ? a : b;
+}
+
+export function tenantPortfolioToWorkspaces(
+  state: AppState,
+  now = Date.now(),
+  observedScans?: Map<string, ScanEvidence>,
+): Workspace[] {
   return (state.products ?? []).map((product) => {
     const openItems = (state.items ?? []).filter((item) => item.productId === product.id && item.status !== "done");
-    const history = state.scanHistory?.[product.id];
-    const scanAt = history?.lastGood?.scannedAt ?? 0;
-    const scanAgeHours = scanAt ? Math.max(0, (now - scanAt) / 3_600_000) : 9_999;
+    const historyScan = scanFromPortfolioHistory(state, product.id, now);
+    const observationScan = observedScans?.get(product.id) ?? null;
+    const scan = freshestScan(historyScan, observationScan);
+    const scanAt = scan?.scannedAt ?? 0;
+    const scanAgeHours = scan?.ageHours ?? 9_999;
     const blockers = openItems.slice(0, 20).map((item) => ({ id: item.id, title: item.title, severity: severityFor(item) }));
     const actions = openItems.slice(0, 12).map((item) => ({
       id: item.id,
@@ -51,8 +88,14 @@ export function tenantPortfolioToWorkspaces(state: AppState, now = Date.now()): 
       launchImpact: item.type === "bug" ? "HIGH" as const : "MEDIUM" as const,
       customerImpact: item.type === "bug" ? "HIGH" as const : "MEDIUM" as const,
     }));
-    const hasHigh = blockers.some((blocker) => blocker.severity === "high");
+    const highBlockerCount = blockers.filter((blocker) => blocker.severity === "high").length;
+    const hasHigh = highBlockerCount > 0;
     const hasOpen = blockers.length > 0;
+    const readinessAssessment = assessLaunchReadiness({
+      productUrl: product.url || null,
+      highBlockerCount,
+      scan,
+    });
 
     return {
       id: product.id,
@@ -61,10 +104,11 @@ export function tenantPortfolioToWorkspaces(state: AppState, now = Date.now()): 
       summary: "Modeled from this signed-in account's persisted ailhat portfolio state. No global owner seed is used.",
       url: product.url || null,
       stage: "Active portfolio product",
-      readinessPct: null,
-      confidence: scanAt ? "Observed" : null,
+      readinessPct: readinessAssessment.score,
+      confidence: readinessAssessment.confidence,
+      readinessAssessment,
       firstPaidClient: "not assessed",
-      portfolioState: hasHigh ? "BLOCKED" : hasOpen ? "NEEDS ATTENTION" : "ACTIVE",
+      portfolioState: hasHigh ? "BLOCKED" : hasOpen ? "NEEDS ATTENTION" : readinessAssessment.score == null ? "NEEDS ASSESSMENT" : "ACTIVE",
       attention: hasHigh ? "ACT NOW" : hasOpen ? "REVIEW" : "HEALTHY",
       recommendedAgent: hasOpen ? "Agent OS / Workforce · resolve approved work" : "No action recommended",
       recommendedWindow: hasOpen ? "after explicit approval" : "not scheduled",
