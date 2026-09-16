@@ -58,3 +58,19 @@ The assessment must remain inspectable. The UI should always show:
 ## Next evidence expansions
 
 The next useful additions are browser-executed conversion/auth/mobile journeys, authoritative analytics-presence evidence, and executed first-user/agent journeys. Those should convert the corresponding `unknown` dimensions into observed evidence; they should not introduce a new cosmetic scoring system.
+
+## Sandbox execution decision — 2026-09-15
+
+There is no canonical product sandbox designated yet. Browser-executed launch-readiness work must not target production merely because a sandbox has not been configured.
+
+Until a canonical sandbox exists:
+
+- finish local and deterministic coverage without requiring a live product target
+- report live browser execution as `unknown` when no authorized sandbox is configured; absence of credentials or a configured journey is not a product failure
+- document the sandbox contract before live integration, including required environment-variable names, isolation requirements, disposable test-account expectations, and non-destructive checkout behavior
+- do not invent sandbox URLs, credentials, or secret names
+- keep sandbox evidence explicitly labeled and prevent it from raising production-readiness scores
+
+**ALVIRA is the intended first live sandbox target**, but no existing ALVIRA deployment should be connected until its backend, authentication, analytics, and Stripe/payment configuration are verified to be genuinely non-production. A Vercel preview that still points at production services does not qualify as a sandbox.
+
+This decision is a product/safety boundary, not a blocker for completing the browser-execution implementation or its local tests.
