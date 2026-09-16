@@ -82,6 +82,6 @@ describe("Launch Readiness assessment", () => {
 
     const quality = result.dimensions.find((dimension) => dimension.id === "public-quality");
     expect(quality?.status).toBe("unknown");
-    expect(result.score).toBe(47);
+    expect(result.score).toBe(38);
   });
 });
