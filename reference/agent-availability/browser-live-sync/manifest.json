@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "Agent Control Live Source Sync",
+  "version": "0.1.0",
+  "description": "Reads visible availability information from supported AI work pages and pushes normalized observations to Agent Control. Never collects credentials or session tokens.",
+  "permissions": ["activeTab", "storage", "scripting"],
+  "host_permissions": ["https://chatgpt.com/*", "https://chat.openai.com/*", "https://cto.new/*", "https://agent-availability.vercel.app/*"],
+  "action": {"default_popup": "popup.html"},
+  "content_scripts": [{"matches": ["https://chatgpt.com/*", "https://chat.openai.com/*", "https://cto.new/*"], "js": ["content.js"], "run_at": "document_idle"}]
+}
