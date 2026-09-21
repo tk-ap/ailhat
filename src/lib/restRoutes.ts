@@ -24,6 +24,7 @@ import { runCorrectedScan } from "./scan-correctness.ts";
 import { readObservations, upsertObservation } from "./observations.server.ts";
 import { sanitizeObservation, hostFromUrl, scanEvidenceObservation } from "./observations.ts";
 import type { AvailabilityObservation } from "./observations.ts";
+import { computeNextSprint } from "./next-sprint.ts";
 
 function jsonResponse(body: unknown, status = 200, setCookie?: string): Response {
   const headers: Record<string, string> = { "content-type": "application/json; charset=utf-8" };
@@ -50,6 +51,17 @@ async function requestAccessUser(token: string): Promise<AuthUser | null> {
     return null;
   }
 }
+function workspaceReadAuthorized(req: Request): boolean {
+  const expected = process.env.AILHAT_WORKSPACE_READ_TOKEN ?? "";
+  if (!expected) return false;
+  const header = req.headers.get("authorization") ?? "";
+  const token = header.startsWith("Bearer ") ? header.slice(7) : "";
+  if (!token || token.length !== expected.length) return false;
+  let diff = 0;
+  for (let i = 0; i < token.length; i++) diff |= token.charCodeAt(i) ^ expected.charCodeAt(i);
+  return diff === 0;
+}
+
 function portfolioOwnsHost(state: unknown, url: string): boolean {
   const host = hostFromUrl(url);
   if (!host || !state || typeof state !== "object") return false;
@@ -190,6 +202,36 @@ export async function handleRestRoute(req: Request, secure: boolean): Promise<Re
       if (!user) return jsonResponse({ error: "Not authenticated." }, 401);
       return jsonResponse({ user: { id: user.id, email: user.email } });
     } catch { return jsonResponse({ error: "Database unavailable." }, 503); }
+  }
+
+  if (pathname === "/api/next-sprint" && req.method === "GET") {
+    const authUser = await requestAccessUser(token);
+    const workspaceAuthorized = workspaceReadAuthorized(req);
+    if (!authUser && !workspaceAuthorized) {
+      return jsonResponse({ error: "Authenticated portfolio access or delegated Workspace read access required." }, 403);
+    }
+    try {
+      const owner = authUser ?? (await (async () => {
+        const ownerEmail = process.env.AILHAT_WORKSPACE_OWNER_EMAIL ?? "";
+        return ownerEmail ? findUserByEmail(ownerEmail) : null;
+      })());
+      if (!owner) return jsonResponse({ error: "Workspace owner is not configured." }, 503);
+      const state = await getPortfolioState(owner.id);
+      if (!state || typeof state !== "object") {
+        return jsonResponse({
+          schema: "ailhat.next-sprint/v1",
+          generatedAt: new Date().toISOString(),
+          source: "ailhat Portfolio Intelligence",
+          advisory: true,
+          itemCount: 0,
+          recommendations: [],
+        });
+      }
+      return jsonResponse(computeNextSprint(state as Parameters<typeof computeNextSprint>[0]));
+    } catch (error) {
+      console.error("next-sprint failed:", error);
+      return jsonResponse({ error: "Portfolio recommendation unavailable." }, 503);
+    }
   }
 
   if (pathname === "/api/portfolio") {
