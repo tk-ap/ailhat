@@ -31,6 +31,8 @@ export interface Product {
   name: string;
   platform: Platform;
   url: string;
+  /** Canonical source repository when known, e.g. "tk-ap/ailhat". Optional for backward compatibility. */
+  repository?: string;
   createdAt: number;
 }
 
