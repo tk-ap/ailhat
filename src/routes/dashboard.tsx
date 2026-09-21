@@ -6,6 +6,7 @@ import {
 } from "~/lib/useStore";
 import { AuthProvider, useAuth } from "~/lib/useAuth";
 import AppShell from "~/components/AppShell";
+import { DraggablePortfolioGrid } from "~/components/ui/draggable-portfolio-grid";
 import {
   type AppState,
   type Item,
@@ -1286,16 +1287,18 @@ function Dashboard() {
             </div>
           ) : (
             <>
-              <div className="grid gap-5 xl:grid-cols-2">
-                {state.products.map((p) => (
-                  <ProductCard
-                    key={p.id}
-                    product={p}
-                    scanning={!!scanning[p.id]}
-                    onScan={() => runScanForProduct(p.id, p.url)}
-                  />
-                ))}
-              </div>
+              <DraggablePortfolioGrid
+                widgets={state.products.map((p) => ({
+                  id: p.id,
+                  content: (
+                    <ProductCard
+                      product={p}
+                      scanning={!!scanning[p.id]}
+                      onScan={() => runScanForProduct(p.id, p.url)}
+                    />
+                  ),
+                }))}
+              />
             </>
           )}
         </>
