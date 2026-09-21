@@ -107,6 +107,14 @@ export async function countUsers(): Promise<number> {
   return (rows[0] as { n: number }).n;
 }
 
+/** Resolve the single owner account without exposing account data to the client. */
+export async function findSingleOwner(): Promise<AuthUser | null> {
+  await migrateAuth();
+  const rows = await sql()`select id, email from users order by id asc limit 2`;
+  if (rows.length !== 1) return null;
+  return authUserFromRow(rows[0] as { id: unknown; email: string });
+}
+
 /** Create a user (email unique). Throws if the email already exists. */
 export async function createUser(
   email: string,

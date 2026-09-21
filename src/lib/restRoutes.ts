@@ -9,6 +9,7 @@ import {
   createUser,
   deleteSessionByToken,
   findUserByEmail,
+  findSingleOwner,
   findUserByToken,
   getPasswordHash,
   parseCookies,
@@ -211,11 +212,8 @@ export async function handleRestRoute(req: Request, secure: boolean): Promise<Re
       return jsonResponse({ error: "Authenticated portfolio access or delegated Workspace read access required." }, 403);
     }
     try {
-      const owner = authUser ?? (await (async () => {
-        const ownerEmail = process.env.AILHAT_WORKSPACE_OWNER_EMAIL ?? "";
-        return ownerEmail ? findUserByEmail(ownerEmail) : null;
-      })());
-      if (!owner) return jsonResponse({ error: "Workspace owner is not configured." }, 503);
+      const owner = authUser ?? await findSingleOwner();
+      if (!owner) return jsonResponse({ error: "A single ailhat owner account is required for delegated Workspace reads." }, 503);
       const state = await getPortfolioState(owner.id);
       if (!state || typeof state !== "object") {
         return jsonResponse({
