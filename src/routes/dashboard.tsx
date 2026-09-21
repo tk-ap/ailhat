@@ -541,6 +541,7 @@ function ProductCard({
   const [editName, setEditName] = useState(product.name);
   const [editPlatform, setEditPlatform] = useState<Platform>(product.platform);
   const [editUrl, setEditUrl] = useState(product.url);
+  const [editRepository, setEditRepository] = useState(product.repository ?? "");
   const [editError, setEditError] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -581,6 +582,12 @@ function ProductCard({
                 placeholder="https://…"
               />
             </div>
+            <input
+              value={editRepository}
+              onChange={(e) => setEditRepository(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-800"
+              placeholder="Repository, e.g. tk-ap/ailhat"
+            />
             <div className="flex gap-2">
               <button
                 onClick={() => {
@@ -608,6 +615,7 @@ function ProductCard({
                       name: editName.trim(),
                       platform: editPlatform,
                       url: editUrl.trim(),
+                      repository: editRepository.trim() || undefined,
                     });
                   }
                   setEditing(false);
@@ -862,6 +870,7 @@ function AddProductForm() {
   const [name, setName] = useState("");
   const [platform, setPlatform] = useState<Platform>("vercel");
   const [url, setUrl] = useState("");
+  const [repository, setRepository] = useState("");
   const [error, setError] = useState("");
   const [checking, setChecking] = useState(false);
   const [availability, setAvailability] = useState<AvailabilityResult | null>(null);
@@ -884,9 +893,11 @@ function AddProductForm() {
       name: name.trim(),
       platform,
       url: url.trim(),
+      repository: repository.trim() || undefined,
     });
     setName("");
     setUrl("");
+    setRepository("");
     setPlatform("vercel");
     setError("");
     setAvailability(null);
@@ -991,6 +1002,15 @@ function AddProductForm() {
           )}
         </label>
       </div>
+      <label className="mt-3 block text-xs font-medium text-gray-500 dark:text-gray-400">
+        Repository <span className="font-normal text-gray-500">(recommended for governed sprint routing)</span>
+        <input
+          value={repository}
+          onChange={(e) => setRepository(e.target.value)}
+          placeholder="tk-ap/my-repo"
+          className={`${input} mt-1`}
+        />
+      </label>
 
       {/* Name availability */}
       <div className="mt-4 rounded-xl border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
