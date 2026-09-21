@@ -68,41 +68,59 @@ function verification(item: AttentionItem): string {
   return "Independent verification must compare the delivered result with the cited portfolio evidence and intended outcome.";
 }
 
+export function selectSprintItems(items: AttentionItem[], limit = 5): AttentionItem[] {
+  return items
+    .filter((item) => item.status === "open" || item.status === "investigating")
+    .slice(0, Math.max(0, limit));
+}
+
+function repositoryFor(state: AppState, productId: string): string | null {
+  const product = state.products.find((candidate) => candidate.id === productId);
+  const value = product?.repository?.trim();
+  return value || null;
+}
+
+export function buildSprintRecommendations(
+  state: AppState,
+  selected: AttentionItem[],
+): SprintRecommendation[] {
+  return selected.map((item, index) => ({
+    sourceId: item.id,
+    rank: index + 1,
+    title: item.title,
+    outcome: outcome(item),
+    whyNow: whyNow(item),
+    product: {
+      id: item.productId,
+      name: item.productName,
+      repository: repositoryFor(state, item.productId),
+    },
+    evidence: [...item.evidence],
+    dependencies: [],
+    blockers: [],
+    acceptanceCriteria: acceptance(item),
+    verification: verification(item),
+    confidence: item.confidence,
+    score: item.score,
+    freshness: "current-portfolio-state",
+  }));
+}
+
 export function computeNextSprint(
   state: AppState,
   generatedAtMs = Date.now(),
   limit = 5,
 ): NextSprintRecommendation {
   const { items } = buildAttention(state);
-  const selected = items
-    .filter((item) => item.status === "open" || item.status === "investigating")
-    .slice(0, Math.max(0, limit));
+  const selected = selectSprintItems(items, limit);
+  const recommendations = buildSprintRecommendations(state, selected);
 
   return {
     schema: NEXT_SPRINT_SCHEMA,
     generatedAt: new Date(generatedAtMs).toISOString(),
     source: "ailhat Portfolio Intelligence",
     advisory: true,
-    itemCount: selected.length,
-    recommendations: selected.map((item, index) => ({
-      sourceId: item.id,
-      rank: index + 1,
-      title: item.title,
-      outcome: outcome(item),
-      whyNow: whyNow(item),
-      product: {
-        id: item.productId,
-        name: item.productName,
-        repository: null,
-      },
-      evidence: [...item.evidence],
-      dependencies: [],
-      blockers: [],
-      acceptanceCriteria: acceptance(item),
-      verification: verification(item),
-      confidence: item.confidence,
-      score: item.score,
-      freshness: "current-portfolio-state",
-    })),
+    itemCount: recommendations.length,
+    recommendations,
   };
 }
