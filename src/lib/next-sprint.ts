@@ -68,15 +68,25 @@ function verification(item: AttentionItem): string {
   return "Independent verification must compare the delivered result with the cited portfolio evidence and intended outcome.";
 }
 
+export function selectSprintItems(items: AttentionItem[], limit = 5): AttentionItem[] {
+  return items
+    .filter((item) => item.status === "open" || item.status === "investigating")
+    .slice(0, Math.max(0, limit));
+}
+
+function repositoryFor(state: AppState, productId: string): string | null {
+  const product = state.products.find((candidate) => candidate.id === productId);
+  const value = product?.repository?.trim();
+  return value || null;
+}
+
 export function computeNextSprint(
   state: AppState,
   generatedAtMs = Date.now(),
   limit = 5,
 ): NextSprintRecommendation {
   const { items } = buildAttention(state);
-  const selected = items
-    .filter((item) => item.status === "open" || item.status === "investigating")
-    .slice(0, Math.max(0, limit));
+  const selected = selectSprintItems(items, limit);
 
   return {
     schema: NEXT_SPRINT_SCHEMA,
@@ -93,7 +103,7 @@ export function computeNextSprint(
       product: {
         id: item.productId,
         name: item.productName,
-        repository: null,
+        repository: repositoryFor(state, item.productId),
       },
       evidence: [...item.evidence],
       dependencies: [],
