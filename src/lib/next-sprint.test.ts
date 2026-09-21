@@ -26,7 +26,7 @@ const state: AppState = {
 const attention = (id: string, status: AttentionItem["status"], score: number): AttentionItem => ({
   id,
   source: "OPPORTUNITY",
-  kind: "PRODUCT_IMPROVEMENT",
+  kind: "FEATURE",
   productId: "p1",
   productName: "ailhat",
   title: `Item ${id}`,
