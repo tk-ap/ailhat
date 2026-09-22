@@ -1310,6 +1310,7 @@ function Dashboard() {
               <DraggablePortfolioGrid
                 widgets={state.products.map((p) => ({
                   id: p.id,
+                  label: p.name,
                   content: (
                     <ProductCard
                       product={p}
