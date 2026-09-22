@@ -27,7 +27,8 @@ function statusFor(message: string) {
     message === "product_id_required" ||
     message === "invalid_work_item" ||
     message === "work_item_product_mismatch" ||
-    message === "invalid_runtime_update"
+    message === "invalid_runtime_update" ||
+    message === "stale_execution_claim"
   ) return 400;
   return 500;
 }
