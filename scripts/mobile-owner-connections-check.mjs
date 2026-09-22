@@ -15,7 +15,7 @@ function json(route, body, status = 200) {
 
 const portfolioState = {
   products: [
-    { id: "ashwood", name: "ASHWOOD", platform: "web", url: "https://ashwood-info.vercel.app/", repository: "tk-ap/ashwood-info", createdAt: Date.now() - 86400000 },
+    { id: "ashwood", name: "ASHWOOD", platform: "vercel", url: "https://ashwood-info.vercel.app/", repository: "tk-ap/ashwood-info", createdAt: Date.now() - 86400000 },
     { id: "ailhat", name: "ailhat", platform: "web", url: "https://ailhat.vercel.app/", repository: "tk-ap/ailhat", createdAt: Date.now() - 86400000 },
   ],
   retiredProducts: [],
@@ -31,7 +31,7 @@ const portfolioState = {
 };
 
 async function installMocks(page) {
-  await page.route("https://ailhat.vercel.app/api/**", async route => {
+  await page.route("**/api/**", async route => {
     const req = route.request();
     const url = new URL(req.url());
     const path = url.pathname;
@@ -102,8 +102,13 @@ for (const vp of viewports) {
   page.on("pageerror", error => errors.push(String(error)));
   await installMocks(page);
 
-  await page.goto("https://ailhat.vercel.app/connections", { waitUntil: "networkidle" });
-  await page.getByRole("heading", { name: "Evidence in. Prepared work out." }).waitFor({ state: "visible" });
+  await page.goto("https://ailhat.vercel.app/connections", { waitUntil: "domcontentloaded" });
+  try {
+    await page.getByRole("heading", { name: "Evidence in. Prepared work out." }).waitFor({ state: "visible", timeout: 12000 });
+  } catch (error) {
+    const body = (await page.locator("body").innerText()).slice(0, 1400);
+    throw new Error(`${vp.name}: owner Connections did not hydrate. url=${page.url()} errors=${errors.join(" | ")} body=${body}`);
+  }
   await page.getByRole("heading", { name: "here.now" }).waitFor({ state: "visible" });
   await assertNoOverflow(page, vp.name);
 
