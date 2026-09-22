@@ -56,6 +56,10 @@ export default function SandboxExecutionPanel({ item }: { item: WorkItem }) {
     return null;
   }, [overview]);
 
+  if (overview && !latest && (!overview.connection?.configured || !overview.sandbox)) {
+    return null;
+  }
+
   const run = async () => {
     if (!ready || busy) return;
     setBusy(true); setMessage("");
