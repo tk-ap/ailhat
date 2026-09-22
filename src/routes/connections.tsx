@@ -19,7 +19,7 @@ export const Route = createFileRoute("/connections")({
   ),
 });
 
-type Provider = "github" | "vercel" | "here-now" | "analytics" | "harness";
+type Provider = "github" | "vercel" | "analytics" | "harness";
 type Purpose = "evidence" | "execution";
 type Permission = "read" | "read-write";
 
@@ -42,10 +42,6 @@ const PROVIDERS: Record<Provider, { label: string; note: string }> = {
   vercel: {
     label: "Vercel",
     note: "Deployment, domain, runtime, and production-health evidence.",
-  },
-  "here-now": {
-    label: "here.now",
-    note: "Stable static-first product sandboxes inherited from the owner provider connection.",
   },
   analytics: {
     label: "Analytics",
