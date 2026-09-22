@@ -165,7 +165,7 @@ function ProductCard({ modeled, now }: { modeled: ModeledWorkspace; now: number 
 
 type DirectTab = "markdown" | "json" | "tools" | "toon";
 
-function DirectivePanel({ item, compiled }: { item: WorkItem; compiled: CompiledDirectives }) {
+function DirectivePanel({ item, compiled, canExecute }: { item: WorkItem; compiled: CompiledDirectives; canExecute: boolean }) {
   const [tab, setTab] = useState<DirectTab>("markdown");
   const [copied, setCopied] = useState(false);
   const tabs: Array<{ id: DirectTab; label: string }> = [
@@ -184,6 +184,7 @@ function DirectivePanel({ item, compiled }: { item: WorkItem; compiled: Compiled
       <div className="mt-3 flex flex-wrap gap-1.5">{tabs.map((entry) => <button key={entry.id} type="button" onClick={() => setTab(entry.id)} className={`rounded-md px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider ${tab === entry.id ? "bg-[#7fb0ff]/15 text-[#9cc8ff]" : "bg-gray-900 text-gray-500"}`}>{entry.label}</button>)}</div>
       <pre className="silhat-terminal mt-2 max-h-72 overflow-auto whitespace-pre-wrap p-3 text-xs leading-relaxed">{compiled[tab]}</pre>
       <button type="button" className="silhat-btn silhat-btn-primary mt-3" onClick={async () => { try { await navigator.clipboard.writeText(compiled[tab]); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { setCopied(false); } }}>{copied ? "Copied" : "Copy directive"}</button>
+      {canExecute && <SandboxExecutionPanel item={item} compact hideWhenUnavailable={false} />}
     </section>
   );
 }
@@ -217,9 +218,8 @@ function Control() {
 
       {!demo && portfolio.length === 0 && <section className="silhat-panel border-dashed p-8 text-center"><h2 className="font-semibold text-gray-200">Your Direct workspace is empty</h2><p className="mt-1 text-sm text-gray-500">Add a product to this account first. No owner seed or another account's portfolio is substituted.</p><Link to="/portfolio" className="silhat-btn silhat-btn-primary mt-4 inline-flex">Open Portfolio</Link></section>}
 
-      {top && <section className="rounded-xl border border-[#7fb0ff]/25 bg-[#7fb0ff]/[0.05] p-5"><p className="silhat-eyebrow">Highest current priority</p><h2 className="mt-1 text-lg font-semibold text-gray-100">{top.ws.name}{top.nextActions[0]?.title ? ` · ${top.nextActions[0].title}` : ""}</h2><p className="mt-2 text-sm leading-6 text-gray-400">{leaderReason(top)}</p><div className="mt-3 flex flex-wrap gap-2">{directItem && compiled && <button type="button" onClick={() => setDirectOpen((value) => !value)} className="silhat-btn silhat-btn-primary">{directOpen ? "Close prepared direction" : "Prepare direction"}</button>}<Link to="/product/$productId" params={{ productId: top.ws.id }} className="silhat-btn silhat-btn-ghost">Review evidence</Link></div>{directOpen && directItem && compiled && <DirectivePanel item={directItem} compiled={compiled} />}</section>}
+      {top && <section className="rounded-xl border border-[#7fb0ff]/25 bg-[#7fb0ff]/[0.05] p-5"><p className="silhat-eyebrow">Highest current priority</p><h2 className="mt-1 text-lg font-semibold text-gray-100">{top.ws.name}{top.nextActions[0]?.title ? ` · ${top.nextActions[0].title}` : ""}</h2><p className="mt-2 text-sm leading-6 text-gray-400">{leaderReason(top)}</p><div className="mt-3 flex flex-wrap gap-2">{directItem && compiled && <button type="button" onClick={() => setDirectOpen((value) => !value)} className="silhat-btn silhat-btn-primary">{directOpen ? "Close prepared direction" : "Prepare direction"}</button>}<Link to="/product/$productId" params={{ productId: top.ws.id }} className="silhat-btn silhat-btn-ghost">Review evidence</Link></div>{directOpen && directItem && compiled && <DirectivePanel item={directItem} compiled={compiled} canExecute={!demo} />}</section>}
 
-      {!demo && directItem && <SandboxExecutionPanel item={directItem} />}
 
       <div className="grid gap-5 xl:grid-cols-2">{portfolio.map((modeled) => <ProductCard key={modeled.ws.id} modeled={modeled} now={now} />)}</div>
 
