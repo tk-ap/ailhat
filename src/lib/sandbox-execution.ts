@@ -43,6 +43,7 @@ export interface SandboxExecution {
   outcome: Record<string, unknown> | null;
   evidence: Array<Record<string, unknown>>;
   review: Record<string, unknown> | null;
+  claimGeneration: number;
   createdAt: string;
   updatedAt: string;
 }
