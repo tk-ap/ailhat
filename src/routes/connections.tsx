@@ -5,6 +5,7 @@ import { StoreProvider, useStore } from "~/lib/useStore";
 import AppShell from "~/components/AppShell";
 import PublicGitHubEvidenceConnector from "~/components/PublicGitHubEvidenceConnector";
 import VercelDeploymentEvidenceConnector from "~/components/VercelDeploymentEvidenceConnector";
+import HereNowSandboxConnector from "~/components/HereNowSandboxConnector";
 
 export const Route = createFileRoute("/connections")({
   component: () => (
@@ -83,7 +84,7 @@ function ageLabel(at?: number) {
 }
 
 function ConnectionsPage() {
-  const { user, loading } = useAuth();
+  const { user, access, loading } = useAuth();
   const { state, ready } = useStore();
   const [intents, setIntents] = useState<ConnectionIntent[]>([]);
   const [showForm, setShowForm] = useState(false);
@@ -220,6 +221,7 @@ function ConnectionsPage() {
 
       <PublicGitHubEvidenceConnector products={state.products} />
       <VercelDeploymentEvidenceConnector products={state.products} />
+      {access?.role === "owner" && <HereNowSandboxConnector products={state.products} />}
 
       {showForm && (
         <section className="silhat-panel border-[#7fb0ff]/25 p-5">
