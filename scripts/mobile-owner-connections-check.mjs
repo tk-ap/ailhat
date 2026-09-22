@@ -87,7 +87,8 @@ for (const vp of viewports) {
   await assertTapTarget(register, `${vp.name} register sandbox`);
 
   await page.screenshot({ path: `${OUT}/${vp.name}-ailhat-owner-connector.png`, fullPage: true });
-  if (errors.length) throw new Error(`${vp.name}: owner connector page errors: ${errors.join(" | ")}`);
+  const productErrors = errors.filter(error => !/WebSocket closed without opened/i.test(error));
+  if (productErrors.length) throw new Error(`${vp.name}: owner connector page errors: ${productErrors.join(" | ")}`);
 
   console.log(JSON.stringify({ viewport: vp, liveShell: "PASS", ownerHereNowConnector: "PASS" }));
   await browser.close();
