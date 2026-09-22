@@ -20,6 +20,7 @@ export type ShellView =
   | "intelligence"
   | "portfolio"
   | "control"
+  | "sandbox"
   | "learn"
   | "decisions"
   | "connections"
@@ -60,6 +61,18 @@ const NAV: { id: ShellView; label: string; to: string; icon: ReactNode; hint: st
         <rect x="14" y="3" width="7" height="7" rx="1.5" />
         <rect x="3" y="14" width="7" height="7" rx="1.5" />
         <rect x="14" y="14" width="7" height="7" rx="1.5" />
+      </svg>
+    ),
+  },
+  {
+    id: "sandbox",
+    label: "Sandbox",
+    to: "/sandbox",
+    hint: "Governed sandbox sessions · evidence · review",
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="shrink-0">
+        <path d="M4 6.5 12 3l8 3.5v11L12 21l-8-3.5v-11Z" strokeLinejoin="round" />
+        <path d="m4 6.5 8 3.5 8-3.5M12 10v11" strokeLinejoin="round" />
       </svg>
     ),
   },
@@ -126,7 +139,7 @@ export default function AppShell({
             {NAV.map((n) => (
               <Link
                 key={n.id}
-                to={n.to as "/dashboard" | "/brief" | "/control" | "/learn"}
+                to={n.to as "/dashboard" | "/brief" | "/control" | "/sandbox" | "/learn"}
                 className={`silhat-nav ${active === n.id ? "silhat-nav-active" : ""}`}
                 title={n.hint}
               >
@@ -279,6 +292,8 @@ export default function AppShell({
                   ? `Product cockpit / preserved archive`
                   : active === "control"
                     ? `Agent Direct · prepare governed work`
+                    : active === "sandbox"
+                      ? `Governed sandbox sessions · evidence · review`
                     : active === "learn"
                       ? `Playbook · lessons · agent readiness · worked examples`
                       : active === "decisions"
