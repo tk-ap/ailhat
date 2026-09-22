@@ -17,9 +17,21 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - run: npm install --no-save playwright@1.55.0
-      - run: npx playwright install --with-deps chromium
-      - run: node scripts/mobile-owner-connections-check.mjs
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun add --no-save -d playwright@1.55.0
+      - run: bunx playwright install --with-deps chromium
+      - name: Start QA-only ailhat route
+        run: |
+          bun run dev -- --host 127.0.0.1 --port 4173 >/tmp/ailhat-mobile-proof.log 2>&1 &
+          echo $! > /tmp/ailhat-mobile-proof.pid
+          for i in {1..30}; do
+            curl -fsS http://127.0.0.1:4173/mobile-proof >/dev/null && exit 0
+            sleep 1
+          done
+          cat /tmp/ailhat-mobile-proof.log
+          exit 1
+      - run: bun scripts/mobile-owner-connections-check.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
