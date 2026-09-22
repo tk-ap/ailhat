@@ -27,7 +27,15 @@ function summary(value: Record<string, unknown> | null | undefined): string | nu
   return null;
 }
 
-export default function SandboxExecutionPanel({ item }: { item: WorkItem }) {
+export default function SandboxExecutionPanel({
+  item,
+  compact = false,
+  hideWhenUnavailable = true,
+}: {
+  item: WorkItem;
+  compact?: boolean;
+  hideWhenUnavailable?: boolean;
+}) {
   const [overview, setOverview] = useState<Overview | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -56,7 +64,7 @@ export default function SandboxExecutionPanel({ item }: { item: WorkItem }) {
     return null;
   }, [overview]);
 
-  if (overview && !latest && (!overview.connection?.configured || !overview.sandbox)) {
+  if (hideWhenUnavailable && overview && !latest && (!overview.connection?.configured || !overview.sandbox)) {
     return null;
   }
 
@@ -80,6 +88,29 @@ export default function SandboxExecutionPanel({ item }: { item: WorkItem }) {
       setBusy(false);
     }
   };
+
+  if (compact) {
+    return (
+      <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-gray-800 pt-3">
+        <button
+          type="button"
+          disabled={!ready || busy || active}
+          onClick={() => void run()}
+          className="silhat-btn silhat-btn-primary min-h-11 px-4 disabled:opacity-40"
+        >
+          {busy ? "Sending…" : active ? "Sandbox work in progress" : "Send to sandbox"}
+        </button>
+        <a
+          href="/sandbox"
+          className="silhat-btn silhat-btn-ghost inline-flex min-h-11 items-center"
+        >
+          Open Sandbox
+        </a>
+        {blocker && <span className="text-xs text-gray-500">{blocker}</span>}
+        {message && <span className="text-xs text-[#9cc8ff]">{message}</span>}
+      </div>
+    );
+  }
 
   return (
     <section className="rounded-xl border border-[#7fb0ff]/20 bg-gray-950/70 p-5">
