@@ -132,19 +132,19 @@ export default function HereNowSandboxConnector({ products }: { products: Produc
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="font-semibold text-gray-100">{product?.name ?? environment.productId}</p>
-                  <a href={environment.sandboxUrl} target="_blank" rel="noreferrer" className="mt-1 inline-flex text-xs font-semibold text-[#9cc8ff] hover:underline">
+                  <a href={environment.sandboxUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex min-h-11 items-center rounded-lg border border-gray-800 px-3 py-2 text-xs font-semibold text-[#9cc8ff] hover:border-gray-700 hover:bg-gray-900/60">
                     Open sandbox ↗
                   </a>
                 </div>
                 <span className="text-xs font-semibold text-gray-400">{environment.lifecycle}</span>
               </div>
-              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600">
+              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 break-all text-xs text-gray-600">
                 <span>slug · {environment.slug ?? "unknown"}</span>
                 <span>version · {environment.currentVersionId ?? "unknown"}</span>
                 <span>verification · {environment.verificationState}</span>
                 <span>source · {environment.sourceRepository ?? "unresolved"}@{environment.sourceRef ?? "unknown"}</span>
               </div>
-              <button type="button" onClick={() => void remove(environment)} className="mt-3 text-xs font-semibold text-gray-600 hover:text-rose-300">
+              <button type="button" onClick={() => void remove(environment)} className="mt-3 inline-flex min-h-11 items-center rounded-lg px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-900/60 hover:text-rose-300">
                 Remove mapping
               </button>
             </div>
@@ -155,24 +155,24 @@ export default function HereNowSandboxConnector({ products }: { products: Produc
       <form onSubmit={save} className="mt-5 grid gap-3 md:grid-cols-2">
         <label className="text-xs text-gray-400">
           Product
-          <select value={productId} onChange={(event) => setProductId(event.target.value)} className="silhat-input mt-1">
+          <select value={productId} onChange={(event) => setProductId(event.target.value)} className="silhat-input mt-1 min-h-11">
             {products.map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}
           </select>
         </label>
         <label className="text-xs text-gray-400">
           Stable here.now sandbox URL
-          <input type="url" required value={sandboxUrl} onChange={(event) => setSandboxUrl(event.target.value)} placeholder="https://project-slug.here.now/" className="silhat-input mt-1" />
+          <input type="url" required value={sandboxUrl} onChange={(event) => setSandboxUrl(event.target.value)} placeholder="https://project-slug.here.now/" className="silhat-input mt-1 min-h-11" />
         </label>
         <label className="text-xs text-gray-400">
           Current version ID <span className="text-gray-700">optional</span>
-          <input value={currentVersionId} onChange={(event) => setCurrentVersionId(event.target.value)} className="silhat-input mt-1" />
+          <input value={currentVersionId} onChange={(event) => setCurrentVersionId(event.target.value)} className="silhat-input mt-1 min-h-11" />
         </label>
         <label className="text-xs text-gray-400">
           Source ref
-          <input value={sourceRef} onChange={(event) => setSourceRef(event.target.value)} placeholder="main or commit SHA" className="silhat-input mt-1" />
+          <input value={sourceRef} onChange={(event) => setSourceRef(event.target.value)} placeholder="main or commit SHA" className="silhat-input mt-1 min-h-11" />
         </label>
         <div className="md:col-span-2 flex flex-wrap items-center gap-3">
-          <button type="submit" disabled={!selected || !sandboxUrl.trim()} className="silhat-btn silhat-btn-primary disabled:opacity-50">
+          <button type="submit" disabled={!selected || !sandboxUrl.trim()} className="silhat-btn silhat-btn-primary min-h-11 px-4 disabled:opacity-50">
             Register sandbox
           </button>
           <span className="text-[11px] text-gray-600">Registration is topology, not deployment or verification evidence.</span>
