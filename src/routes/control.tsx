@@ -4,6 +4,7 @@ import { AuthProvider } from "~/lib/useAuth";
 import { StoreProvider } from "~/lib/useStore";
 import AppShell from "~/components/AppShell";
 import GuidedOnboarding from "~/components/GuidedOnboarding";
+import SandboxExecutionPanel from "~/components/SandboxExecutionPanel";
 import { getAgentControl } from "~/lib/control-query";
 import { leaderReason } from "~/lib/control-scoring";
 import type { ModeledWorkspace } from "~/lib/control-scoring";
@@ -217,6 +218,8 @@ function Control() {
       {!demo && portfolio.length === 0 && <section className="silhat-panel border-dashed p-8 text-center"><h2 className="font-semibold text-gray-200">Your Direct workspace is empty</h2><p className="mt-1 text-sm text-gray-500">Add a product to this account first. No owner seed or another account's portfolio is substituted.</p><Link to="/portfolio" className="silhat-btn silhat-btn-primary mt-4 inline-flex">Open Portfolio</Link></section>}
 
       {top && <section className="rounded-xl border border-[#7fb0ff]/25 bg-[#7fb0ff]/[0.05] p-5"><p className="silhat-eyebrow">Highest current priority</p><h2 className="mt-1 text-lg font-semibold text-gray-100">{top.ws.name}{top.nextActions[0]?.title ? ` · ${top.nextActions[0].title}` : ""}</h2><p className="mt-2 text-sm leading-6 text-gray-400">{leaderReason(top)}</p><div className="mt-3 flex flex-wrap gap-2">{directItem && compiled && <button type="button" onClick={() => setDirectOpen((value) => !value)} className="silhat-btn silhat-btn-primary">{directOpen ? "Close prepared direction" : "Prepare direction"}</button>}<Link to="/product/$productId" params={{ productId: top.ws.id }} className="silhat-btn silhat-btn-ghost">Review evidence</Link></div>{directOpen && directItem && compiled && <DirectivePanel item={directItem} compiled={compiled} />}</section>}
+
+      {!demo && directItem && <SandboxExecutionPanel item={directItem} />}
 
       <div className="grid gap-5 xl:grid-cols-2">{portfolio.map((modeled) => <ProductCard key={modeled.ws.id} modeled={modeled} now={now} />)}</div>
 
