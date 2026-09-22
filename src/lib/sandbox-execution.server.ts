@@ -3,6 +3,7 @@ import { sql } from "~/db";
 import { migrateAuth, type AuthUser } from "~/lib/auth";
 import { getAccountAccess } from "~/lib/access.server";
 import { getPortfolioState } from "~/lib/db-portfolio";
+import { migrateSandboxEnvironments } from "~/lib/sandbox-environments.server";
 import type {
   SandboxExecution,
   SandboxExecutionBackendConnection,
@@ -25,13 +26,19 @@ const MIGRATION = `CREATE TABLE IF NOT EXISTS agent_direct_sandbox_executions (
   evidence                jsonb       NOT NULL DEFAULT '[]'::jsonb,
   review                  jsonb,
   claimed_at              timestamptz,
-  created_at              timestamptz NOT NULL DEFAULT now(),
+  claim_expires_at         timestamptz,
+  claim_generation         integer     NOT NULL DEFAULT 0,
+  created_at               timestamptz NOT NULL DEFAULT now(),
   updated_at              timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS agent_direct_sandbox_executions_user_idx
   ON agent_direct_sandbox_executions(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS agent_direct_sandbox_executions_queue_idx
-  ON agent_direct_sandbox_executions(status, created_at ASC);`;
+  ON agent_direct_sandbox_executions(status, created_at ASC);
+ALTER TABLE agent_direct_sandbox_executions
+  ADD COLUMN IF NOT EXISTS claim_expires_at timestamptz;
+ALTER TABLE agent_direct_sandbox_executions
+  ADD COLUMN IF NOT EXISTS claim_generation integer NOT NULL DEFAULT 0;`;
 
 const VALID_STATUSES = new Set<SandboxExecutionStatus>([
   "queued","claimed","routing","governance_unavailable","governance_denied",
@@ -69,6 +76,7 @@ function mapRow(row: Record<string, unknown>): SandboxExecution {
     outcome: asJson(row.outcome),
     evidence: asEvidence(row.evidence),
     review: asJson(row.review),
+    claimGeneration: Number(row.claim_generation ?? 0),
     createdAt: iso(row.created_at),
     updatedAt: iso(row.updated_at),
   };
@@ -84,6 +92,7 @@ export function sandboxExecutionBackendConnection(): SandboxExecutionBackendConn
 
 export async function migrateSandboxExecutions(): Promise<void> {
   await migrateAuth();
+  await migrateSandboxEnvironments();
   const q = sql() as unknown as { query: (text: string) => Promise<unknown> };
   await q.query(MIGRATION);
 }
@@ -169,12 +178,17 @@ export async function claimNextSandboxExecution(): Promise<SandboxExecution | nu
   const rows = await sql()`with candidate as (
       select id from agent_direct_sandbox_executions
       where status='queued'
+         or (status='claimed' and claim_expires_at < now())
       order by created_at asc
       for update skip locked
       limit 1
     )
     update agent_direct_sandbox_executions e
-       set status='claimed', claimed_at=now(), updated_at=now()
+       set status='claimed',
+           claimed_at=now(),
+           claim_expires_at=now() + interval '5 minutes',
+           claim_generation=e.claim_generation + 1,
+           updated_at=now()
       from candidate
      where e.id=candidate.id
      returning e.*`;
@@ -189,6 +203,13 @@ export async function updateSandboxExecutionFromRuntime(input: Record<string, un
   const currentRows = await sql()`select * from agent_direct_sandbox_executions where id=${id} limit 1`;
   const current = currentRows[0] as Record<string, unknown> | undefined;
   if (!current) throw new Error("execution_not_found");
+  if (String(current.status) === "claimed") {
+    const observedGeneration = Number(input.claimGeneration ?? 0);
+    const canonicalGeneration = Number(current.claim_generation ?? 0);
+    if (!observedGeneration || observedGeneration !== canonicalGeneration) {
+      throw new Error("stale_execution_claim");
+    }
+  }
 
   const runtimeDirectiveId = input.runtimeDirectiveId === undefined
     ? current.runtime_directive_id
@@ -209,6 +230,7 @@ export async function updateSandboxExecutionFromRuntime(input: Record<string, un
         outcome=${outcome ? JSON.stringify(outcome) : null}::jsonb,
         evidence=${JSON.stringify(evidence)}::jsonb,
         review=${review ? JSON.stringify(review) : null}::jsonb,
+        claim_expires_at=case when ${status}='claimed' then claim_expires_at else null end,
         updated_at=now()
     where id=${id}
     returning *`;
