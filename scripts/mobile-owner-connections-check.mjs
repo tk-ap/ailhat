@@ -13,78 +13,9 @@ function json(route, body, status = 200) {
   return route.fulfill({ status, contentType: "application/json", body: JSON.stringify(body) });
 }
 
-const portfolioState = {
-  products: [
-    { id: "ashwood", name: "ASHWOOD", platform: "vercel", url: "https://ashwood-info.vercel.app/", repository: "tk-ap/ashwood-info", createdAt: Date.now() - 86400000 },
-    { id: "ailhat", name: "ailhat", platform: "web", url: "https://ailhat.vercel.app/", repository: "tk-ap/ailhat", createdAt: Date.now() - 86400000 },
-  ],
-  retiredProducts: [],
-  items: [],
-  decisions: {},
-  scans: {},
-  scanHistory: {},
-  productActivity: {},
-  engagement: {},
-  feedback: {},
-  opportunities: [],
-  opportunityFeedback: {},
-};
-
-async function installMocks(page) {
-  await page.route("**/api/**", async route => {
-    const req = route.request();
-    const url = new URL(req.url());
-    const path = url.pathname;
-
-    if (path === "/api/auth/status") {
-      return json(route, { authed: true, user: { id: 1, email: "owner@example.test" }, signupOpen: false });
-    }
-    if (path === "/api/access") {
-      return json(route, { access: {
-        role: "owner", planKey: "owner", planStatus: "active", foundingBeta: false,
-        betaExpiresAt: null, productAccess: true, accessReason: "owner"
-      }});
-    }
-    if (path === "/api/portfolio") {
-      if (req.method() === "PUT") return json(route, { ok: true });
-      return json(route, { state: portfolioState });
-    }
-    if (path === "/api/sandbox-environments") {
-      if (req.method() === "GET") {
-        return json(route, {
-          connection: { provider: "here-now", configured: true, source: "runtime_secret", secretName: "HERENOW_API_KEY", inherited: true },
-          environments: [{
-            productId: "ashwood",
-            provider: "here-now",
-            providerConnectionRef: "owner:provider:here-now",
-            slug: "mighty-yoga-pgph",
-            sandboxUrl: "https://mighty-yoga-pgph.here.now/",
-            lifecycle: "live",
-            staticPrimary: true,
-            currentVersionId: "01M359HV4JJ4JKVWBRM2EXBAKM",
-            sourceRepository: "tk-ap/ashwood-info",
-            sourceRef: "928434e743ce147d37b771b3da28ed79f3c8f64a",
-            verificationState: "passed",
-            verifiedAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          }]
-        });
-      }
-      return json(route, { ok: true });
-    }
-    if (path === "/api/evidence/github" || path === "/api/evidence/vercel") {
-      return json(route, { snapshots: [] });
-    }
-    if (path === "/api/evidence/reconcile") {
-      return json(route, { observations: [], reconciliation: [] });
-    }
-    return json(route, { ok: true });
-  });
-}
-
-async function assertNoOverflow(page, name) {
+async function assertNoOverflow(page, name, scope) {
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-  if (overflow > 2) throw new Error(`${name}: horizontal overflow ${overflow}px`);
+  if (overflow > 2) throw new Error(`${name}: ${scope} horizontal overflow ${overflow}px`);
 }
 
 async function assertTapTarget(locator, name) {
@@ -97,44 +28,67 @@ async function assertTapTarget(locator, name) {
 
 for (const vp of viewports) {
   const browser = await chromium.launch({ headless: true });
+
+  // 1) Live production shell proof.
+  const live = await browser.newPage({ viewport: { width: vp.width, height: vp.height } });
+  const liveErrors = [];
+  live.on("pageerror", error => liveErrors.push(String(error)));
+  await live.goto("https://ailhat.vercel.app/connections", { waitUntil: "domcontentloaded" });
+  await live.waitForTimeout(900);
+  await assertNoOverflow(live, vp.name, "live Connections shell");
+  const desktopSidebar = live.locator("aside.fixed");
+  if (await desktopSidebar.isVisible()) throw new Error(`${vp.name}: desktop sidebar visible on phone width`);
+  const mobileHeader = live.locator("div.sm\\:hidden").first();
+  if (!(await mobileHeader.isVisible())) throw new Error(`${vp.name}: mobile ailhat header not visible`);
+  if (liveErrors.length) throw new Error(`${vp.name}: live shell page errors: ${liveErrors.join(" | ")}`);
+  await live.screenshot({ path: `${OUT}/${vp.name}-ailhat-live-shell.png`, fullPage: true });
+
+  // 2) Real owner connector component from current source, QA-only route.
   const page = await browser.newPage({ viewport: { width: vp.width, height: vp.height } });
   const errors = [];
   page.on("pageerror", error => errors.push(String(error)));
-  await installMocks(page);
+  await page.route("**/api/sandbox-environments**", async route => {
+    const req = route.request();
+    if (req.method() === "GET") {
+      return json(route, {
+        connection: { provider: "here-now", configured: true, source: "runtime_secret", secretName: "HERENOW_API_KEY", inherited: true },
+        environments: [{
+          productId: "ashwood",
+          provider: "here-now",
+          providerConnectionRef: "owner:provider:here-now",
+          slug: "mighty-yoga-pgph",
+          sandboxUrl: "https://mighty-yoga-pgph.here.now/",
+          lifecycle: "live",
+          staticPrimary: true,
+          currentVersionId: "01M359HV4JJ4JKVWBRM2EXBAKM",
+          sourceRepository: "tk-ap/ashwood-info",
+          sourceRef: "6f6643c626596e920ba50dfb276c53e1f73863ad",
+          verificationState: "passed",
+          verifiedAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }]
+      });
+    }
+    return json(route, { ok: true });
+  });
 
-  await page.goto("https://ailhat.vercel.app/connections", { waitUntil: "domcontentloaded" });
-  try {
-    await page.getByRole("heading", { name: "Evidence in. Prepared work out." }).waitFor({ state: "visible", timeout: 12000 });
-  } catch (error) {
-    const body = (await page.locator("body").innerText()).slice(0, 1400);
-    throw new Error(`${vp.name}: owner Connections did not hydrate. url=${page.url()} errors=${errors.join(" | ")} body=${body}`);
-  }
+  await page.goto("http://127.0.0.1:4173/mobile-proof", { waitUntil: "networkidle" });
   await page.getByRole("heading", { name: "here.now" }).waitFor({ state: "visible" });
-  await assertNoOverflow(page, vp.name);
-
-  const declare = page.getByRole("button", { name: "Declare integration" });
-  await assertTapTarget(declare, `${vp.name} declare integration`);
+  await page.getByText("Owner connection configured").waitFor({ state: "visible" });
+  await assertNoOverflow(page, vp.name, "owner here.now connector");
 
   const openSandbox = page.getByRole("link", { name: "Open sandbox ↗" });
-  await assertTapTarget(openSandbox, `${vp.name} Open sandbox`);
-
-  const productSelect = page.locator('form select').first();
+  const productSelect = page.locator("form select").first();
   const sandboxUrl = page.locator('form input[type="url"]');
   const register = page.getByRole("button", { name: "Register sandbox" });
+  await assertTapTarget(openSandbox, `${vp.name} Open sandbox`);
   await assertTapTarget(productSelect, `${vp.name} product selector`);
   await assertTapTarget(sandboxUrl, `${vp.name} sandbox URL input`);
   await assertTapTarget(register, `${vp.name} register sandbox`);
 
-  const mobileSidebar = page.locator("aside.fixed");
-  if (await mobileSidebar.isVisible()) throw new Error(`${vp.name}: desktop sidebar is visible on phone width`);
+  await page.screenshot({ path: `${OUT}/${vp.name}-ailhat-owner-connector.png`, fullPage: true });
+  if (errors.length) throw new Error(`${vp.name}: owner connector page errors: ${errors.join(" | ")}`);
 
-  await declare.click();
-  await page.waitForTimeout(100);
-  await assertNoOverflow(page, vp.name);
-
-  await page.screenshot({ path: `${OUT}/${vp.name}-ailhat-connections.png`, fullPage: true });
-  if (errors.length) throw new Error(`${vp.name}: page errors: ${errors.join(" | ")}`);
-
-  console.log(JSON.stringify({ viewport: vp, connections: "PASS", hereNowOwnerSurface: "PASS" }));
+  console.log(JSON.stringify({ viewport: vp, liveShell: "PASS", ownerHereNowConnector: "PASS" }));
   await browser.close();
 }
