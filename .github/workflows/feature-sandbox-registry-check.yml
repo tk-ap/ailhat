@@ -1,0 +1,19 @@
+name: feature sandbox registry build check
+
+on:
+  push:
+    branches:
+      - feat/herenow-owner-sandbox-registry
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run build
