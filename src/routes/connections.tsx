@@ -5,6 +5,7 @@ import { StoreProvider, useStore } from "~/lib/useStore";
 import AppShell from "~/components/AppShell";
 import PublicGitHubEvidenceConnector from "~/components/PublicGitHubEvidenceConnector";
 import VercelDeploymentEvidenceConnector from "~/components/VercelDeploymentEvidenceConnector";
+import HereNowSandboxConnector from "~/components/HereNowSandboxConnector";
 
 export const Route = createFileRoute("/connections")({
   component: () => (
@@ -18,7 +19,7 @@ export const Route = createFileRoute("/connections")({
   ),
 });
 
-type Provider = "github" | "vercel" | "analytics" | "harness";
+type Provider = "github" | "vercel" | "here-now" | "analytics" | "harness";
 type Purpose = "evidence" | "execution";
 type Permission = "read" | "read-write";
 
@@ -41,6 +42,10 @@ const PROVIDERS: Record<Provider, { label: string; note: string }> = {
   vercel: {
     label: "Vercel",
     note: "Deployment, domain, runtime, and production-health evidence.",
+  },
+  "here-now": {
+    label: "here.now",
+    note: "Stable static-first product sandboxes inherited from the owner provider connection.",
   },
   analytics: {
     label: "Analytics",
@@ -83,7 +88,7 @@ function ageLabel(at?: number) {
 }
 
 function ConnectionsPage() {
-  const { user, loading } = useAuth();
+  const { user, access, loading } = useAuth();
   const { state, ready } = useStore();
   const [intents, setIntents] = useState<ConnectionIntent[]>([]);
   const [showForm, setShowForm] = useState(false);
@@ -220,6 +225,7 @@ function ConnectionsPage() {
 
       <PublicGitHubEvidenceConnector products={state.products} />
       <VercelDeploymentEvidenceConnector products={state.products} />
+      {access?.role === "owner" && <HereNowSandboxConnector products={state.products} />}
 
       {showForm && (
         <section className="silhat-panel border-[#7fb0ff]/25 p-5">
