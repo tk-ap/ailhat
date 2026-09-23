@@ -8,10 +8,31 @@ export const Route = createFileRoute("/owner")({
   component: () => <AuthProvider><StoreProvider><AppShell active="owner"><OwnerDashboard /></AppShell></StoreProvider></AuthProvider>,
 });
 
+type WorkspaceEnvironment = {
+  id: string;
+  productKey: string;
+  provider: string;
+  purpose: string;
+  environmentKind: string;
+  url: string;
+  providerSiteId: string | null;
+  providerVersionId: string | null;
+  sourceRepo: string | null;
+  sourceRef: string | null;
+  accessMode: string;
+  ownership: string;
+  persistence: string;
+  status: string;
+  expiresAt: string | null;
+  lastObservedAt: string | null;
+  metadata: Record<string, unknown>;
+};
 type Overview = {
   users: number; activeFoundingBeta: number; openInvites: number; feedbackCount: number;
   waitlistCount: number; activePortfolioProducts: number; invitesEnabled: boolean;
   members: Array<Record<string, unknown>>; recentFeedback: Array<Record<string, unknown>>; invites: Array<Record<string, unknown>>;
+  workspaceEnvironments: WorkspaceEnvironment[];
+  workspaceEnvironmentStatus: { available: boolean; source: string; observedAt: string | null; error: string | null };
 };
 function Stat({ label, value, note }: { label: string; value: string | number; note?: string }) {
   return <div className="silhat-panel p-4"><p className="silhat-eyebrow">{label}</p><p className="mt-2 text-2xl font-bold text-gray-50">{value}</p>{note && <p className="mt-1 text-xs text-gray-500">{note}</p>}</div>;
@@ -60,6 +81,52 @@ function OwnerDashboard() {
   return <div className="space-y-6">
     <section><p className="silhat-eyebrow">Owner · Founding Beta</p><h1 className="mt-1 text-3xl font-bold text-gray-50">Cohort control</h1><p className="mt-2 max-w-3xl text-sm leading-6 text-gray-400">Invite a deliberately small cohort, watch whether they add products and return, collect feedback, and revoke access without deleting their account identity or portfolio.</p></section>
     <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6"><Stat label="Accounts" value={overview?.users ?? "—"} /><Stat label="Active beta" value={overview?.activeFoundingBeta ?? "—"} /><Stat label="Open invites" value={overview?.openInvites ?? "—"} /><Stat label="Feedback" value={overview?.feedbackCount ?? "—"} /><Stat label="Waitlist" value={overview?.waitlistCount ?? "—"} /><Stat label="Products" value={overview?.activePortfolioProducts ?? "—"} note="Across persisted accounts" /></section>
+
+    <section className="silhat-panel p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="silhat-eyebrow">Owner · ecosystem environments</p>
+          <h2 className="mt-1 text-xl font-semibold text-gray-100">Sandbox environments</h2>
+          <p className="mt-1 max-w-3xl text-sm leading-6 text-gray-500">Read-only projection from ASHWOOD Workspace. Provider deployment facts stay in Workspace; ailhat uses them as portfolio context and does not store Workspace sessions, here.now claim tokens, or provider API keys.</p>
+        </div>
+        <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${overview?.workspaceEnvironmentStatus?.available ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" : "border-amber-400/25 bg-amber-400/[0.05] text-amber-300"}`}>
+          {overview?.workspaceEnvironmentStatus?.available ? "Workspace synced" : "Workspace unavailable"}
+        </span>
+      </div>
+      <div className="mt-4 space-y-2">
+        {(overview?.workspaceEnvironments ?? []).length === 0 ? (
+          <p className="text-sm text-gray-500">
+            {overview?.workspaceEnvironmentStatus?.available ? "No sandbox environments are currently registered." : "Environment projection is not configured on this deployment."}
+          </p>
+        ) : overview!.workspaceEnvironments.map((env) => {
+          const expiry = env.expiresAt ? new Date(env.expiresAt) : null;
+          const expired = expiry ? expiry.getTime() <= Date.now() : false;
+          const source = [env.sourceRepo, env.sourceRef?.slice(0, 10)].filter(Boolean).join(" · ");
+          return <div key={env.id} className="rounded-lg border border-gray-800 bg-gray-950/50 p-3">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-semibold text-gray-200">{env.purpose}</p>
+                  <span className="rounded-full border border-gray-800 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-gray-500">{env.provider}</span>
+                </div>
+                <p className="mt-1 text-xs text-gray-600">
+                  {env.productKey} · {env.accessMode} · {env.persistence}
+                  {expiry ? ` · ${expired ? "expired" : "expires"} ${expiry.toLocaleString()}` : ""}
+                </p>
+                <p className="mt-1 truncate text-[11px] text-gray-700">{source || "source unavailable"}{env.providerVersionId ? ` · version ${env.providerVersionId}` : ""}</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className={`text-xs font-semibold ${env.status === "live" && !expired ? "text-emerald-300" : expired ? "text-amber-300" : "text-gray-500"}`}>{expired ? "EXPIRED" : env.status.toUpperCase()}</span>
+                <a href={env.url} target="_blank" rel="noreferrer" className="text-xs font-semibold text-[#7fb0ff] hover:underline">Open ↗</a>
+              </div>
+            </div>
+          </div>;
+        })}
+      </div>
+      <p className="mt-3 text-[11px] leading-5 text-gray-600">
+        ailhat observes this inventory; sandbox lifecycle actions originate in ASHWOOD Workspace and flow through the governed AgentOS / ledgato path.
+      </p>
+    </section>
 
     <section className="silhat-panel p-5">
       <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="silhat-eyebrow">Invite rail</p><h2 className="mt-1 text-xl font-semibold text-gray-100">Create a time-bounded Founding Beta invite</h2></div><span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${overview?.invitesEnabled ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" : "border-amber-400/25 bg-amber-400/[0.05] text-amber-300"}`}>{overview?.invitesEnabled ? "Enabled" : "Staged · disabled"}</span></div>
