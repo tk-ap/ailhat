@@ -1,0 +1,37 @@
+version: 1
+product_key: ailhat
+
+source:
+  repository: tk-ap/ailhat
+  production_branch: main
+
+production:
+  provider: vercel
+  # Vercel project name not verified from this repository; do not infer it from the URL.
+  project: null
+  url: https://ailhat.vercel.app/
+
+sandboxes:
+  primary:
+    provider: here-now
+    inherit_connection: owner:provider:here-now
+    lifecycle: live
+    static_primary: true
+    slug: wintry-truffle-pf6f
+    url: https://wintry-truffle-pf6f.here.now/
+    current_version_id: 01M37P8NE53VDRFK3A1D4DXWZB
+    source_ref: 4a2b5f1294150c11d5b2dd0cf7c62116225c766f
+    verification:
+      state: pending
+      evidence_refs: []
+    notes:
+      - "Static UI build only. Sign-in, database, payments and API routes are unavailable in this sandbox and are not simulated."
+      - "Build with scripts/sandbox-build.sh, then publish the output directory to the same slug; never create a replacement site."
+      - "Verification is pending: HTTP 200 checks on the root and a few routes only. No browser or mobile verification has been recorded."
+
+rules:
+  - sandbox-state-never-implies-production-state
+  - sandbox-credentials-are-owner-level-or-external-secret-references-never-inline
+  - stable-sandbox-slug-is-preferred-over-disposable-preview-urls
+  - record-source-ref-and-verification-evidence-for-each-sandbox-version
+  - browser-test-accounts-remain-product-specific-and-separate-from-provider-ownership
