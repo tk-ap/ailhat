@@ -9,6 +9,7 @@ import { assessPortfolioRetirement } from "~/lib/portfolio-lifecycle";
 import { scanSite } from "~/lib/scanClient";
 import { platformLabel } from "~/lib/store";
 import { timeAgo } from "~/lib/observation";
+import { useClientNow } from "~/lib/display-time";
 import {
   effectiveFindingDisplay,
   findingLifecycleLabel,
@@ -38,6 +39,8 @@ export const Route = createFileRoute("/product/$productId")({
 function ProductCockpit() {
   const { productId } = Route.useParams();
   const { user, loading } = useAuth();
+  const clientNow = useClientNow();
+  const relative = (at: number) => timeAgo(at, clientNow ?? at);
   const { state, ready, actions } = useStore();
   const [scanning, setScanning] = useState(false);
   const [scanMessage, setScanMessage] = useState("");
@@ -188,7 +191,7 @@ function ProductCockpit() {
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Metric label="Open work" value={String(openItems.length)} detail={`${items.length} total checklist items`} />
         <Metric label="Open signals" value={String(signals.length)} detail={signals[0]?.title ?? "No product-specific signal"} />
-        <Metric label="Observation" value={lastGood ? timeAgo(lastGood.scannedAt) : "Not scanned"} detail={history?.consecutiveFailures ? `${history.consecutiveFailures} recent failed attempt${history.consecutiveFailures === 1 ? "" : "s"}` : "fresh evidence closes the loop"} />
+        <Metric label="Observation" value={lastGood ? relative(lastGood.scannedAt) : "Not scanned"} detail={history?.consecutiveFailures ? `${history.consecutiveFailures} recent failed attempt${history.consecutiveFailures === 1 ? "" : "s"}` : "fresh evidence closes the loop"} />
         <Metric label="Tracked findings" value={String(trackedIssues.length)} detail={hiddenResolvedCount > 0 ? `${hiddenResolvedCount} resolved finding${hiddenResolvedCount === 1 ? "" : "s"} hidden from active view` : "resolved evidence is preserved"} />
       </section>
 
@@ -214,7 +217,7 @@ function ProductCockpit() {
               {openSignal
                 ? `Grounded in the current ${openSignal.level.replace("_", " ").toLowerCase()} signal: ${openSignal.title}.`
                 : lastGood
-                  ? `No non-healthy product signal is open. Latest verified observation: ${timeAgo(lastGood.scannedAt)}.`
+                  ? `No non-healthy product signal is open. Latest verified observation: ${relative(lastGood.scannedAt)}.`
                   : "No verified product scan is available yet. Establish evidence before treating a recommendation as current truth."}
             </p>
           </article>
@@ -306,7 +309,7 @@ function ProductCockpit() {
                         <>
                           <p className="mt-1 text-sm leading-5 text-gray-500">{issue.detail}</p>
                           <p className="mt-2 text-[11px] text-gray-600">
-                            first seen {timeAgo(issue.firstDetectedAt)} · last seen {timeAgo(issue.lastDetectedAt)} · {issue.occurrences} occurrence{issue.occurrences === 1 ? "" : "s"} · resolved {issue.timesResolved} time{issue.timesResolved === 1 ? "" : "s"}
+                            first seen {relative(issue.firstDetectedAt)} · last seen {relative(issue.lastDetectedAt)} · {issue.occurrences} occurrence{issue.occurrences === 1 ? "" : "s"} · resolved {issue.timesResolved} time{issue.timesResolved === 1 ? "" : "s"}
                           </p>
                         </>
                       )}

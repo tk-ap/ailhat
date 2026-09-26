@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useAuth } from "~/lib/useAuth";
+import { displayDate } from "~/lib/display-time";
 
 function ProfileIcon() {
   return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden><circle cx="12" cy="8" r="4" /><path d="M4.5 21a7.5 7.5 0 0 1 15 0" strokeLinecap="round" /></svg>;
@@ -10,7 +11,7 @@ export default function AuthNav({ compact = false }: { compact?: boolean }) {
   if (loading) return <span className="text-sm text-gray-400">…</span>;
   if (user) {
     const owner = access?.role === "owner";
-    const accessLabel = owner ? "Owner account" : access?.foundingBeta ? `Founding Beta${access.betaExpiresAt ? ` · through ${new Date(access.betaExpiresAt).toLocaleDateString()}` : ""}` : "Access inactive";
+    const accessLabel = owner ? "Owner account" : access?.foundingBeta ? `Founding Beta${access.betaExpiresAt ? ` · through ${displayDate(access.betaExpiresAt)}` : ""}` : "Access inactive";
     return <details className="group relative">
       <summary className={`flex cursor-pointer list-none items-center gap-2 rounded-lg border border-gray-700 text-sm font-medium text-gray-300 transition hover:bg-gray-800 hover:text-gray-100 [&::-webkit-details-marker]:hidden ${compact ? "px-2.5 py-2" : "px-2.5 py-1.5"}`} title="Profile"><ProfileIcon />{!compact && <span className="hidden max-w-[160px] truncate sm:inline">{user.email}</span>}{compact && <span className="text-xs">Profile</span>}<span className="text-[10px] text-gray-600 transition group-open:rotate-180">⌄</span></summary>
       <div className={`absolute z-50 mt-2 w-72 overflow-hidden rounded-xl border border-gray-800 bg-gray-950 shadow-2xl ${compact ? "bottom-full left-0 mb-2 mt-0" : "right-0"}`}>

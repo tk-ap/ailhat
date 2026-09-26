@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { displayDate } from "~/lib/display-time";
 
 type AccountScope = "standard" | "admin";
 
@@ -16,7 +17,7 @@ function formatTimestamp(value: string | null): string {
   if (!value) return "Never";
   const date = new Date(value);
   if (!Number.isFinite(date.getTime())) return "Unknown";
-  return date.toLocaleString();
+  return displayDate(date);
 }
 
 export default function SandboxAccessPanel({
