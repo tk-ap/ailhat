@@ -44,6 +44,7 @@ import {
   lastDiffs,
   timeAgo,
 } from "~/lib/observation";
+import { displayDate, useClientNow } from "~/lib/display-time";
 
 export const Route = createFileRoute("/dashboard")({
   component: () => (
@@ -325,6 +326,7 @@ function ScanPanel({
   scanning: boolean;
   onScan: () => void;
 }) {
+  const clientNow = useClientNow();
   const { state, actions } = useStore();
   const history = (state.scanHistory ?? {})[product.id];
   const lastResult = history?.lastGood;
@@ -363,7 +365,7 @@ function ScanPanel({
         <div className="flex items-center gap-2">
           {lastResult && lastResult.ok && (
             <span className="text-xs text-gray-400">
-              scanned {lastResult.url} · {timeAgo(lastResult.scannedAt)}
+              scanned {lastResult.url} · {timeAgo(lastResult.scannedAt, clientNow ?? lastResult.scannedAt)}
             </span>
           )}
           <button
@@ -388,7 +390,7 @@ function ScanPanel({
           and no findings are shown.{" "}
           {history?.lastGood ? (
             <span className="text-gray-400">
-              Last known-good scan was {timeAgo(history.lastGood.scannedAt)}.
+              Last known-good scan was {timeAgo(history.lastGood.scannedAt, clientNow ?? history.lastGood.scannedAt)}.
             </span>
           ) : (
             <span className="text-gray-400">No successful scan yet.</span>
@@ -452,7 +454,7 @@ function ScanPanel({
                   {issue && issue.occurrences > 1 && (
                     <p className="mt-0.5 text-[11px] text-gray-400">
                       Detected {issue.occurrences}× since{" "}
-                      {new Date(issue.firstDetectedAt).toLocaleDateString()} — one
+                      {displayDate(issue.firstDetectedAt)} — one
                       persistent issue, not duplicates.
                     </p>
                   )}
@@ -534,6 +536,7 @@ function ProductCard({
   scanning: boolean;
   onScan: () => void;
 }) {
+  const clientNow = useClientNow();
   const { state, actions } = useStore();
   const [showAdd, setShowAdd] = useState(false);
   const [showScan, setShowScan] = useState(false);
@@ -664,7 +667,7 @@ function ProductCard({
                   <LiveStatusDot state={live.state} />
                   {live.state === "live" && live.lastGoodAt && (
                     <span className="text-gray-500">
-                      Updated {timeAgo(live.lastGoodAt)}
+                      Updated {timeAgo(live.lastGoodAt, clientNow ?? live.lastGoodAt)}
                     </span>
                   )}
                   {live.state === "unavailable" && (
@@ -674,7 +677,7 @@ function ProductCard({
                       className="rounded-full bg-rose-950/60 px-2 py-0.5 font-semibold text-rose-200 ring-1 ring-rose-900/60 hover:bg-rose-900/60 disabled:opacity-60"
                     >
                       {live.lastGoodAt
-                        ? `Retry (last good ${timeAgo(live.lastGoodAt)})`
+                        ? `Retry (last good ${timeAgo(live.lastGoodAt, clientNow ?? live.lastGoodAt)})`
                         : "Retry scan"}
                     </button>
                   )}
@@ -1263,6 +1266,8 @@ function DashboardDemo() {
 }
 
 function Dashboard() {
+  const clientNow = useClientNow();
+  const relativeNow = clientNow ?? 0;
   const { user, loading } = useAuth();
   const { state, ready } = useStore();
   const { scanning, runScanForProduct } = useAutoscan();

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { AuthProvider, useAuth } from "~/lib/useAuth";
 import { StoreProvider } from "~/lib/useStore";
 import AppShell from "~/components/AppShell";
+import { displayDate, useClientNow } from "~/lib/display-time";
 
 export const Route = createFileRoute("/owner")({
   component: () => <AuthProvider><StoreProvider><AppShell active="owner"><OwnerDashboard /></AppShell></StoreProvider></AuthProvider>,
@@ -26,6 +27,7 @@ function OwnerDashboard() {
   const [message, setMessage] = useState("");
   const [inviteUrl, setInviteUrl] = useState("");
   const owner = access?.role === "owner";
+  const clientNow = useClientNow();
 
   const refresh = async () => {
     const response = await fetch("/api/owner/overview", { cache: "no-store" });
@@ -69,7 +71,7 @@ function OwnerDashboard() {
     </section>
 
     <section className="grid gap-5 xl:grid-cols-2">
-      <div className="silhat-panel p-5"><p className="silhat-eyebrow">Members</p><h2 className="mt-1 text-xl font-semibold text-gray-100">Founding Beta accounts</h2><div className="mt-4 space-y-2">{(overview?.members ?? []).length === 0 ? <p className="text-sm text-gray-500">No beta members yet.</p> : overview!.members.map((raw) => { const row = raw as any; const active = !row.revoked_at && new Date(String(row.expires_at)).getTime() > Date.now(); return <div key={String(row.user_id)} className="rounded-lg border border-gray-800 bg-gray-950/50 p-3"><div className="flex flex-wrap items-start justify-between gap-2"><div><p className="text-sm font-semibold text-gray-200">{String(row.email)}</p><p className="mt-1 text-xs text-gray-600">{Number(row.active_products ?? 0)} products · {Number(row.feedback_count ?? 0)} feedback · expires {new Date(String(row.expires_at)).toLocaleDateString()}</p></div><div className="flex items-center gap-2"><span className={`text-xs font-semibold ${active ? "text-emerald-300" : "text-gray-600"}`}>{active ? "Active" : "Inactive"}</span>{active && <button type="button" onClick={() => void revoke(Number(row.user_id))} className="text-xs font-semibold text-rose-300 hover:underline">Revoke</button>}</div></div></div>; })}</div></div>
+      <div className="silhat-panel p-5"><p className="silhat-eyebrow">Members</p><h2 className="mt-1 text-xl font-semibold text-gray-100">Founding Beta accounts</h2><div className="mt-4 space-y-2">{(overview?.members ?? []).length === 0 ? <p className="text-sm text-gray-500">No beta members yet.</p> : overview!.members.map((raw) => { const row = raw as any; const active = !row.revoked_at && (clientNow === null || new Date(String(row.expires_at)).getTime() > clientNow); return <div key={String(row.user_id)} className="rounded-lg border border-gray-800 bg-gray-950/50 p-3"><div className="flex flex-wrap items-start justify-between gap-2"><div><p className="text-sm font-semibold text-gray-200">{String(row.email)}</p><p className="mt-1 text-xs text-gray-600">{Number(row.active_products ?? 0)} products · {Number(row.feedback_count ?? 0)} feedback · expires {displayDate(String(row.expires_at))}</p></div><div className="flex items-center gap-2"><span className={`text-xs font-semibold ${active ? "text-emerald-300" : "text-gray-600"}`}>{active ? "Active" : "Inactive"}</span>{active && <button type="button" onClick={() => void revoke(Number(row.user_id))} className="text-xs font-semibold text-rose-300 hover:underline">Revoke</button>}</div></div></div>; })}</div></div>
       <div className="silhat-panel p-5"><p className="silhat-eyebrow">Recent feedback</p><h2 className="mt-1 text-xl font-semibold text-gray-100">What the cohort is telling you</h2><div className="mt-4 space-y-2">{(overview?.recentFeedback ?? []).length === 0 ? <p className="text-sm text-gray-500">No feedback yet.</p> : overview!.recentFeedback.slice(0,12).map((raw) => { const row = raw as any; return <div key={String(row.id)} className="rounded-lg border border-gray-800 bg-gray-950/50 p-3"><div className="flex flex-wrap gap-2 text-[10px] uppercase tracking-wider text-gray-600"><span>{String(row.category)}</span><span>·</span><span>{String(row.email)}</span>{row.route && <><span>·</span><span>{String(row.route)}</span></>}</div><p className="mt-2 text-sm leading-5 text-gray-300">{String(row.message)}</p></div>; })}</div></div>
     </section>
     <section className="rounded-xl border border-amber-400/20 bg-amber-400/[0.04] p-4 text-sm leading-6 text-amber-100/90"><strong>Release rail:</strong> code support is complete after tenant isolation, but invite issuance remains an explicit deployment switch. Beta is free early access; it does not create a paid entitlement or autonomous execution permission.</section>

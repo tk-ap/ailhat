@@ -1,11 +1,13 @@
 import { Link } from "@tanstack/react-router";
 import RadarSection from "~/components/RadarSection";
 import { useStore } from "~/lib/useStore";
+import { displayDate, useClientNow } from "~/lib/display-time";
 
 const FRESH_SCAN_MS = 7 * 24 * 60 * 60 * 1000;
 
 export default function IntelligenceExpansion() {
   const { state } = useStore();
+  const clientNow = useClientNow();
 
   return (
     <div className="space-y-6">
@@ -29,7 +31,7 @@ export default function IntelligenceExpansion() {
               const lastGood = history?.lastGood;
               const presentFindings = Object.values(history?.issues ?? {}).filter((issue) => issue.present);
               const openWork = state.items.filter((item) => item.productId === product.id && item.status !== "done");
-              const fresh = Boolean(lastGood && Date.now() - lastGood.scannedAt <= FRESH_SCAN_MS);
+              const fresh = Boolean(lastGood && clientNow !== null && clientNow - lastGood.scannedAt <= FRESH_SCAN_MS);
               const status = !product.url
                 ? "Needs URL"
                 : !lastGood
@@ -58,7 +60,7 @@ export default function IntelligenceExpansion() {
                   <div className="mt-4 grid grid-cols-3 gap-2 text-center text-xs">
                     <div className="rounded-lg border border-gray-800 bg-gray-900/50 p-2"><strong className="block text-sm text-gray-200">{presentFindings.length}</strong><span className="text-gray-600">active findings</span></div>
                     <div className="rounded-lg border border-gray-800 bg-gray-900/50 p-2"><strong className="block text-sm text-gray-200">{openWork.length}</strong><span className="text-gray-600">open work</span></div>
-                    <div className="rounded-lg border border-gray-800 bg-gray-900/50 p-2"><strong className="block text-sm text-gray-200">{lastGood ? new Date(lastGood.scannedAt).toLocaleDateString() : "—"}</strong><span className="text-gray-600">last scan</span></div>
+                    <div className="rounded-lg border border-gray-800 bg-gray-900/50 p-2"><strong className="block text-sm text-gray-200">{lastGood ? displayDate(lastGood.scannedAt) : "—"}</strong><span className="text-gray-600">last scan</span></div>
                   </div>
                   <Link to="/product/$productId" params={{ productId: product.id }} className="mt-4 inline-block text-xs font-semibold text-[#7fb0ff] hover:underline">Open Product Cockpit →</Link>
                 </article>

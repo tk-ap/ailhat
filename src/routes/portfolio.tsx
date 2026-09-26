@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from "~/lib/useAuth";
 import { StoreProvider, useStore } from "~/lib/useStore";
 import { platformLabel } from "~/lib/store";
 import { timeAgo } from "~/lib/observation";
+import { useClientNow } from "~/lib/display-time";
 
 export const Route = createFileRoute("/portfolio")({
   component: () => (
@@ -18,6 +19,7 @@ export const Route = createFileRoute("/portfolio")({
 });
 
 function PortfolioArchive() {
+  const clientNow = useClientNow();
   const { user, loading } = useAuth();
   const { state, ready, actions } = useStore();
   const retired = [...(state.retiredProducts ?? [])].sort((a, b) => b.retiredAt - a.retiredAt);
@@ -78,7 +80,7 @@ function PortfolioArchive() {
                       </span>
                     </div>
                     <p className="mt-1 text-xs text-gray-500">
-                      {platformLabel(product.platform)} · retired {timeAgo(archive.retiredAt)}
+                      {platformLabel(product.platform)} · retired {timeAgo(archive.retiredAt, clientNow ?? archive.retiredAt)}
                     </p>
                     {archive.reason && (
                       <p className="mt-3 text-sm leading-6 text-gray-400">{archive.reason}</p>

@@ -6,6 +6,7 @@ import AppShell from "~/components/AppShell";
 import PublicGitHubEvidenceConnector from "~/components/PublicGitHubEvidenceConnector";
 import VercelDeploymentEvidenceConnector from "~/components/VercelDeploymentEvidenceConnector";
 import HereNowSandboxConnector from "~/components/HereNowSandboxConnector";
+import { displayDate } from "~/lib/display-time";
 
 export const Route = createFileRoute("/connections")({
   component: () => (
@@ -364,7 +365,7 @@ function ConnectionsPage() {
                     <span>
                       Products · {names.length ? names.join(", ") : "portfolio / unassigned"}
                     </span>
-                    <span>Declared · {new Date(intent.createdAt).toLocaleDateString()}</span>
+                    <span>Declared · {displayDate(intent.createdAt)}</span>
                   </div>
                   <button
                     type="button"

@@ -11,6 +11,7 @@
 // Honesty: recommendations are seeded from the Direct/seed model and default to
 // "not-decisioned" — the app never auto-claims deployed / paused / deferred.
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { displayDate } from "~/lib/display-time";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AuthProvider, useAuth } from "~/lib/useAuth";
 import { StoreProvider, useStore } from "~/lib/useStore";
@@ -74,7 +75,7 @@ function DecisionRow({
 }) {
   const [reason, setReason] = useState(decision.reason ?? "");
   const updatedLabel = decision.updatedAt
-    ? new Date(decision.updatedAt).toLocaleString()
+    ? displayDate(decision.updatedAt)
     : null;
 
   return (

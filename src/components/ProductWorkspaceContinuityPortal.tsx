@@ -6,6 +6,7 @@ import {
   subscribePreparedWork,
 } from "~/lib/prepared-work";
 import { loadTodayPreferences } from "~/lib/today-workspace";
+import { displayDate } from "~/lib/display-time";
 
 export default function ProductWorkspaceContinuityPortal() {
   const location = useLocation();
@@ -121,7 +122,7 @@ export default function ProductWorkspaceContinuityPortal() {
               <div key={item.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-gray-800 bg-gray-950/50 px-3 py-2">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium text-gray-200">{item.title}</p>
-                  <p className="mt-0.5 text-[11px] text-gray-600">{item.mode} · {new Date(item.generatedAt).toLocaleString()}</p>
+                  <p className="mt-0.5 text-[11px] text-gray-600">{item.mode} · {displayDate(item.generatedAt)}</p>
                 </div>
                 <Link to="/control" className="shrink-0 text-xs font-semibold text-[#7fb0ff] hover:underline">
                   Open in Direct →

@@ -1,7 +1,8 @@
 import type { ClientAccountAccess } from "~/lib/useAuth";
+import { displayDate } from "~/lib/display-time";
 
 export default function ProductAccessBlocked({ access, onLogout }: { access: ClientAccountAccess | null; onLogout: () => void }) {
-  const betaDate = access?.betaExpiresAt ? new Date(access.betaExpiresAt).toLocaleDateString() : null;
+  const betaDate = access?.betaExpiresAt ? displayDate(access.betaExpiresAt) : null;
   return (
     <div className="min-h-dvh bg-gray-950 px-6 py-16 text-gray-100">
       <section className="silhat-panel mx-auto max-w-xl p-8 text-center">
