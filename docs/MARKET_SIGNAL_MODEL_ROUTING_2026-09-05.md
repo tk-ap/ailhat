@@ -3,7 +3,7 @@
 **Date:** 2026-09-05
 **Lane:** external market / engagement signal (canonical source order position 5)
 **Triggered by:** owner question — "considering everything in my ecosystem, as well as Agent OS itself, goose.ai and getmulti.ai, how can we leverage, if at all?"
-**Status:** signal. Proposes work; does not authorize execution.
+**Status:** dated decision record; refreshed 2026-09-25. Proposes work; does not authorize execution.
 
 ---
 
@@ -102,6 +102,59 @@ Explicitly **not** recommended:
 Neither GooseAI nor Multi is a skill. They are external products and services, and the ecosystem has no registry, evaluation lane, or decision record for that class. This evaluation had no canonical home before this document.
 
 **Ecosystem gap:** capability acquisition is governed; vendor/product evaluation is not. Recommend a vendor-evaluation lane owned by ailhat that produces a filed decision record — decline, track, or propose work — so questions of the form "should we use X?" leave evidence instead of remaining conversational. This document is the first instance of that shape and can serve as its template.
+
+---
+
+## REFRESH — 2026-09-25
+
+This refresh preserves the 2026-09-05 assessment as a historical snapshot and
+rechecks the public vendor surfaces before merging this record.
+
+### Current external evidence
+
+- **GooseAI remains available as a narrow managed completion API.** Its public
+  site still presents GPT-Neo, GPT-J, Fairseq, and GPT-NeoX engines, output-token
+  pricing, and an OpenAI-compatible completions endpoint. Question-answering and
+  classification remain marked “Coming Soon” on the public product surface.
+  Sources: [GooseAI](https://goose.ai/),
+  [GooseAI pricing](https://goose.ai/pricing), and
+  [GooseAI engine API](https://goose.ai/docs/api/engines).
+- **Decision unchanged: decline GooseAI for ALVIRA.** The public evidence shows
+  a functioning, narrowly scoped service, but does not establish the structured
+  output, prompt-injection, reliability, or model-quality properties ALVIRA's
+  context pipeline requires. Operating status is now **publicly present, but
+  production suitability remains unverified** — not “dormant.”
+- **Multi remains an active adjacent comparable.** Its current public surface
+  describes one-answer, compare, council, and automatic-routing workflows over a
+  large model catalog, with BYO OpenRouter credentials and free-model mode. Its
+  published price remains **$19/month** or **$399 lifetime**. Sources:
+  [Multi](https://getmulti.ai/) and
+  [Multi terms](https://app.multi-ai.ai/en/terms).
+- **Decision unchanged: track Multi; do not integrate it.** The product is
+  evidence that task-shaped model choice is a live market pattern, not evidence
+  of ALVIRA demand or a reason to add a vendor dependency. The model-count claim
+  varies across Multi's public pages, so this record intentionally does not treat
+  the catalog number as a stable metric.
+
+### Internal finding status
+
+The ALVIRA single-provider observation remains the proposed reason for a bounded
+fallback experiment, but the canonical `tk-ap/ALVIRA` `main` branch was not
+reachable during this refresh. The five-call-site grep from 2026-09-05 is
+therefore retained as **repository evidence with stale-verification status**, not
+reissued as a current production fact. Reconfirm the call sites and any existing
+fallback work in ALVIRA before implementation authorization.
+
+### Dated decision
+
+As of 2026-09-25:
+
+1. Decline GooseAI as an ALVIRA provider dependency.
+2. Track Multi as an adjacent comparable; no integration or partnership work.
+3. Keep the ALVIRA fallback item **proposed P2**, pending canonical-repository
+   re-verification and explicit owner authorization.
+4. Preserve the original 2026-09-05 snapshot and this refresh as separate
+   evidence points; neither authorizes a cross-product code change.
 
 ## Boundary check
 
