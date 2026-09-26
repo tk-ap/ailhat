@@ -14,6 +14,7 @@ import AskAilhat from "~/components/AskAilhat";
 import AddContext from "~/components/AddContext";
 import { platformLabel } from "~/lib/store";
 import { retirementRecommendationCount } from "~/lib/portfolio-lifecycle";
+import WorkflowPath from "~/components/WorkflowPath";
 
 export type ShellView =
   | "today"
@@ -294,7 +295,9 @@ export default function AppShell({
 
         <header className="hidden items-center justify-between gap-4 border-b border-gray-800 bg-gray-950/80 px-8 py-3 backdrop-blur sm:flex">
           <div className="flex items-center gap-2 text-sm text-gray-500">
-            <span className="text-gray-400">{viewLabel}</span>
+            <Link to="/dashboard" className="text-gray-500 hover:text-[#7fb0ff]">Workspace</Link>
+            <span className="text-gray-600">/</span>
+            <span className="text-gray-300">{viewLabel}</span>
             <span className="text-gray-600">/</span>
             <span className="truncate text-gray-500">
               {active === "today"
@@ -320,6 +323,10 @@ export default function AppShell({
             <AuthNav />
           </div>
         </header>
+
+        <div className="border-b border-gray-800 bg-gray-950/60 px-4 py-2 sm:px-8">
+          <WorkflowPath compact />
+        </div>
 
         <main className="min-w-0 flex-1">
           <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-8">
