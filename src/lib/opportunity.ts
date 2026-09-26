@@ -16,6 +16,7 @@
 
 import type { AppState, FeedbackEntry } from "./store";
 import type { Confidence, ScanFinding, Severity } from "./scanSite";
+import { applicableFindings } from "./product-profile";
 
 export type OpportunityType =
   | "CONVERSION"
@@ -415,7 +416,7 @@ export function computeOpportunities(state: AppState): Opportunity[] {
   for (const p of products) {
     const scan = scans[p.id];
     if (!scan || !scan.ok) continue; // no successful observation → no evidence
-    const fails = scan.findings.filter((f) => f.status === "fail");
+    const fails = applicableFindings(p, scan.findings).filter((f) => f.status === "fail");
     if (fails.length === 0) continue; // healthy → no opportunities
 
     const prod = { id: p.id, name: p.name };

@@ -51,6 +51,17 @@ const NAV: { id: ShellView; label: string; to: string; icon: ReactNode; hint: st
     ),
   },
   {
+    id: "portfolio",
+    label: "Products",
+    to: "/portfolio",
+    hint: "Product directory · operating profiles · preserved archive",
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="shrink-0">
+        <rect x="3" y="4" width="7" height="7" rx="1.5" /><rect x="14" y="4" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" />
+      </svg>
+    ),
+  },
+  {
     id: "control",
     label: "Direct",
     to: "/control",
@@ -113,7 +124,7 @@ export default function AppShell({
 
   const viewLabel =
     active === "portfolio"
-      ? "Product"
+      ? "Products"
       : active === "owner"
         ? "Owner Dashboard"
         : active === "connections"
@@ -289,7 +300,7 @@ export default function AppShell({
               {active === "today"
                 ? `Current attention · active portfolio · reorder · condense · retire`
                 : active === "portfolio"
-                  ? `Product cockpit / preserved archive`
+                  ? `Product directory · profiles · preserved archive`
                   : active === "control"
                     ? `Agent Direct · prepare governed work`
                     : active === "sandbox"

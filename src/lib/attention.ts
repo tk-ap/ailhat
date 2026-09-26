@@ -36,6 +36,7 @@ import {
 // Intelligence surface shares ONE vocabulary (and one tone set).
 import type { AttentionLevel } from "./brief";
 import { LEVEL_ORDER } from "./brief";
+import { applicableFindings } from "./product-profile";
 
 export type { AttentionLevel };
 
@@ -378,7 +379,7 @@ export function computeAttention(state: AppState): AttentionItem[] {
   for (const p of products) {
     const scan = scans[p.id];
     if (!scan || !scan.ok) continue;
-    const fails = scan.findings.filter((f) => f.status === "fail");
+    const fails = applicableFindings(p, scan.findings).filter((f) => f.status === "fail");
     const severe = new Set<string>();
     for (const f of fails) {
       if (f.severity === "CRITICAL" || f.severity === "HIGH") severe.add(f.ruleId);

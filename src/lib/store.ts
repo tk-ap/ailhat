@@ -6,6 +6,7 @@ import type { ScanResult, CheckStatus } from "./scanSite";
 import type { ProductScanHistory } from "./observation";
 import type { Opportunity } from "./opportunity";
 import { mergeScan } from "./observation";
+import type { ProductOperatingProfile } from "./product-profile";
 
 export type Platform =
   | "vercel"
@@ -33,6 +34,7 @@ export interface Product {
   url: string;
   /** Canonical source repository when known, e.g. "tk-ap/ailhat". Optional for backward compatibility. */
   repository?: string;
+  profile?: ProductOperatingProfile;
   createdAt: number;
 }
 

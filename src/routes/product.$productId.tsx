@@ -10,6 +10,8 @@ import { scanSite } from "~/lib/scanClient";
 import { platformLabel } from "~/lib/store";
 import { timeAgo } from "~/lib/observation";
 import { useClientNow } from "~/lib/display-time";
+import { findingRelevance } from "~/lib/product-profile";
+import { profileFor } from "~/lib/product-profile";
 import {
   effectiveFindingDisplay,
   findingLifecycleLabel,
@@ -53,6 +55,7 @@ function ProductCockpit() {
   }, []);
 
   const product = state.products.find((p) => p.id === productId);
+  const operatingProfile = product ? profileFor(product) : null;
   const items = state.items.filter((i) => i.productId === productId);
   const openItems = items.filter((i) => i.status !== "done");
   const signals = useMemo(
@@ -170,6 +173,7 @@ function ProductCockpit() {
             <span className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-300">Active</span>
           </div>
           <p className="mt-1 text-sm text-gray-500">{platformLabel(product.platform)}</p>
+          {operatingProfile && <p className="mt-2 text-xs text-gray-500">Profile: <span className="text-gray-300">{operatingProfile.kind}</span> · outcome <span className="text-gray-300">{operatingProfile.primaryOutcome}</span> · edit from Today</p>}
           {product.url && (
             <a href={product.url.startsWith("http") ? product.url : `https://${product.url}`} target="_blank" rel="noreferrer" className="mt-1 block truncate text-sm text-[#7fb0ff] hover:underline">
               {product.url}
@@ -287,6 +291,7 @@ function ProductCockpit() {
               const display = effectiveFindingDisplay(findingVisibility, productId, issue);
               const isHidden = display === "hidden";
               const condensed = lifecycleLabel === "resolved" && display === "condensed";
+              const relevance = findingRelevance(product, issue);
               const badge =
                 lifecycleLabel === "regressed"
                   ? "border-rose-500/30 bg-rose-500/10 text-rose-300"
@@ -303,6 +308,7 @@ function ProductCockpit() {
                         </span>
                         {isHidden && <span className="text-[10px] uppercase tracking-wider text-gray-600">hidden from active view</span>}
                         {condensed && <span className="text-[10px] uppercase tracking-wider text-gray-600">condensed</span>}
+                        {relevance.status !== "relevant" && <span className="rounded-full border border-sky-500/25 bg-sky-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-sky-300">{relevance.status.replace("_", " ")}</span>}
                       </div>
                       <h3 className="mt-2 text-sm font-semibold text-gray-200">{issue.title}</h3>
                       {!condensed && !isHidden && (

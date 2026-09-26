@@ -1,5 +1,6 @@
 import type { Workspace, Harness, InterfaceSlot, Severity } from "./agent-control";
 import type { AppState, Item, Product } from "./store";
+import { applicableFindings } from "./product-profile";
 import { assessLaunchReadiness } from "./launch-readiness";
 import {
   SCAN_PROVIDER,
@@ -36,12 +37,12 @@ function productAgeDays(product: Product, state: AppState, now: number): number 
   return Math.max(0, Math.floor((now - at) / 86_400_000));
 }
 
-function scanFromPortfolioHistory(state: AppState, productId: string, now: number): ScanEvidence | null {
-  const result = state.scanHistory?.[productId]?.lastGood;
+function scanFromPortfolioHistory(state: AppState, product: Product, now: number): ScanEvidence | null {
+  const result = state.scanHistory?.[product.id]?.lastGood;
   if (!result || typeof result.scannedAt !== "number") return null;
   const findings = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 } as ScanEvidence["findings"];
   let totalFailures = 0;
-  for (const finding of result.findings ?? []) {
+  for (const finding of applicableFindings(product, result.findings ?? [])) {
     if (finding.status !== "fail") continue;
     findings[finding.severity] += 1;
     totalFailures += 1;
@@ -73,7 +74,7 @@ export function tenantPortfolioToWorkspaces(
 ): Workspace[] {
   return (state.products ?? []).map((product) => {
     const openItems = (state.items ?? []).filter((item) => item.productId === product.id && item.status !== "done");
-    const historyScan = scanFromPortfolioHistory(state, product.id, now);
+    const historyScan = scanFromPortfolioHistory(state, product, now);
     const observationScan = observedScans?.get(product.id) ?? null;
     const scan = freshestScan(historyScan, observationScan);
     const scanAt = scan?.scannedAt ?? 0;
