@@ -111,6 +111,17 @@ export function computeNextSprint(
   generatedAtMs = Date.now(),
   limit = 5,
 ): NextSprintRecommendation {
+  if ((state.products ?? []).length === 0) {
+    return {
+      schema: NEXT_SPRINT_SCHEMA,
+      generatedAt: new Date(generatedAtMs).toISOString(),
+      source: "ailhat Portfolio Intelligence",
+      advisory: true,
+      itemCount: 0,
+      recommendations: [],
+    };
+  }
+
   const { items } = buildAttention(state);
   const selected = selectSprintItems(items, limit);
   const recommendations = buildSprintRecommendations(state, selected);

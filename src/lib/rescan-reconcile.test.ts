@@ -199,8 +199,8 @@ describe("evidence-feed enrichment + consistency (Part 2)", () => {
     const obs = scanEvidenceObservation(res);
     const parsed = JSON.parse(obs.use as string);
     expect(parsed.checks).toEqual([
-      { stableKey: "a:" + URL, status: "fail" },
-      { stableKey: "b:" + URL, status: "ok" },
+      { stableKey: "a:" + URL, status: "fail", ruleId: "a", severity: "HIGH" },
+      { stableKey: "b:" + URL, status: "ok", ruleId: "b", severity: "LOW" },
     ]);
     expect(parsed.counts.HIGH).toBe(1); // only failing checks counted
   });

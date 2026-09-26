@@ -42,6 +42,9 @@ export const SCAN_PROVIDER = "site-scan";
 export interface ScanFindingStatus {
   stableKey: string;
   status: "fail" | "ok";
+  /** Optional on legacy observations; new summaries persist enough context for product-aware applicability. */
+  ruleId?: string;
+  severity?: Severity;
 }
 
 /** Compact live-scan findings summary, encoded in the observation's `use` field.
@@ -71,6 +74,8 @@ export interface ScanEvidence {
   ageHours: number;
   tier: ConfidenceTier;
   staleness: string;
+  /** Present on enriched observations; absent on legacy summaries. */
+  checks?: ScanFindingStatus[];
 }
 
 /** Host → workspace id for the known live portfolio. */
@@ -247,7 +252,7 @@ export function scanEvidenceObservation(result: ScanResult): AvailabilityObserva
     // Store only positive fail/ok evidence — a "unchecked" check is not evidence
     // of a pass OR a fail, so it is never persisted (and never auto-closes).
     if (f.status === "fail" || f.status === "ok") {
-      checks.push({ stableKey: f.stableKey, status: f.status });
+      checks.push({ stableKey: f.stableKey, status: f.status, ruleId: f.ruleId, severity: f.severity });
     }
   }
   const summary: ScanSummary = { ok: result.ok ?? false, counts, checks };
@@ -279,12 +284,24 @@ export function scanSummaryFromObservation(
     const checks: ScanFindingStatus[] = [];
     for (const c of rawChecks) {
       if (!c || typeof c !== "object") continue;
-      const rc = c as { stableKey?: unknown; status?: unknown };
+      const rc = c as { stableKey?: unknown; status?: unknown; ruleId?: unknown; severity?: unknown };
       if (
         typeof rc.stableKey === "string" &&
         (rc.status === "fail" || rc.status === "ok")
       ) {
-        checks.push({ stableKey: rc.stableKey, status: rc.status });
+        const severity =
+          rc.severity === "CRITICAL" ||
+          rc.severity === "HIGH" ||
+          rc.severity === "MEDIUM" ||
+          rc.severity === "LOW"
+            ? rc.severity
+            : undefined;
+        checks.push({
+          stableKey: rc.stableKey,
+          status: rc.status,
+          ...(typeof rc.ruleId === "string" ? { ruleId: rc.ruleId } : {}),
+          ...(severity ? { severity } : {}),
+        });
       }
     }
     return { ok, counts, checks };
@@ -321,6 +338,7 @@ export function buildScanEvidenceForObs(
     ageHours,
     tier: stalenessConfidence(ageHours),
     staleness: stalenessLabel(ageHours),
+    checks,
   };
 }
 

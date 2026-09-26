@@ -2,6 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import AppShell from "~/components/AppShell";
 import SandboxAccessPanel from "~/components/SandboxAccessPanel";
+import ProductProfileFields from "~/components/ProductProfileFields";
+import WorkflowPath from "~/components/WorkflowPath";
 import { AuthProvider, useAuth } from "~/lib/useAuth";
 import { StoreProvider, useStore } from "~/lib/useStore";
 import { computeBrief, type Signal } from "~/lib/brief";
@@ -10,8 +12,7 @@ import { scanSite } from "~/lib/scanClient";
 import { platformLabel } from "~/lib/store";
 import { timeAgo } from "~/lib/observation";
 import { useClientNow } from "~/lib/display-time";
-import { findingRelevance } from "~/lib/product-profile";
-import { profileFor } from "~/lib/product-profile";
+import { findingRelevance, profileFor, type ProductOperatingProfile } from "~/lib/product-profile";
 import {
   effectiveFindingDisplay,
   findingLifecycleLabel,
@@ -49,6 +50,8 @@ function ProductCockpit() {
   const [prepareMessage, setPrepareMessage] = useState("");
   const [findingVisibility, setFindingVisibility] = useState<FindingVisibilityState>({});
   const [showHiddenFindings, setShowHiddenFindings] = useState(false);
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [profileDraft, setProfileDraft] = useState<ProductOperatingProfile | null>(null);
 
   useEffect(() => {
     setFindingVisibility(loadFindingVisibility());
@@ -173,7 +176,6 @@ function ProductCockpit() {
             <span className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-300">Active</span>
           </div>
           <p className="mt-1 text-sm text-gray-500">{platformLabel(product.platform)}</p>
-          {operatingProfile && <p className="mt-2 text-xs text-gray-500">Profile: <span className="text-gray-300">{operatingProfile.kind}</span> · outcome <span className="text-gray-300">{operatingProfile.primaryOutcome}</span> · edit from Today</p>}
           {product.url && (
             <a href={product.url.startsWith("http") ? product.url : `https://${product.url}`} target="_blank" rel="noreferrer" className="mt-1 block truncate text-sm text-[#7fb0ff] hover:underline">
               {product.url}
@@ -188,6 +190,83 @@ function ProductCockpit() {
           <Link to="/control" className="silhat-btn silhat-btn-ghost">Open Direct</Link>
         </div>
       </section>
+
+      <WorkflowPath productId={product.id} productName={product.name} />
+
+      {operatingProfile && (
+        <section className="silhat-panel p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="silhat-eyebrow">Operating profile · current product context</p>
+              <h2 className="mt-1 text-lg font-semibold text-gray-100">{product.name} is judged against its actual job</h2>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setProfileDraft(profileFor(product));
+                setEditingProfile((value) => !value);
+              }}
+              className="rounded-lg border border-gray-700 px-3 py-1.5 text-xs font-semibold text-gray-300 hover:bg-gray-800"
+            >
+              {editingProfile ? "Close editor" : "Edit profile"}
+            </button>
+          </div>
+          {editingProfile && profileDraft ? (
+            <div className="mt-4 space-y-3">
+              <ProductProfileFields value={profileDraft} onChange={setProfileDraft} />
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    actions.updateProduct(product.id, { profile: profileDraft });
+                    setEditingProfile(false);
+                  }}
+                  className="silhat-btn silhat-btn-primary"
+                >
+                  Save profile
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setProfileDraft(profileFor(product)); setEditingProfile(false); }}
+                  className="silhat-btn silhat-btn-ghost"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-4 grid gap-4 lg:grid-cols-2">
+              <div className="space-y-3 text-sm text-gray-400">
+                <p><span className="font-semibold text-gray-200">Type:</span> {operatingProfile.kind} · <span className="font-semibold text-gray-200">primary outcome:</span> {operatingProfile.primaryOutcome}</p>
+                <p><span className="font-semibold text-gray-200">Purpose:</span> {operatingProfile.purpose || "Not defined yet."}</p>
+                <p><span className="font-semibold text-gray-200">Audience:</span> {operatingProfile.audience || "Not defined yet."}</p>
+                <p><span className="font-semibold text-gray-200">Primary journey:</span> {operatingProfile.primaryJourney || "Not defined yet."}</p>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Relevant surfaces</p>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {operatingProfile.relevantSurfaces.length > 0
+                      ? operatingProfile.relevantSurfaces.map((surface) => (
+                          <span key={surface} className="rounded-full border border-gray-800 bg-gray-950 px-2 py-1 text-[11px] text-gray-400">{surface}</span>
+                        ))
+                      : <span className="text-xs text-gray-600">Not defined yet.</span>}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Explicit non-goals</p>
+                  {operatingProfile.nonGoals.length > 0
+                    ? <ul className="mt-2 space-y-1 text-xs text-gray-500">{operatingProfile.nonGoals.map((goal) => <li key={goal}>• {goal}</li>)}</ul>
+                    : <p className="mt-2 text-xs text-gray-600">None defined yet.</p>}
+                </div>
+              </div>
+            </div>
+          )}
+          <p className="mt-4 border-t border-gray-800 pt-3 text-[11px] leading-5 text-gray-600">
+            Applicability changes ranking and readiness summaries only. Raw scan evidence remains preserved below.
+          </p>
+        </section>
+      )}
 
       {scanMessage && <div className="rounded-lg border border-[#7fb0ff]/20 bg-[#7fb0ff]/5 px-4 py-3 text-sm text-gray-300">{scanMessage}</div>}
       {prepareMessage && <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-4 py-3 text-sm text-emerald-200">{prepareMessage}</div>}
@@ -429,7 +508,7 @@ function ProductCockpit() {
         </div>
       </section>
 
-      <section className="rounded-xl border border-[#7fb0ff]/20 bg-[#7fb0ff]/[0.04] p-5">
+      <section id="verify" className="scroll-mt-24 rounded-xl border border-[#7fb0ff]/20 bg-[#7fb0ff]/[0.04] p-5">
         <p className="silhat-eyebrow">Close the loop</p>
         <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-gray-300">
           <span>Scan</span><span className="text-gray-600">→</span><span>Review</span><span className="text-gray-600">→</span><span>Prepare / direct</span><span className="text-gray-600">→</span><span>Execute</span><span className="text-gray-600">→</span><strong className="text-[#7fb0ff]">Re-scan and verify</strong>

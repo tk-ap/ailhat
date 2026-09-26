@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import IntentForm from "~/components/IntentForm";
 import { AuthProvider } from "~/lib/useAuth";
 import AuthNav from "~/components/AuthNav";
+import WorkflowPath from "~/components/WorkflowPath";
 
 export const Route = createFileRoute("/")({
   component: () => (
@@ -395,6 +396,9 @@ function Landing() {
               should show what deserves attention without pretending every
               observed condition is already verified or executable.
             </p>
+          </Reveal>
+          <Reveal delay={80} className="mx-auto mt-8 max-w-5xl overflow-x-auto rounded-lg border border-white/10 bg-[#0d0d0f] p-4">
+            <WorkflowPath />
           </Reveal>
           <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {LOOP.map((step, i) => (

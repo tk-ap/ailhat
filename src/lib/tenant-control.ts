@@ -1,6 +1,7 @@
 import type { Workspace, Harness, InterfaceSlot, Severity } from "./agent-control";
 import type { AppState, Item, Product } from "./store";
-import { applicableFindings } from "./product-profile";
+import { applicableFindings, findingRelevance } from "./product-profile";
+import type { ScanFinding } from "./scanSite";
 import { assessLaunchReadiness } from "./launch-readiness";
 import {
   SCAN_PROVIDER,
@@ -61,6 +62,33 @@ function scanFromPortfolioHistory(state: AppState, product: Product, now: number
   };
 }
 
+function contextualizeObservedScan(product: Product, scan: ScanEvidence | null): ScanEvidence | null {
+  if (!scan) return null;
+  const failedChecks = (scan.checks ?? []).filter((check) => check.status === "fail");
+  if (failedChecks.length === 0) return scan;
+  // Legacy observations do not carry rule/severity metadata. Keep them fully included
+  // rather than guessing and silently suppressing evidence.
+  if (failedChecks.some((check) => !check.ruleId || !check.severity)) return scan;
+
+  const findings = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 } as ScanEvidence["findings"];
+  let totalFailures = 0;
+  for (const check of failedChecks) {
+    const pseudoFinding: ScanFinding = {
+      ruleId: check.ruleId as string,
+      severity: check.severity as ScanFinding["severity"],
+      confidence: "HIGH",
+      title: check.ruleId as string,
+      detail: "Context metadata from durable scan observation.",
+      status: "fail",
+      stableKey: check.stableKey,
+    };
+    if (findingRelevance(product, pseudoFinding).status === "not_applicable") continue;
+    findings[pseudoFinding.severity] += 1;
+    totalFailures += 1;
+  }
+  return { ...scan, findings, totalFailures };
+}
+
 function freshestScan(a: ScanEvidence | null, b: ScanEvidence | null): ScanEvidence | null {
   if (!a) return b;
   if (!b) return a;
@@ -75,7 +103,7 @@ export function tenantPortfolioToWorkspaces(
   return (state.products ?? []).map((product) => {
     const openItems = (state.items ?? []).filter((item) => item.productId === product.id && item.status !== "done");
     const historyScan = scanFromPortfolioHistory(state, product, now);
-    const observationScan = observedScans?.get(product.id) ?? null;
+    const observationScan = contextualizeObservedScan(product, observedScans?.get(product.id) ?? null);
     const scan = freshestScan(historyScan, observationScan);
     const scanAt = scan?.scannedAt ?? 0;
     const scanAgeHours = scan?.ageHours ?? 9_999;
