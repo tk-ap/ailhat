@@ -313,8 +313,11 @@ function Landing() {
             </span>
           </a>
           <nav className="flex items-center gap-3" aria-label="Primary navigation">
-            <Link to="/brief" className="silhat-btn silhat-btn-ghost">
-              Daily brief
+            <a href="#loop" className="silhat-btn silhat-btn-ghost">
+              How it works
+            </a>
+            <Link to="/dashboard" className="silhat-btn silhat-btn-ghost">
+              Open workspace
             </Link>
             <a href="#request-access" className="silhat-btn silhat-btn-primary px-4 py-2">
               Request access
@@ -558,11 +561,11 @@ function Landing() {
             ailhat — Portfolio Intelligence for builders shipping across products and platforms.
           </span>
           <span className="flex items-center gap-4 font-code text-xs text-white/45">
-            <Link to="/brief" className="transition-colors hover:text-accent">
-              Daily brief
-            </Link>
+            <a href="#loop" className="transition-colors hover:text-accent">
+              How it works
+            </a>
             <Link to="/dashboard" className="transition-colors hover:text-accent">
-              Dashboard
+              Open workspace
             </Link>
             <Link to="/login" className="transition-colors hover:text-accent">
               Log in

@@ -11,6 +11,7 @@ import type { AppState, Item, ItemStatus, ItemType } from "./store";
 import type { ScanFinding } from "./scanSite";
 import { severityToItemType } from "./scanSite";
 import { assessQueueStall } from "./work-lifecycle";
+import { applicableFindings } from "./product-profile";
 
 export type AttentionLevel = "ACT_NOW" | "REVIEW" | "OPPORTUNITY" | "HEALTHY";
 
@@ -411,12 +412,13 @@ export function computeBrief(state: AppState): Signal[] {
     // Phase 2 severity model: CRITICAL/HIGH are objective, experience-breaking
     // bugs (broken links/resources, whole-site failure) → "scan bug" attention.
     // MEDIUM/LOW are polish/quality gaps → "review" attention.
-    const bugs = scan?.findings.filter(
+    const relevantFindings = scan ? applicableFindings(p, scan.findings) : [];
+    const bugs = relevantFindings.filter(
       (f) =>
         f.status === "fail" &&
         (f.severity === "CRITICAL" || f.severity === "HIGH"),
     ) ?? [];
-    const polish = scan?.findings.filter(
+    const polish = relevantFindings.filter(
       (f) =>
         f.status === "fail" &&
         f.severity !== "CRITICAL" &&

@@ -45,6 +45,7 @@ import {
   timeAgo,
 } from "~/lib/observation";
 import { displayDate, useClientNow } from "~/lib/display-time";
+import type { ProductKind, PrimaryOutcome } from "~/lib/product-profile";
 
 export const Route = createFileRoute("/dashboard")({
   component: () => (
@@ -545,6 +546,8 @@ function ProductCard({
   const [editPlatform, setEditPlatform] = useState<Platform>(product.platform);
   const [editUrl, setEditUrl] = useState(product.url);
   const [editRepository, setEditRepository] = useState(product.repository ?? "");
+  const [editKind, setEditKind] = useState<ProductKind>(product.profile?.kind ?? "other");
+  const [editOutcome, setEditOutcome] = useState<PrimaryOutcome>(product.profile?.primaryOutcome ?? "unknown");
   const [editError, setEditError] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -591,6 +594,10 @@ function ProductCard({
               className="w-full rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-800"
               placeholder="Repository, e.g. tk-ap/ailhat"
             />
+            <div className="grid gap-2 sm:grid-cols-2">
+              <label className="text-xs text-gray-500">Product type<select value={editKind} onChange={(e) => setEditKind(e.target.value as ProductKind)} className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-800"><option value="saas">SaaS / app</option><option value="publication">Publication</option><option value="api">API / developer tool</option><option value="internal-tool">Internal tool</option><option value="service">Service</option><option value="portfolio">Portfolio / personal site</option><option value="other">Other</option></select></label>
+              <label className="text-xs text-gray-500">Primary outcome<select value={editOutcome} onChange={(e) => setEditOutcome(e.target.value as PrimaryOutcome)} className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-800"><option value="conversion">Signup / purchase / contact</option><option value="content">Read / subscribe / audience</option><option value="documentation">Documentation / API use</option><option value="workflow">Internal workflow</option><option value="none">No conversion goal</option><option value="unknown">Not sure yet</option></select></label>
+            </div>
             <div className="flex gap-2">
               <button
                 onClick={() => {
@@ -619,6 +626,7 @@ function ProductCard({
                       platform: editPlatform,
                       url: editUrl.trim(),
                       repository: editRepository.trim() || undefined,
+                      profile: { kind: editKind, primaryOutcome: editOutcome },
                     });
                   }
                   setEditing(false);
@@ -874,6 +882,8 @@ function AddProductForm() {
   const [platform, setPlatform] = useState<Platform>("vercel");
   const [url, setUrl] = useState("");
   const [repository, setRepository] = useState("");
+  const [kind, setKind] = useState<ProductKind>("other");
+  const [primaryOutcome, setPrimaryOutcome] = useState<PrimaryOutcome>("unknown");
   const [error, setError] = useState("");
   const [checking, setChecking] = useState(false);
   const [availability, setAvailability] = useState<AvailabilityResult | null>(null);
@@ -897,10 +907,13 @@ function AddProductForm() {
       platform,
       url: url.trim(),
       repository: repository.trim() || undefined,
+      profile: { kind, primaryOutcome },
     });
     setName("");
     setUrl("");
     setRepository("");
+    setKind("other");
+    setPrimaryOutcome("unknown");
     setPlatform("vercel");
     setError("");
     setAvailability(null);
@@ -1014,6 +1027,10 @@ function AddProductForm() {
           className={`${input} mt-1`}
         />
       </label>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">Product type<select value={kind} onChange={(e) => setKind(e.target.value as ProductKind)} className={`${input} mt-1`}><option value="saas">SaaS / app</option><option value="publication">Publication</option><option value="api">API / developer tool</option><option value="internal-tool">Internal tool</option><option value="service">Service</option><option value="portfolio">Portfolio / personal site</option><option value="other">Other</option></select></label>
+        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">Primary outcome<select value={primaryOutcome} onChange={(e) => setPrimaryOutcome(e.target.value as PrimaryOutcome)} className={`${input} mt-1`}><option value="conversion">Signup / purchase / contact</option><option value="content">Read / subscribe / audience</option><option value="documentation">Documentation / API use</option><option value="workflow">Internal workflow</option><option value="none">No conversion goal</option><option value="unknown">Not sure yet</option></select></label>
+      </div>
 
       {/* Name availability */}
       <div className="mt-4 rounded-xl border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800">

@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import RadarSection from "~/components/RadarSection";
 import { useStore } from "~/lib/useStore";
 import { displayDate, useClientNow } from "~/lib/display-time";
+import { applicableFindings } from "~/lib/product-profile";
 
 const FRESH_SCAN_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -29,7 +30,9 @@ export default function IntelligenceExpansion() {
             {state.products.map((product) => {
               const history = state.scanHistory?.[product.id];
               const lastGood = history?.lastGood;
-              const presentFindings = Object.values(history?.issues ?? {}).filter((issue) => issue.present);
+              const presentFindings = history?.lastGood
+                ? applicableFindings(product, history.lastGood.findings).filter((finding) => finding.status === "fail")
+                : [];
               const openWork = state.items.filter((item) => item.productId === product.id && item.status !== "done");
               const fresh = Boolean(lastGood && clientNow !== null && clientNow - lastGood.scannedAt <= FRESH_SCAN_MS);
               const status = !product.url
