@@ -11,7 +11,8 @@ import type {
   SandboxExecutionStatus,
 } from "~/lib/sandbox-execution";
 
-const MIGRATION = `CREATE TABLE IF NOT EXISTS agent_direct_sandbox_executions (
+const MIGRATION = [
+  `CREATE TABLE IF NOT EXISTS agent_direct_sandbox_executions (
   id                     text        PRIMARY KEY,
   user_id                bigint      NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   product_key            text        NOT NULL,
@@ -30,15 +31,16 @@ const MIGRATION = `CREATE TABLE IF NOT EXISTS agent_direct_sandbox_executions (
   claim_generation         integer     NOT NULL DEFAULT 0,
   created_at               timestamptz NOT NULL DEFAULT now(),
   updated_at              timestamptz NOT NULL DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS agent_direct_sandbox_executions_user_idx
-  ON agent_direct_sandbox_executions(user_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS agent_direct_sandbox_executions_queue_idx
-  ON agent_direct_sandbox_executions(status, created_at ASC);
-ALTER TABLE agent_direct_sandbox_executions
-  ADD COLUMN IF NOT EXISTS claim_expires_at timestamptz;
-ALTER TABLE agent_direct_sandbox_executions
-  ADD COLUMN IF NOT EXISTS claim_generation integer NOT NULL DEFAULT 0;`;
+);`,
+  `CREATE INDEX IF NOT EXISTS agent_direct_sandbox_executions_user_idx
+  ON agent_direct_sandbox_executions(user_id, created_at DESC);`,
+  `CREATE INDEX IF NOT EXISTS agent_direct_sandbox_executions_queue_idx
+  ON agent_direct_sandbox_executions(status, created_at ASC);`,
+  `ALTER TABLE agent_direct_sandbox_executions
+  ADD COLUMN IF NOT EXISTS claim_expires_at timestamptz;`,
+  `ALTER TABLE agent_direct_sandbox_executions
+  ADD COLUMN IF NOT EXISTS claim_generation integer NOT NULL DEFAULT 0;`
+];
 
 const VALID_STATUSES = new Set<SandboxExecutionStatus>([
   "queued","claimed","routing","governance_unavailable","governance_denied",
@@ -94,7 +96,7 @@ export async function migrateSandboxExecutions(): Promise<void> {
   await migrateAuth();
   await migrateSandboxEnvironments();
   const q = sql() as unknown as { query: (text: string) => Promise<unknown> };
-  await q.query(MIGRATION);
+  for (const statement of MIGRATION) await q.query(statement);
 }
 
 async function ownedProduct(userId: number, productId: string): Promise<Record<string, unknown>> {
