@@ -2,7 +2,8 @@ import { sql } from "~/db";
 import { migrateAuth, type AuthUser } from "~/lib/auth";
 import { isPlatformOwner } from "~/lib/access.server";
 
-const MIGRATION = `CREATE TABLE IF NOT EXISTS product_sandbox_environments (
+const MIGRATION = [
+  `CREATE TABLE IF NOT EXISTS product_sandbox_environments (
   user_id                 bigint      NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   product_key             text        NOT NULL,
   provider                text        NOT NULL DEFAULT 'here-now',
@@ -19,11 +20,10 @@ const MIGRATION = `CREATE TABLE IF NOT EXISTS product_sandbox_environments (
   created_at               timestamptz NOT NULL DEFAULT now(),
   updated_at               timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (user_id, product_key, provider)
-);
-
-CREATE INDEX IF NOT EXISTS product_sandbox_environments_user_provider_idx
-  ON product_sandbox_environments(user_id, provider, updated_at DESC);
-`;
+);`,
+  `CREATE INDEX IF NOT EXISTS product_sandbox_environments_user_provider_idx
+  ON product_sandbox_environments(user_id, provider, updated_at DESC);`
+];
 
 export type SandboxLifecycle = "unassigned" | "configured" | "live" | "stale" | "unavailable" | "retired";
 export type VerificationState = "unknown" | "pending" | "passed" | "failed";
@@ -88,7 +88,7 @@ function normalizeVerification(value: unknown): VerificationState {
 export async function migrateSandboxEnvironments(): Promise<void> {
   await migrateAuth();
   const q = sql() as unknown as { query: (text: string) => Promise<unknown> };
-  await q.query(MIGRATION);
+  for (const statement of MIGRATION) await q.query(statement);
 }
 
 function mapRow(row: Record<string, unknown>): ProductSandboxEnvironment {
