@@ -1,3 +1,5 @@
+import type { PostActionProductVerification, ProductVerificationSnapshot } from "./post-action-verification";
+
 export type SandboxExecutionStatus =
   | "queued"
   | "claimed"
@@ -29,8 +31,6 @@ export interface SandboxExecutionEnvironment {
   lifecycle: string;
   verificationState: string;
 }
-
-import type { PostActionProductVerification, ProductVerificationSnapshot } from "./post-action-verification";
 
 export interface SandboxExecution {
   id: string;
