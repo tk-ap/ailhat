@@ -194,14 +194,13 @@ export async function createSandboxExecution(user: AuthUser, input: Record<strin
 
   const productId = String(input.productId || "").trim();
   if (!productId) throw new Error("product_id_required");
-  const product = await ownedProduct(user.id, productId);
+  await ownedProduct(user.id, productId);
   const workItem = asJson(input.workItem);
   if (!workItem || workItem.schema !== "ailhat.agent-direct.work-item/v1") throw new Error("invalid_work_item");
   const workspace = asJson(workItem.workspace);
   if (!workspace || String(workspace.id || "") !== productId) throw new Error("work_item_product_mismatch");
 
   const sandbox = await stableSandbox(user.id, productId);
-  void product;
   const verificationBaseline = await observeSandbox(sandbox.sandboxUrl);
   const id = `agent-direct:${randomUUID()}`;
   const rows = await sql()`insert into agent_direct_sandbox_executions
