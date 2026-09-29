@@ -169,6 +169,16 @@ export default function SandboxExecutionPanel({
               Review · {String(latest.review.verdict ?? "pending")}{summary(latest.review) ? ` · ${summary(latest.review)}` : ""}
             </p>
           )}
+          {latest.productVerification && (
+            <div className="mt-3 rounded-lg border border-gray-800 bg-gray-950/70 p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Independent product check · sandbox</p>
+              <p className="mt-1 text-sm font-semibold text-gray-200">{latest.productVerification.verdict.replaceAll("_", " ")}</p>
+              <p className="mt-1 text-xs leading-5 text-gray-500">{latest.productVerification.reason}</p>
+              <p className="mt-2 text-[10px] leading-4 text-gray-600">
+                ailhat re-scanned the governed sandbox after AgentOS completion. This verdict does not imply production verification.
+              </p>
+            </div>
+          )}
           {latest.evidence.length > 0 && (
             <details className="mt-3">
               <summary className="cursor-pointer text-xs font-semibold text-gray-400">Evidence · {latest.evidence.length}</summary>

@@ -1,3 +1,5 @@
+import type { PostActionProductVerification, ProductVerificationSnapshot } from "./post-action-verification";
+
 export type SandboxExecutionStatus =
   | "queued"
   | "claimed"
@@ -43,6 +45,8 @@ export interface SandboxExecution {
   outcome: Record<string, unknown> | null;
   evidence: Array<Record<string, unknown>>;
   review: Record<string, unknown> | null;
+  verificationBaseline: ProductVerificationSnapshot | null;
+  productVerification: PostActionProductVerification | null;
   claimGeneration: number;
   createdAt: string;
   updatedAt: string;
