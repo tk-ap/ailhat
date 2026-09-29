@@ -3,6 +3,14 @@ import { sql } from "~/db";
 import { migrateAuth, type AuthUser } from "~/lib/auth";
 import { getAccountAccess } from "~/lib/access.server";
 import { getPortfolioState } from "~/lib/db-portfolio";
+import { runCorrectedScan } from "~/lib/scan-correctness";
+import {
+  compareProductVerification,
+  snapshotFromScan,
+  type PostActionProductVerification,
+  type ProductVerificationSnapshot,
+} from "~/lib/post-action-verification";
+import type { Product } from "~/lib/store";
 import { migrateSandboxEnvironments } from "~/lib/sandbox-environments.server";
 import type {
   SandboxExecution,
@@ -26,6 +34,8 @@ const MIGRATION = [
   outcome                 jsonb,
   evidence                jsonb       NOT NULL DEFAULT '[]'::jsonb,
   review                  jsonb,
+  verification_baseline   jsonb,
+  product_verification    jsonb,
   claimed_at              timestamptz,
   claim_expires_at         timestamptz,
   claim_generation         integer     NOT NULL DEFAULT 0,
@@ -39,7 +49,11 @@ const MIGRATION = [
   `ALTER TABLE agent_direct_sandbox_executions
   ADD COLUMN IF NOT EXISTS claim_expires_at timestamptz;`,
   `ALTER TABLE agent_direct_sandbox_executions
-  ADD COLUMN IF NOT EXISTS claim_generation integer NOT NULL DEFAULT 0;`
+  ADD COLUMN IF NOT EXISTS claim_generation integer NOT NULL DEFAULT 0;`,
+  `ALTER TABLE agent_direct_sandbox_executions
+  ADD COLUMN IF NOT EXISTS verification_baseline jsonb;`,
+  `ALTER TABLE agent_direct_sandbox_executions
+  ADD COLUMN IF NOT EXISTS product_verification jsonb;`
 ];
 
 const VALID_STATUSES = new Set<SandboxExecutionStatus>([
@@ -64,6 +78,26 @@ function iso(value: unknown): string {
   return new Date(String(value)).toISOString();
 }
 
+function asVerificationBaseline(value: unknown): ProductVerificationSnapshot | null {
+  const row = asJson(value);
+  if (!row || row.target !== "sandbox" || typeof row.url !== "string" || typeof row.scannedAt !== "number" || typeof row.reachable !== "boolean" || !Array.isArray(row.checks)) return null;
+  return row as unknown as ProductVerificationSnapshot;
+}
+
+function asProductVerification(value: unknown): PostActionProductVerification | null {
+  const row = asJson(value);
+  if (!row || row.schema !== "ailhat.post-action-product-verification/v1") return null;
+  return row as unknown as PostActionProductVerification;
+}
+
+async function observeSandbox(url: string): Promise<ProductVerificationSnapshot | null> {
+  try {
+    return snapshotFromScan(await runCorrectedScan(url));
+  } catch {
+    return null;
+  }
+}
+
 function mapRow(row: Record<string, unknown>): SandboxExecution {
   return {
     id: String(row.id),
@@ -78,6 +112,8 @@ function mapRow(row: Record<string, unknown>): SandboxExecution {
     outcome: asJson(row.outcome),
     evidence: asEvidence(row.evidence),
     review: asJson(row.review),
+    verificationBaseline: asVerificationBaseline(row.verification_baseline),
+    productVerification: asProductVerification(row.product_verification),
     claimGeneration: Number(row.claim_generation ?? 0),
     createdAt: iso(row.created_at),
     updatedAt: iso(row.updated_at),
@@ -158,19 +194,22 @@ export async function createSandboxExecution(user: AuthUser, input: Record<strin
 
   const productId = String(input.productId || "").trim();
   if (!productId) throw new Error("product_id_required");
-  await ownedProduct(user.id, productId);
+  const product = await ownedProduct(user.id, productId);
   const workItem = asJson(input.workItem);
   if (!workItem || workItem.schema !== "ailhat.agent-direct.work-item/v1") throw new Error("invalid_work_item");
   const workspace = asJson(workItem.workspace);
   if (!workspace || String(workspace.id || "") !== productId) throw new Error("work_item_product_mismatch");
 
   const sandbox = await stableSandbox(user.id, productId);
+  void product;
+  const verificationBaseline = await observeSandbox(sandbox.sandboxUrl);
   const id = `agent-direct:${randomUUID()}`;
   const rows = await sql()`insert into agent_direct_sandbox_executions
-    (id,user_id,product_key,backend,work_item,sandbox,status)
+    (id,user_id,product_key,backend,work_item,sandbox,status,verification_baseline)
     values (
       ${id},${user.id},${productId},'agent-os',
-      ${JSON.stringify(workItem)}::jsonb,${JSON.stringify(sandbox)}::jsonb,'queued'
+      ${JSON.stringify(workItem)}::jsonb,${JSON.stringify(sandbox)}::jsonb,'queued',
+      ${verificationBaseline ? JSON.stringify(verificationBaseline) : null}::jsonb
     ) returning *`;
   return mapRow(rows[0] as Record<string, unknown>);
 }
@@ -236,5 +275,56 @@ export async function updateSandboxExecutionFromRuntime(input: Record<string, un
         updated_at=now()
     where id=${id}
     returning *`;
-  return mapRow(rows[0] as Record<string, unknown>);
+
+  const updated = rows[0] as Record<string, unknown>;
+  if (status !== "completed" || asProductVerification(updated.product_verification)) {
+    return mapRow(updated);
+  }
+
+  let verification: PostActionProductVerification;
+  try {
+    const product = await ownedProduct(Number(updated.user_id), String(updated.product_key)) as unknown as Product;
+    const sandbox = asJson(updated.sandbox) as unknown as SandboxExecutionEnvironment | null;
+    const baseline = asVerificationBaseline(updated.verification_baseline);
+    const observed = sandbox?.sandboxUrl ? await observeSandbox(sandbox.sandboxUrl) : null;
+    verification = compareProductVerification(product, baseline, observed);
+  } catch {
+    verification = {
+      schema: "ailhat.post-action-product-verification/v1",
+      evaluator: "ailhat.site-scan/v1",
+      target: "sandbox",
+      verdict: "INSUFFICIENT_EVIDENCE",
+      reason: "ailhat could not complete the independent post-action sandbox observation.",
+      evaluatedAt: new Date().toISOString(),
+      baseline: asVerificationBaseline(updated.verification_baseline),
+      observed: null,
+      resolved: [],
+      regressed: [],
+      persistent: [],
+      uncertain: [],
+      ignoredNotApplicable: [],
+    };
+  }
+
+  const verificationEvidence = {
+    kind: "ailhat.post-action-product-verification",
+    evaluator: verification.evaluator,
+    target: verification.target,
+    verdict: verification.verdict,
+    reason: verification.reason,
+    baselineScannedAt: verification.baseline?.scannedAt ?? null,
+    observedScannedAt: verification.observed?.scannedAt ?? null,
+    resolved: verification.resolved,
+    regressed: verification.regressed,
+    persistent: verification.persistent,
+    uncertain: verification.uncertain,
+  };
+  const finalEvidence = [...asEvidence(updated.evidence), verificationEvidence];
+  const verifiedRows = await sql()`update agent_direct_sandbox_executions
+    set product_verification=${JSON.stringify(verification)}::jsonb,
+        evidence=${JSON.stringify(finalEvidence)}::jsonb,
+        updated_at=now()
+    where id=${id} and product_verification is null
+    returning *`;
+  return mapRow((verifiedRows[0] ?? updated) as Record<string, unknown>);
 }
